@@ -1,0 +1,32 @@
+---
+source: tests/semantic_tests.rs
+assertion_line: 156
+expression: result
+---
+{
+  "input": "set lot to 0.02 for groups 1-8",
+  "parsed": {
+    "command_type": "set",
+    "target": {
+      "groups": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "field": "initial_lot"
+    },
+    "params": {
+      "value": 0.02
+    }
+  },
+  "result": {
+    "success": true,
+    "message": "Set Some(\"initial_lot\") = Some(Number(0.02))"
+  },
+  "status": "pass"
+}

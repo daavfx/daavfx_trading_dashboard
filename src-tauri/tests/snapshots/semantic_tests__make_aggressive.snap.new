@@ -1,0 +1,59 @@
+---
+source: tests/semantic_tests.rs
+assertion_line: 78
+expression: result
+---
+{
+  "input": "make it aggressive",
+  "parsed": {
+    "command_type": "semantic",
+    "target": {},
+    "params": {},
+    "semantic": {
+      "description": "Apply aggressive preset (+30% mult, +20% lot, -25% grid)",
+      "operations": [
+        {
+          "field": "multiplier",
+          "op": "scale",
+          "factor": 1.3
+        },
+        {
+          "field": "initial_lot",
+          "op": "scale",
+          "factor": 1.2
+        },
+        {
+          "field": "grid",
+          "op": "scale",
+          "factor": 0.75
+        }
+      ]
+    }
+  },
+  "result": {
+    "success": true,
+    "message": "[SEMANTIC PREVIEW] Apply aggressive preset (+30% mult, +20% lot, -25% grid)",
+    "preview": {
+      "description": "Apply aggressive preset (+30% mult, +20% lot, -25% grid)",
+      "operations": [
+        {
+          "factor": 1.3,
+          "field": "multiplier",
+          "op": "scale"
+        },
+        {
+          "factor": 1.2,
+          "field": "initial_lot",
+          "op": "scale"
+        },
+        {
+          "factor": 0.75,
+          "field": "grid",
+          "op": "scale"
+        }
+      ],
+      "target": {}
+    }
+  },
+  "status": "pass"
+}

@@ -1,0 +1,21 @@
+﻿{
+    "statusStats":  {
+                        "Status":  "",
+                        "Pct":  100,
+                        "Count":  10000
+                    },
+    "iterations":  10000,
+    "totalDuration":  109.42417669999999,
+    "passed":  10000,
+    "typeStats":  {
+                      "Count":  10000,
+                      "Rate":  100,
+                      "Type":  "",
+                      "Passed":  10000
+                  },
+    "timestamp":  "2025-12-20T13:30:29.2153444-06:00",
+    "throughput":  91.4,
+    "avgCommandTime":  9.06,
+    "failed":  0,
+    "passRate":  100
+}

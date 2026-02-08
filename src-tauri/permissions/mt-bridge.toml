@@ -1,0 +1,119 @@
+[[set]]
+identifier = "mt-bridge-all"
+description = "Default permissions for MT Bridge and AI Engine"
+permissions = [
+  "load-mt-config",
+  "save-mt-config",
+  "set-mt-path",
+  "start-file-watcher",
+  "get-default-mt4-path",
+  "get-default-mt5-path",
+  "export-set-file",
+  "export-set-file-to-mt-common-files",
+  "import-set-file",
+  "export-json-file",
+  "import-json-file",
+  "list-vault-files",
+  "save-to-vault",
+  "delete-from-vault",
+  "export-vault-file",
+  "ask-ai",
+  "init-model",
+  "get-ai-rules",
+  "save-ai-rules"
+]
+
+[[permission]]
+identifier = "load-mt-config"
+description = "Load MT4/MT5 configuration"
+commands.allow = ["load_mt_config"]
+
+[[permission]]
+identifier = "save-mt-config"
+description = "Save MT4/MT5 configuration"
+commands.allow = ["save_mt_config"]
+
+[[permission]]
+identifier = "set-mt-path"
+description = "Set MT4/MT5 installation path"
+commands.allow = ["set_mt_path"]
+
+[[permission]]
+identifier = "start-file-watcher"
+description = "Start file watcher for MT4/MT5"
+commands.allow = ["start_file_watcher"]
+
+[[permission]]
+identifier = "get-default-mt4-path"
+description = "Get default MT4 installation path"
+commands.allow = ["get_default_mt4_path"]
+
+[[permission]]
+identifier = "get-default-mt5-path"
+description = "Get default MT5 installation path"
+commands.allow = ["get_default_mt5_path"]
+
+[[permission]]
+identifier = "export-set-file"
+description = "Export set file"
+commands.allow = ["export_set_file"]
+
+[[permission]]
+identifier = "export-set-file-to-mt-common-files"
+description = "Export set file to MT common files"
+commands.allow = ["export_set_file_to_mt_common_files"]
+
+[[permission]]
+identifier = "import-set-file"
+description = "Import set file"
+commands.allow = ["import_set_file"]
+
+[[permission]]
+identifier = "export-json-file"
+description = "Export JSON file"
+commands.allow = ["export_json_file"]
+
+[[permission]]
+identifier = "import-json-file"
+description = "Import JSON file"
+commands.allow = ["import_json_file"]
+
+[[permission]]
+identifier = "list-vault-files"
+description = "List vault files"
+commands.allow = ["list_vault_files"]
+
+[[permission]]
+identifier = "save-to-vault"
+description = "Save file to vault"
+commands.allow = ["save_to_vault"]
+
+[[permission]]
+identifier = "delete-from-vault"
+description = "Delete file from vault"
+commands.allow = ["delete_from_vault"]
+
+[[permission]]
+identifier = "export-vault-file"
+description = "Export vault file"
+commands.allow = ["export_vault_file"]
+
+[[permission]]
+identifier = "ask-ai"
+description = "Allow calling the ask_ai command"
+commands.allow = ["ask_ai"]
+
+[[permission]]
+identifier = "init-model"
+description = "Allow calling the init_model command"
+commands.allow = ["init_model"]
+
+[[permission]]
+identifier = "get-ai-rules"
+description = "Allow calling the get_ai_rules command"
+commands.allow = ["get_ai_rules"]
+
+[[permission]]
+identifier = "save-ai-rules"
+description = "Allow calling the save_ai_rules command"
+commands.allow = ["save_ai_rules"]

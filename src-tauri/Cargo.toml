@@ -1,0 +1,62 @@
+[package]
+name = "app"
+version = "0.1.0"
+description = "A Tauri App"
+authors = ["you"]
+license = ""
+repository = ""
+edition = "2021"
+rust-version = "1.77.2"
+default-run = "app"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+# Headless CLI for testing
+[[bin]]
+name = "ryctl"
+path = "src/bin/ryctl.rs"
+
+[build-dependencies]
+tauri-build = { version = "2.5.3", features = [] }
+
+[dependencies]
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+log = "0.4"
+tauri = { version = "2", features = [], optional = true }
+tauri-plugin-log = { version = "2", optional = true }
+tauri-plugin-dialog = { version = "2", optional = true }
+notify = "7.0"
+dirs = "6.0"
+chrono = "0.4"
+clap = { version = "4.0", features = ["derive"] }
+regex = "1.10"
+anyhow = "1.0"
+reqwest = { version = "0.11", features = ["json", "blocking"] }
+tokio = { version = "1", features = ["full"] }
+candle-core = "0.9.1"
+candle-nn = "0.9.1"
+candle-transformers = "0.9.1"
+tokenizers = "0.19.1"
+futures-util = "0.3"
+tokio-tungstenite = "0.24"
+uuid = { version = "1.0", features = ["v4"] }
+broadcast = "0.1.0"
+rayon = "1.7"
+async-trait = "0.1"
+windows = { version = "0.52", features = ["Win32_Foundation", "Win32_System_Memory", "Win32_System_Threading"] }
+rand = "0.8"
+ndarray = "0.15"
+statrs = "0.16"
+
+[features]
+default = ["tauri-app"]
+tauri-app = ["dep:tauri", "dep:tauri-plugin-log", "dep:tauri-plugin-dialog"]
+headless = []
+
+[dev-dependencies]
+insta = { version = "1.34", features = ["json", "redactions"] }
