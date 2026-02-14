@@ -267,7 +267,7 @@ export function QuickActionsPanel({ config, onConfigChange, onMessage }: QuickAc
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-card border border-border rounded-lg shadow-xl"
+      className="bg-card border border-border rounded-lg shadow-xl max-h-[80vh] overflow-hidden"
     >
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border">
@@ -311,7 +311,7 @@ export function QuickActionsPanel({ config, onConfigChange, onMessage }: QuickAc
       <div className="px-3 py-2 border-b border-border/50">
         <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5">Target Groups</div>
         <div className="flex gap-1 flex-wrap">
-          {Array.from({ length: 10 }, (_, i) => i + 1).map(g => (
+          {Array.from({ length: 15 }, (_, i) => i + 1).map(g => (
             <button
               key={g}
               onClick={() => toggleGroup(g)}
@@ -326,7 +326,7 @@ export function QuickActionsPanel({ config, onConfigChange, onMessage }: QuickAc
             </button>
           ))}
           <button
-            onClick={() => setSelectedGroups([1,2,3,4,5,6,7,8,9,10])}
+            onClick={() => setSelectedGroups([1,2,3,4,5,6,7,8,9,10,11,12,13,14,15])}
             className="px-2 h-6 text-[10px] font-medium rounded bg-muted/30 text-muted-foreground hover:bg-muted/50"
           >
             All
@@ -341,7 +341,7 @@ export function QuickActionsPanel({ config, onConfigChange, onMessage }: QuickAc
       </div>
 
       {/* Content */}
-      <ScrollArea className="h-[35vh] min-h-[200px] max-h-[500px]">
+      <ScrollArea className="h-auto min-h-[240px] max-h-[calc(100vh-260px)]">
         <div className="p-3">
           {/* Quick Actions Tab */}
           {activeTab === "actions" && (

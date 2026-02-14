@@ -1,0 +1,49 @@
+---
+source: tests/semantic_tests.rs
+assertion_line: 44
+expression: result
+---
+{
+  "input": "double the lot for group 1",
+  "parsed": {
+    "command_type": "semantic",
+    "target": {
+      "groups": [
+        1
+      ],
+      "field": "initial_lot"
+    },
+    "params": {},
+    "semantic": {
+      "description": "Double initial_lot",
+      "operations": [
+        {
+          "field": "initial_lot",
+          "op": "scale",
+          "factor": 2.0
+        }
+      ]
+    }
+  },
+  "result": {
+    "success": true,
+    "message": "[SEMANTIC PREVIEW] Double initial_lot",
+    "preview": {
+      "description": "Double initial_lot",
+      "operations": [
+        {
+          "factor": 2.0,
+          "field": "initial_lot",
+          "op": "scale"
+        }
+      ],
+      "target": {
+        "field": "initial_lot",
+        "groups": [
+          1
+        ]
+      }
+    }
+  },
+  "status": "pass"
+}

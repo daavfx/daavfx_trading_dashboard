@@ -288,14 +288,12 @@ function SelectionDashboardContent({
   }, [selection.engines, selection.groups, selection.logics]);
 
   const vaultDraft = useMemo(() => {
-    const platform = (config?.platform || "MT5").toUpperCase();
     const engines = selection.engines.length ? `E${selection.engines.join("")}` : "E";
     const groups = selection.groups.length ? `G${selection.groups.join("-")}` : "G";
     const logics = selection.logics.length ? selection.logics.join("-") : "LOGIC";
-    const name = clampText(`${platform}_${engines}_${groups}_${logics}_v1`, 56);
+    const name = clampText(`${engines}_${groups}_${logics}_v1`, 56);
 
     const tags = [
-      platform,
       ...selection.engines.map((e) => `Engine${e}`),
       ...selection.groups.map((g) => `G${g}`),
       ...selection.logics.map((l) => l),
@@ -326,7 +324,6 @@ function SelectionDashboardContent({
     analytics.num.initial_lot?.avg,
     analytics.num.multiplier?.avg,
     analytics.targets,
-    config?.platform,
     headerSubtitle,
     isMultiEdit,
     selection.engines,
@@ -614,4 +611,3 @@ function MiniMetric({ label, value, onClick }: { label: string; value: string; o
     </button>
   );
 }
-

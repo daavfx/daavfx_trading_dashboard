@@ -3,7 +3,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
 import { toast } from "sonner";
 import type { MTConfig, Platform, LogicConfig } from "@/types/mt-config";
 
@@ -17,22 +16,24 @@ export function useMTConfig(platform: Platform) {
     try {
       setLoading(true);
       setError(null);
-      const loadedConfig = await invoke<MTConfig>("load_mt_config", { platform });
-      setConfig(loadedConfig);
-      toast.success(`Loaded ${platform} configuration`);
-      return loadedConfig;
-    } catch (err) {
-      const errorMsg = err as string;
-      setError(errorMsg);
-      // Don't spam errors when path/config isn't set yet; just fall back to mock/default.
-      if (!errorMsg.includes("path not set") && !errorMsg.includes("config path not found")) {
-        toast.error(`Failed to load ${platform} config: ${errorMsg}`);
+      const raw = localStorage.getItem("daavfx-last-config");
+      if (raw) {
+        const parsed = JSON.parse(raw) as MTConfig;
+        setConfig(parsed);
+        toast.success("Loaded local configuration");
+        return parsed;
       }
+      setConfig(null);
+      return null;
+    } catch (err) {
+      const errorMsg = String(err);
+      setError(errorMsg);
+      toast.error(`Failed to load config: ${errorMsg}`);
       throw err;
     } finally {
       setLoading(false);
     }
-  }, [platform]);
+  }, []);
 
   const setConfigOnly = useCallback((newConfig: MTConfig) => {
     // Update local state WITHOUT syncing to MT (for local-only imports)
@@ -49,79 +50,22 @@ export function useMTConfig(platform: Platform) {
         last_saved_at: nowIso,
         last_saved_platform: platform,
       };
-      await invoke("save_mt_config", { platform, config: enrichedConfig });
+      localStorage.setItem("daavfx-last-config", JSON.stringify(enrichedConfig));
       setConfig(enrichedConfig);
-      toast.success(`Saved ${platform} configuration`);
+      toast.success("Saved local configuration");
     } catch (err) {
-      const errorMsg = err as string;
+      const errorMsg = String(err);
       setError(errorMsg);
-      toast.error(`Failed to save ${platform} config: ${errorMsg}`);
+      toast.error(`Failed to save config: ${errorMsg}`);
       throw err;
     } finally {
       setLoading(false);
     }
   }, [platform]);
 
-  const setPath = useCallback(async (path: string) => {
-    try {
-      await invoke("set_mt_path", { platform, path });
-      toast.success(`Set ${platform} path`);
-    } catch (err) {
-      const errorMsg = err as string;
-      toast.error(`Failed to set ${platform} path: ${errorMsg}`);
-      throw err;
-    }
-  }, [platform]);
+  
 
-  const startWatcher = useCallback(async () => {
-    try {
-      await invoke("start_file_watcher", { platform });
-      toast.info(`Watching ${platform} config file for changes`);
-    } catch (err) {
-      const errorMsg = err as string;
-      toast.error(`Failed to start file watcher: ${errorMsg}`);
-      throw err;
-    }
-  }, [platform]);
-
-  const getDefaultPath = useCallback(async () => {
-    try {
-      const command = platform === "MT4" ? "get_default_mt4_path" : "get_default_mt5_path";
-      const path = await invoke<string>(command);
-      return path;
-    } catch (err) {
-      return null;
-    }
-  }, [platform]);
-
-  // Listen for file changes
-  useEffect(() => {
-    let unlistenFn: (() => void) | undefined;
-
-    const setupListener = async () => {
-      try {
-        const isTauri = typeof window !== "undefined" && (
-          (window as any).__TAURI__ || (window as any).__TAURI_INTERNALS__
-        );
-        if (!isTauri) {
-          return;
-        }
-        unlistenFn = await listen("config-changed", () => {
-          loadConfig().catch(console.error);
-        });
-      } catch (err) {
-        console.error("Failed to setup config listener:", err);
-      }
-    };
-
-    setupListener();
-
-    return () => {
-      if (unlistenFn) {
-        unlistenFn();
-      }
-    };
-  }, [loadConfig]);
+  
 
   return {
     config,
@@ -130,15 +74,15 @@ export function useMTConfig(platform: Platform) {
     loadConfig,
     saveConfig,
     setConfigOnly,
-    setPath,
-    startWatcher,
-    getDefaultPath,
+    
   };
 }
 
 // Hook for updating config (provides granular update functions)
-export function useConfigUpdater(platform: Platform) {
-  const { config, saveConfig } = useMTConfig(platform);
+export function useConfigUpdater(
+  config: MTConfig | null,
+  saveConfig: (newConfig: MTConfig) => Promise<void>,
+) {
 
   const updateLogic = useCallback(async (
     engineId: "A" | "B" | "C",
@@ -194,13 +138,15 @@ export function useConfigUpdater(platform: Platform) {
     }
   }, [config, saveConfig]);
 
-  const updateGeneral = useCallback(async (updates: Partial<MTConfig["general"]>) => {
-    if (!config) return;
+  const updateGeneral = useCallback(
+    async (updates: Partial<MTConfig["general"]>) => {
+      if (!config) return;
 
-    const newConfig = { ...config };
-    Object.assign(newConfig.general, updates);
-    await saveConfig(newConfig);
-  }, [config, saveConfig]);
+      const newConfig = { ...config, general: { ...config.general, ...updates } };
+      await saveConfig(newConfig);
+    },
+    [config, saveConfig],
+  );
 
   return {
     updateLogic,

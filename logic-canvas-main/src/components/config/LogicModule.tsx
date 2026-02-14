@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ConfigField } from "./ConfigField";
-import { Platform } from "@/components/layout/TopBar";
 import {
   Tooltip,
   TooltipContent,
@@ -32,13 +31,13 @@ import {
   LOGIC_DISPLAY_NAMES,
 } from "@/data/logic-inputs";
 import { useSettings } from "@/contexts/SettingsContext";
+import LogicConfigPanel from "@/components/LogicConfigPanel";
 
 interface LogicModuleProps {
   name: string;
   engine: string;
   expanded: boolean;
   onToggle: () => void;
-  platform: Platform;
   logicConfig?: LogicConfig;
   groups?: string[];
   engineData?: EngineConfig | null;
@@ -275,7 +274,6 @@ export function LogicModule({
   engine,
   expanded,
   onToggle,
-  platform,
   logicConfig,
   groups,
   engineData,
@@ -283,10 +281,8 @@ export function LogicModule({
   onUpdate,
   mode = 1,
 }: LogicModuleProps) {
-  // Defensive: if engine or name is undefined, render nothing
-  if (!engine || !name) {
-    return null;
-  }
+  const engineSafe = engine || "";
+  const nameSafe = name || "";
 
   const [trailLevelsVisible, setTrailLevelsVisible] = useState(1);
   const [showAdvancedFields, setShowAdvancedFields] = useState(false);
@@ -299,20 +295,20 @@ export function LogicModule({
     "points";
 
   // Calculate current logic ID for Close Targets
-  const engineLetter = engine.includes("Engine B")
+  const engineLetter = engineSafe.includes("Engine B")
     ? "B"
-    : engine.includes("Engine C")
+    : engineSafe.includes("Engine C")
       ? "C"
       : "A";
 
   // Handle Logic Name Mapping (stripping Engine prefix for B/C to match suffix map)
-  let baseName = name;
+  let baseName = nameSafe;
   if (
     engineLetter !== "A" &&
-    name.startsWith(engineLetter) &&
-    name.length > 1
+    nameSafe.startsWith(engineLetter) &&
+    nameSafe.length > 1
   ) {
-    baseName = name.substring(1);
+    baseName = nameSafe.substring(1);
   }
 
   const suffixMap: Record<string, string> = {
@@ -340,8 +336,8 @@ export function LogicModule({
       (groups && groups.length > 0 && groups.some((g) => g === "Group 1")) ||
       logicConfig?.logic_id?.includes("_G1");
     const config = logicConfig || ({} as Partial<LogicConfig>);
-    const logicInputConfig = logicInputs[name];
-    if (!logicInputConfig) return [];
+    const logicInputConfig = logicInputs[nameSafe];
+    if (!logicInputConfig) return;
 
     const templateFields = isGroup1
       ? logicInputConfig.group_1
@@ -370,12 +366,16 @@ export function LogicModule({
       newInitialFields.forEach((f) => {
         initialValues[f.id] = f.value;
       });
-      
+
       // Enforce mode constraints during initialization
       if (mode === 1) {
         // Mode 1: Default to "buy" if both are enabled
-        if ((initialValues["allow_buy"] === "ON" || initialValues["allow_buy"] === true) &&
-            (initialValues["allow_sell"] === "ON" || initialValues["allow_sell"] === true)) {
+        if (
+          (initialValues["allow_buy"] === "ON" ||
+            initialValues["allow_buy"] === true) &&
+          (initialValues["allow_sell"] === "ON" ||
+            initialValues["allow_sell"] === true)
+        ) {
           initialValues["allow_buy"] = "ON";
           initialValues["allow_sell"] = "OFF";
         }
@@ -384,36 +384,50 @@ export function LogicModule({
         initialValues["allow_buy"] = "ON";
         initialValues["allow_sell"] = "ON";
       }
-      
+
       setFieldValues(initialValues);
       hasInitializedRef.current = true;
     }
-  }, [logicConfig, groups, name, mode]); // This runs when the config changes to update the reference
+  }, [logicConfig, groups, nameSafe, mode]); // This runs when the config changes to update the reference
 
   // Enforce mode constraints on initialization and mode change
   useEffect(() => {
     if (hasInitializedRef.current) {
       if (mode === 1) {
         // Mode 1: Cannot have "both" selected
-        if ((fieldValues["allow_buy"] === "ON" || fieldValues["allow_buy"] === true) &&
-            (fieldValues["allow_sell"] === "ON" || fieldValues["allow_sell"] === true)) {
+        if (
+          (fieldValues["allow_buy"] === "ON" ||
+            fieldValues["allow_buy"] === true) &&
+          (fieldValues["allow_sell"] === "ON" ||
+            fieldValues["allow_sell"] === true)
+        ) {
           // Default to "buy" in Mode 1 if both are selected
-          const updates = { "allow_buy": "ON", "allow_sell": "OFF" };
-          setFieldValues(prev => ({ ...prev, ...updates }));
+          const updates = { allow_buy: "ON", allow_sell: "OFF" };
+          setFieldValues((prev) => ({ ...prev, ...updates }));
           Object.entries(updates).forEach(([key, v]) => onUpdate?.(key, v));
         }
       } else if (mode === 2) {
         // Mode 2: Must have "both" selected
-        if (!((fieldValues["allow_buy"] === "ON" || fieldValues["allow_buy"] === true) &&
-              (fieldValues["allow_sell"] === "ON" || fieldValues["allow_sell"] === true))) {
+        if (
+          !(
+            (fieldValues["allow_buy"] === "ON" ||
+              fieldValues["allow_buy"] === true) &&
+            (fieldValues["allow_sell"] === "ON" ||
+              fieldValues["allow_sell"] === true)
+          )
+        ) {
           // Force both in Mode 2
-          const updates = { "allow_buy": "ON", "allow_sell": "ON" };
-          setFieldValues(prev => ({ ...prev, ...updates }));
+          const updates = { allow_buy: "ON", allow_sell: "ON" };
+          setFieldValues((prev) => ({ ...prev, ...updates }));
           Object.entries(updates).forEach(([key, v]) => onUpdate?.(key, v));
         }
       }
     }
-  }, [mode]); // This runs when mode changes
+  }, [mode, fieldValues, onUpdate]); // This runs when mode changes
+
+  if (!engineSafe || !nameSafe) {
+    return null;
+  }
 
   const handleFieldChange = (id: string, value: any) => {
     const updates: Record<string, any> = { [id]: value };
@@ -440,8 +454,7 @@ export function LogicModule({
     });
   };
 
-  // Current Modes (using real fields)
-  const strategyType = fieldValues["strategy_type"] || "Trail";
+  // Current Mode - Trail Only
   const tradingMode = fieldValues["trading_mode"] || "Counter Trend";
 
   // Filter and Construct Fields
@@ -463,16 +476,7 @@ export function LogicModule({
       if (tradingMode === "Reverse" && f.id.includes("hedge")) return false;
     }
 
-    // Strategy Type Filtering (Trail vs TPSL)
-    if (strategyType === "Trail") {
-      // Trail mode: hide TP/SL fields
-      if (f.category === "TPSL") return false;
-    } else {
-      // TPSL mode: hide Trail and Trail Advanced fields
-      if (f.category === "Trail" || f.category === "Trail Advanced")
-        return false;
-    }
-
+    // Show all fields including TPSL (dummy/backup)
     return true;
   });
 
@@ -602,279 +606,441 @@ export function LogicModule({
             className="overflow-hidden"
           >
             <div className="px-4 pb-4 pt-2 space-y-4">
-              {categories.map((category) => {
-                const categoryFields = filteredFields.filter(
-                  (f) => (f.category || "General") === category,
-                );
-                const style = categoryStyles[category] || {
-                  color: "text-muted-foreground",
-                  bg: "bg-muted/5",
-                  border: "border-border/50",
-                  icon: ChevronRight,
-                };
-                const Icon = style.icon;
+              {/* Show LogicConfigPanel for Hedge mode only */}
+              {tradingMode === "Hedge" && (
+                <LogicConfigPanel
+                  mode="hedge"
+                  config={{
+                    enabled:
+                      fieldValues["enabled"] === "ON" ||
+                      fieldValues["enabled"] === true,
+                    logic_name: name,
+                    initial_lot: parseFloat(fieldValues["initial_lot"]) || 0.01,
+                    multiplier: parseFloat(fieldValues["multiplier"]) || 2.0,
+                    grid: parseFloat(fieldValues["grid"]) || 10.0,
+                    trail_method: fieldValues["trail_method"] || "Points",
+                    trail_value: parseFloat(fieldValues["trail_value"]) || 15.0,
+                    trail_step: parseFloat(fieldValues["trail_step"]) || 10.0,
+                    use_tp:
+                      fieldValues["use_tp"] === "ON" ||
+                      fieldValues["use_tp"] === true,
+                    tp_value: parseFloat(fieldValues["tp_value"]) || 0.0,
+                    use_sl:
+                      fieldValues["use_sl"] === "ON" ||
+                      fieldValues["use_sl"] === true,
+                    sl_value: parseFloat(fieldValues["sl_value"]) || 0.0,
+                    trigger_type: fieldValues["trigger_type"] || "Immediate",
+                    trigger_bars: parseInt(fieldValues["trigger_bars"]) || 0,
+                    trigger_pips:
+                      parseFloat(fieldValues["trigger_pips"]) || 0.0,
+                    grid_behavior:
+                      fieldValues["grid_behavior"] || "Counter Trend",
+                    trading_mode: tradingMode,
+                    hedge_enabled: tradingMode === "Hedge",
+                    hedge_reference:
+                      fieldValues["hedge_reference"] || "Logic_None",
+                    hedge_scale: parseFloat(fieldValues["hedge_scale"]) || 50.0,
+                    reverse_enabled:
+                      fieldValues["reverse_enabled"] === "ON" ||
+                      fieldValues["reverse_enabled"] === true,
+                    reverse_reference:
+                      fieldValues["reverse_reference"] || "Logic_None",
+                    partial_close:
+                      fieldValues["partial_close"] === "ON" ||
+                      fieldValues["partial_close"] === true,
+                  }}
+                  onChange={(field, value) => {
+                    // Map LogicConfigPanel field names to LogicModule field names
+                    const fieldMapping: Record<string, string> = {
+                      hedge_reference: "hedge_reference",
+                      hedge_scale: "hedge_scale",
+                      reverse_reference: "reverse_reference",
+                      initial_lot: "initial_lot",
+                      enabled: "enabled",
+                      multiplier: "multiplier",
+                      grid: "grid",
+                      trail_method: "trail_method",
+                      trail_value: "trail_value",
+                      trail_step: "trail_step",
+                      use_tp: "use_tp",
+                      tp_value: "tp_value",
+                      use_sl: "use_sl",
+                      sl_value: "sl_value",
+                      trigger_type: "trigger_type",
+                      trigger_bars: "trigger_bars",
+                      trigger_pips: "trigger_pips",
+                      grid_behavior: "grid_behavior",
+                      partial_close: "partial_close",
+                    };
 
-                const isClosePartial = category === "Close Partial";
-                const isTriggers = category === "Triggers";
-                const isLogic = category === "Logic";
+                    const mappedField = fieldMapping[field] || field;
 
-                // Trail Advanced: Filter by level and advancedOnly
-                const isTrailAdvanced = category === "Trail Advanced";
-                const displayFields = isTrailAdvanced
-                  ? categoryFields.filter((f) => {
-                      const fieldLevel = (f as any).level || 1;
-                      const isAdvanced = (f as any).advancedOnly || false;
-                      // Show field if: within visible levels AND (not advancedOnly OR advancedOnly is shown)
-                      return (
-                        fieldLevel <= trailLevelsVisible &&
-                        (!isAdvanced || showAdvancedFields)
-                      );
-                    })
-                  : isClosePartial
+                    // Handle boolean conversions
+                    let processedValue = value;
+                    if (
+                      field === "enabled" ||
+                      field === "use_tp" ||
+                      field === "use_sl" ||
+                      field === "partial_close"
+                    ) {
+                      processedValue = value ? "ON" : "OFF";
+                    }
+
+                    setFieldValues((prev) => ({
+                      ...prev,
+                      [mappedField]: processedValue,
+                    }));
+                    if (onUpdate) {
+                      onUpdate(mappedField, processedValue);
+                    }
+                  }}
+                  onChangeMode={(newMode) => {
+                    // Update trading_mode field
+                    const modeValue =
+                      newMode === "hedge"
+                        ? "Hedge"
+                        : newMode === "reverse"
+                          ? "Reverse"
+                          : newMode === "trend_following"
+                            ? "Trend Following"
+                            : "Counter Trend";
+                    setFieldValues((prev) => ({
+                      ...prev,
+                      trading_mode: modeValue,
+                    }));
+                    if (onUpdate) {
+                      onUpdate("trading_mode", modeValue);
+                    }
+                  }}
+                  onDuplicate={() => {
+                    // Duplicate current logic config to clipboard or create copy
+                    const currentConfig = { ...fieldValues };
+                    navigator.clipboard.writeText(
+                      JSON.stringify(currentConfig, null, 2),
+                    );
+                    alert("Logic configuration copied to clipboard!");
+                  }}
+                  onReset={() => {
+                    // Reset to defaults
+                    if (confirm("Reset all fields to defaults?")) {
+                      const defaults: Record<string, any> = {
+                        initial_lot: "0.01",
+                        multiplier: "2.0",
+                        grid: "600",
+                        trail_method: "Points",
+                        trail_value: "300",
+                        trail_step: "150",
+                        use_tp: "OFF",
+                        tp_value: "500",
+                        use_sl: "OFF",
+                        sl_value: "200",
+                        trigger_type: "Immediate",
+                        trigger_bars: "0",
+                        trigger_pips: "0",
+                        grid_behavior: "CounterTrend",
+                        hedge_reference: "Logic_None",
+                        hedge_scale: "50",
+                        reverse_reference: "Logic_None",
+                        partial_close: "OFF",
+                        enabled: "ON",
+                      };
+                      setFieldValues((prev) => ({ ...prev, ...defaults }));
+                      Object.entries(defaults).forEach(([key, value]) => {
+                        if (onUpdate) onUpdate(key, value);
+                      });
+                    }
+                  }}
+                  logicType={name}
+                  engine={engineLetter}
+                  group={
+                    groups && groups.length > 0
+                      ? parseInt(groups[0].replace("Group ", ""))
+                      : 1
+                  }
+                />
+              )}
+
+              {/* Show standard category-based UI for Counter Trend, Trend Following, and Reverse */}
+              {tradingMode !== "Hedge" &&
+                categories.map((category) => {
+                  const categoryFields = filteredFields.filter(
+                    (f) => (f.category || "General") === category,
+                  );
+                  const style = categoryStyles[category] || {
+                    color: "text-muted-foreground",
+                    bg: "bg-muted/5",
+                    border: "border-border/50",
+                    icon: ChevronRight,
+                  };
+                  const Icon = style.icon;
+
+                  const isClosePartial = category === "Close Partial";
+                  const isTriggers = category === "Triggers";
+                  const isLogic = category === "Logic";
+
+                  // Trail Advanced: Filter by level and advancedOnly
+                  const isTrailAdvanced = category === "Trail Advanced";
+                  const displayFields = isTrailAdvanced
                     ? categoryFields.filter((f) => {
-                        const m = String(f.id).match(/_(\d+)$/);
-                        const level = m ? parseInt(m[1], 10) : 1;
-                        if (partialLevelsVisible <= 0) {
-                          return level === 1;
-                        }
-                        return level <= partialLevelsVisible;
+                        const fieldLevel = (f as any).level || 1;
+                        const isAdvanced = (f as any).advancedOnly || false;
+                        // Show field if: within visible levels AND (not advancedOnly OR advancedOnly is shown)
+                        return (
+                          fieldLevel <= trailLevelsVisible &&
+                          (!isAdvanced || showAdvancedFields)
+                        );
                       })
-                    : categoryFields;
+                    : isClosePartial
+                      ? categoryFields.filter((f) => {
+                          const m = String(f.id).match(/_(\d+)$/);
+                          const level = m ? parseInt(m[1], 10) : 1;
+                          if (partialLevelsVisible <= 0) {
+                            return level === 1;
+                          }
+                          return level <= partialLevelsVisible;
+                        })
+                      : categoryFields;
 
-                // Skip if no fields to display
-                if (displayFields.length === 0) return null;
+                  // Skip if no fields to display
+                  if (displayFields.length === 0) return null;
 
-                return (
-                  <div
-                    key={category}
-                    className={cn(
-                      "rounded-xl border p-3.5 shadow-sm relative overflow-hidden group transition-all duration-300",
-                      "hover:shadow-lg hover:-translate-y-0.5",
-                      style.bg,
-                      style.border,
-                      `border-l-[3px] ${style.color.replace("text-", "border-")}`,
-                    )}
-                  >
-                    {/* Glassmorphism gradient overlay - animated on hover */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent opacity-50 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-
-                    <div className="flex items-center gap-2.5 mb-3.5 relative z-10">
-                      <div
-                        className={cn(
-                          "p-1.5 rounded-lg border shadow-sm backdrop-blur-md transition-all duration-300 group-hover:scale-110",
-                          style.bg.replace("/5", "/20"),
-                          style.border,
-                          style.color,
-                        )}
-                      >
-                        <Icon className="w-3.5 h-3.5" />
-                      </div>
-                      <div
-                        className={cn(
-                          "text-[11px] uppercase tracking-wider font-bold text-foreground/80 group-hover:text-foreground transition-colors",
-                          style.color,
-                        )}
-                      >
-                        {category}
-                      </div>
-
-                      {/* Trail Advanced: Level selector */}
-                      {isTrailAdvanced && (
-                        <div className="flex items-center gap-2 ml-auto">
-                          <span className="text-[9px] text-muted-foreground">
-                            Levels:
-                          </span>
-                          <select
-                            className="text-[10px] bg-background/80 border border-border/50 rounded px-1.5 py-0.5 cursor-pointer hover:border-primary/50 transition-colors"
-                            value={trailLevelsVisible}
-                            onChange={(e) =>
-                              setTrailLevelsVisible(parseInt(e.target.value))
-                            }
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {[1, 2, 3, 4, 5, 6, 7].map((n) => (
-                              <option key={n} value={n}>
-                                {n}
-                              </option>
-                            ))}
-                          </select>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setShowAdvancedFields(!showAdvancedFields);
-                            }}
-                            className={cn(
-                              "text-[9px] flex items-center gap-1 px-1.5 py-0.5 rounded border transition-colors",
-                              showAdvancedFields
-                                ? "bg-primary/10 border-primary/30 text-primary"
-                                : "bg-muted/50 border-border/50 text-muted-foreground hover:text-foreground",
-                            )}
-                          >
-                            {showAdvancedFields ? (
-                              <Eye className="w-3 h-3" />
-                            ) : (
-                              <EyeOff className="w-3 h-3" />
-                            )}
-                            Balance
-                          </button>
-                        </div>
+                  return (
+                    <div
+                      key={category}
+                      className={cn(
+                        "rounded-xl border p-3.5 shadow-sm relative overflow-hidden group transition-all duration-300",
+                        "hover:shadow-lg hover:-translate-y-0.5",
+                        style.bg,
+                        style.border,
+                        `border-l-[3px] ${style.color.replace("text-", "border-")}`,
                       )}
+                    >
+                      {/* Glassmorphism gradient overlay - animated on hover */}
+                      <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent opacity-50 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
 
-                      {isClosePartial && (
-                        <div className="flex items-center gap-2 ml-auto">
-                          <span className="text-[9px] text-muted-foreground">
-                            Partials:
-                          </span>
-                          <select
-                            className="text-[10px] bg-background/80 border border-border/50 rounded px-1.5 py-0.5 cursor-pointer hover:border-primary/50 transition-colors"
-                            value={partialLevelsVisible}
-                            onChange={(e) =>
-                              setPartialLevelsVisible(parseInt(e.target.value))
-                            }
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <option value={0}>Off</option>
-                            {[1, 2, 3, 4].map((n) => (
-                              <option key={n} value={n}>
-                                {n}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      )}
-
-                      {!isTrailAdvanced && (
+                      <div className="flex items-center gap-2.5 mb-3.5 relative z-10">
                         <div
                           className={cn(
-                            "flex-1 h-px opacity-20 group-hover:opacity-40 transition-opacity",
-                            style.color.replace("text-", "bg-"),
+                            "p-1.5 rounded-lg border shadow-sm backdrop-blur-md transition-all duration-300 group-hover:scale-110",
+                            style.bg.replace("/5", "/20"),
+                            style.border,
+                            style.color,
                           )}
-                        />
-                      )}
-                    </div>
+                        >
+                          <Icon className="w-3.5 h-3.5" />
+                        </div>
+                        <div
+                          className={cn(
+                            "text-[11px] uppercase tracking-wider font-bold text-foreground/80 group-hover:text-foreground transition-colors",
+                            style.color,
+                          )}
+                        >
+                          {category}
+                        </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-4 gap-y-3 relative z-10">
-                      {/* Custom Trading Direction Control for Mode Selectors */}
-                      {category === "Mode Selectors" && (
-                        <div className="col-span-2 mb-2 p-3 bg-muted/30 rounded-lg border border-border/50">
-                          <div className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-2">
-                            <ArrowLeftRight className="w-3 h-3" />
-                            Trading Direction
+                        {/* Trail Advanced: Level selector */}
+                        {isTrailAdvanced && (
+                          <div className="flex items-center gap-2 ml-auto">
+                            <span className="text-[9px] text-muted-foreground">
+                              Levels:
+                            </span>
+                            <select
+                              className="text-[10px] bg-background/80 border border-border/50 rounded px-1.5 py-0.5 cursor-pointer hover:border-primary/50 transition-colors"
+                              value={trailLevelsVisible}
+                              onChange={(e) =>
+                                setTrailLevelsVisible(parseInt(e.target.value))
+                              }
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {[1, 2, 3, 4, 5, 6, 7].map((n) => (
+                                <option key={n} value={n}>
+                                  {n}
+                                </option>
+                              ))}
+                            </select>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setShowAdvancedFields(!showAdvancedFields);
+                              }}
+                              className={cn(
+                                "text-[9px] flex items-center gap-1 px-1.5 py-0.5 rounded border transition-colors",
+                                showAdvancedFields
+                                  ? "bg-primary/10 border-primary/30 text-primary"
+                                  : "bg-muted/50 border-border/50 text-muted-foreground hover:text-foreground",
+                              )}
+                            >
+                              {showAdvancedFields ? (
+                                <Eye className="w-3 h-3" />
+                              ) : (
+                                <EyeOff className="w-3 h-3" />
+                              )}
+                              Balance
+                            </button>
                           </div>
-                          <ToggleGroup
-                            type="single"
-                            value={
-                              mode === 2 ? "both" :
-                              (fieldValues["allow_buy"] === "ON" ||
-                                fieldValues["allow_buy"] === true) &&
-                              (fieldValues["allow_sell"] === "ON" ||
-                                fieldValues["allow_sell"] === true)
+                        )}
+
+                        {isClosePartial && (
+                          <div className="flex items-center gap-2 ml-auto">
+                            <span className="text-[9px] text-muted-foreground">
+                              Partials:
+                            </span>
+                            <select
+                              className="text-[10px] bg-background/80 border border-border/50 rounded px-1.5 py-0.5 cursor-pointer hover:border-primary/50 transition-colors"
+                              value={partialLevelsVisible}
+                              onChange={(e) =>
+                                setPartialLevelsVisible(
+                                  parseInt(e.target.value),
+                                )
+                              }
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <option value={0}>Off</option>
+                              {[1, 2, 3, 4].map((n) => (
+                                <option key={n} value={n}>
+                                  {n}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+
+                        {!isTrailAdvanced && (
+                          <div
+                            className={cn(
+                              "flex-1 h-px opacity-20 group-hover:opacity-40 transition-opacity",
+                              style.color.replace("text-", "bg-"),
+                            )}
+                          />
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-4 gap-y-3 relative z-10">
+                        {/* Custom Trading Direction Control for Mode Selectors */}
+                        {category === "Mode Selectors" && (
+                          <div className="col-span-2 mb-2 p-3 bg-muted/30 rounded-lg border border-border/50">
+                            <div className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                              <ArrowLeftRight className="w-3 h-3" />
+                              Trading Direction
+                            </div>
+                            <ToggleGroup
+                              type="single"
+                              value={
+                                mode === 2
                                   ? "both"
                                   : (fieldValues["allow_buy"] === "ON" ||
-                                      fieldValues["allow_buy"] === true)
-                                    ? "buy"
-                                    : (fieldValues["allow_sell"] === "ON" ||
+                                        fieldValues["allow_buy"] === true) &&
+                                      (fieldValues["allow_sell"] === "ON" ||
                                         fieldValues["allow_sell"] === true)
-                                      ? "sell"
-                                      : (mode === 1 ? "buy" : "both")
-                            }
-                            onValueChange={(val) => {
-                              if (!val) return;
-                              // Mode 2: Only allow "both"
-                              if (mode === 2 && val !== "both") return;
-                              // Mode 1: Only allow "buy" or "sell"
-                              if (mode === 1 && val === "both") return;
-                              
-                              const updates: Record<string, any> = {};
-                              if (val === "both") {
-                                updates["allow_buy"] = "ON";
-                                updates["allow_sell"] = "ON";
-                              } else if (val === "buy") {
-                                updates["allow_buy"] = "ON";
-                                updates["allow_sell"] = "OFF";
-                              } else if (val === "sell") {
-                                updates["allow_buy"] = "OFF";
-                                updates["allow_sell"] = "ON";
+                                    ? "both"
+                                    : fieldValues["allow_buy"] === "ON" ||
+                                        fieldValues["allow_buy"] === true
+                                      ? "buy"
+                                      : fieldValues["allow_sell"] === "ON" ||
+                                          fieldValues["allow_sell"] === true
+                                        ? "sell"
+                                        : mode === 1
+                                          ? "buy"
+                                          : "both"
                               }
-                              setFieldValues((prev) => ({
-                                ...prev,
-                                ...updates,
-                              }));
+                              onValueChange={(val) => {
+                                if (!val) return;
+                                // Mode 2: Only allow "both"
+                                if (mode === 2 && val !== "both") return;
+                                // Mode 1: Only allow "buy" or "sell"
+                                if (mode === 1 && val === "both") return;
 
-                              if (onUpdate) {
-                                Object.entries(updates).forEach(([key, v]) =>
-                                  onUpdate(key, v),
-                                );
-                              }
-                            }}
-                            className="flex flex-col sm:flex-row justify-start gap-2 w-full"
-                          >
-                            <ToggleGroupItem
-                              value="buy"
-                              disabled={mode === 2}
-                              className={cn(
-                                "flex-1 h-8 px-3 text-xs",
-                                mode === 2 && "opacity-40 cursor-not-allowed",
-                                "data-[state=on]:bg-emerald-500/20 data-[state=on]:text-emerald-500 border border-border/50 data-[state=on]:border-emerald-500/30"
-                              )}
-                            >
-                              Buy
-                            </ToggleGroupItem>
-                            <ToggleGroupItem
-                              value="sell"
-                              disabled={mode === 2}
-                              className={cn(
-                                "flex-1 h-8 px-3 text-xs",
-                                mode === 2 && "opacity-40 cursor-not-allowed",
-                                "data-[state=on]:bg-rose-500/20 data-[state=on]:text-rose-500 border border-border/50 data-[state=on]:border-rose-500/30"
-                              )}
-                            >
-                              Sell
-                            </ToggleGroupItem>
-                             <ToggleGroupItem
-                               value="both"
-                               disabled={mode === 1}
-                               className={cn(
-                                 "flex-1 h-8 px-3 text-xs",
-                                 mode === 1 && "opacity-40 cursor-not-allowed",
-                                 "data-[state=on]:bg-blue-500/20 data-[state=on]:text-blue-500 border border-border/50 data-[state=on]:border-blue-500/30"
-                               )}
-                             >
-                               Both Sides
-                             </ToggleGroupItem>
-                           </ToggleGroup>
-                         </div>
-                       )}
+                                const updates: Record<string, any> = {};
+                                if (val === "both") {
+                                  updates["allow_buy"] = "ON";
+                                  updates["allow_sell"] = "ON";
+                                } else if (val === "buy") {
+                                  updates["allow_buy"] = "ON";
+                                  updates["allow_sell"] = "OFF";
+                                } else if (val === "sell") {
+                                  updates["allow_buy"] = "OFF";
+                                  updates["allow_sell"] = "ON";
+                                }
+                                setFieldValues((prev) => ({
+                                  ...prev,
+                                  ...updates,
+                                }));
 
-                      {displayFields
-                        .filter(
-                          (f) => f.id !== "allow_buy" && f.id !== "allow_sell",
-                        )
-                        .map((field) => (
-                          <ConfigField
-                            key={field.id}
-                            label={field.label}
-                            value={field.value}
-                            type={field.type}
-                            unit={field.unit}
-                            description={field.description}
-                            fieldId={field.id}
-                            hint={getUnitHint(field.id, field.value)}
-                            options={(field as any).options}
-                            currentLogicId={currentLogicId}
-                            onChange={(val) => {
-                              if ((field as any).onChange) {
-                                (field as any).onChange(val);
-                              } else {
-                                handleFieldChange(field.id, val);
-                              }
-                            }}
-                          />
-                        ))}
+                                if (onUpdate) {
+                                  Object.entries(updates).forEach(([key, v]) =>
+                                    onUpdate(key, v),
+                                  );
+                                }
+                              }}
+                              className="flex flex-col sm:flex-row justify-start gap-2 w-full"
+                            >
+                              <ToggleGroupItem
+                                value="buy"
+                                disabled={mode === 2}
+                                className={cn(
+                                  "flex-1 h-8 px-3 text-xs",
+                                  mode === 2 && "opacity-40 cursor-not-allowed",
+                                  "data-[state=on]:bg-emerald-500/20 data-[state=on]:text-emerald-500 border border-border/50 data-[state=on]:border-emerald-500/30",
+                                )}
+                              >
+                                Buy
+                              </ToggleGroupItem>
+                              <ToggleGroupItem
+                                value="sell"
+                                disabled={mode === 2}
+                                className={cn(
+                                  "flex-1 h-8 px-3 text-xs",
+                                  mode === 2 && "opacity-40 cursor-not-allowed",
+                                  "data-[state=on]:bg-rose-500/20 data-[state=on]:text-rose-500 border border-border/50 data-[state=on]:border-rose-500/30",
+                                )}
+                              >
+                                Sell
+                              </ToggleGroupItem>
+                              <ToggleGroupItem
+                                value="both"
+                                disabled={mode === 1}
+                                className={cn(
+                                  "flex-1 h-8 px-3 text-xs",
+                                  mode === 1 && "opacity-40 cursor-not-allowed",
+                                  "data-[state=on]:bg-blue-500/20 data-[state=on]:text-blue-500 border border-border/50 data-[state=on]:border-blue-500/30",
+                                )}
+                              >
+                                Both Sides
+                              </ToggleGroupItem>
+                            </ToggleGroup>
+                          </div>
+                        )}
+
+                        {displayFields
+                          .filter(
+                            (f) =>
+                              f.id !== "allow_buy" && f.id !== "allow_sell",
+                          )
+                          .map((field) => (
+                            <ConfigField
+                              key={field.id}
+                              label={field.label}
+                              value={field.value}
+                              type={field.type}
+                              unit={field.unit}
+                              description={field.description}
+                              fieldId={field.id}
+                              hint={getUnitHint(field.id, field.value)}
+                              options={(field as any).options}
+                              currentLogicId={currentLogicId}
+                              onChange={(val) => {
+                                if ((field as any).onChange) {
+                                  (field as any).onChange(val);
+                                } else {
+                                  handleFieldChange(field.id, val);
+                                }
+                              }}
+                            />
+                          ))}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
             </div>
           </motion.div>
         )}

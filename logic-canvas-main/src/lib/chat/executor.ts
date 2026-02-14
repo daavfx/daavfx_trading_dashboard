@@ -16,6 +16,8 @@ import {
   applyTransactionPlan,
   formatPlanForChat,
 } from "./planner";
+import { computeSetChanges, applySetContent, diffSetContents } from "@/lib/setfile/loader";
+import { exportToSetFileWithDirections } from "@/lib/setfile/exporter";
 import { calculateProgression, validateForMT4 } from "./math";
 import { applyOperation, clampToBounds, type SemanticCommand } from "./semanticEngine";
 import { getVersionControlManager } from "@/lib/version-control/manager";
@@ -38,6 +40,71 @@ export class CommandExecutor {
 
   setAutoApprove(enabled: boolean) {
     this.autoApproveTransactions = enabled;
+  }
+
+  private executeImport(command: ParsedCommand): CommandResult {
+    if (!this.config) return { success: false, message: "No config loaded" };
+    const content: string | undefined = command.params.setContent;
+    if (!content || content.length < 10) {
+      return { success: false, message: "Missing .set content. Include it between triple backticks (``` ... ```)." };
+    }
+
+    const previews = computeSetChanges(this.config, content);
+    if (previews.length === 0) {
+      return { success: false, message: "No differences detected between current config and provided .set content" };
+    }
+
+    const plan: TransactionPlan = {
+      id: crypto.randomUUID(),
+      type: "import",
+      description: `Import .set changes (${previews.length} updates)`,
+      preview: previews.map(p => ({
+        engine: p.engine,
+        group: p.group,
+        logic: p.logic,
+        field: p.field,
+        currentValue: p.currentValue,
+        newValue: p.newValue,
+        delta: typeof p.currentValue === "number" && typeof p.newValue === "number" ? (p.newValue as number) - (p.currentValue as number) : undefined,
+        deltaPercent: typeof p.currentValue === "number" && p.currentValue !== 0 && typeof p.newValue === "number"
+          ? (((p.newValue as number) - (p.currentValue as number)) / (p.currentValue as number)) * 100
+          : undefined,
+      })),
+      validation: { isValid: true, errors: [], warnings: [], mtCompatibility: { mt4: true, mt5: true, issues: [] } },
+      risk: { level: "low", score: 0, reasons: [] },
+      createdAt: Date.now(),
+      status: "pending",
+    };
+
+    // Round-trip verification
+    const simulated = applySetContent(this.config, content);
+    const regenerated = exportToSetFileWithDirections(simulated);
+    const roundTrip = diffSetContents(content, regenerated);
+
+    const rtSummary = [
+      `Round-trip verification:`,
+      `• Keys left: ${roundTrip.totalKeysLeft.toLocaleString()}`,
+      `• Keys right: ${roundTrip.totalKeysRight.toLocaleString()}`,
+      `• Matching: ${roundTrip.matchingKeys.toLocaleString()}`,
+      `• Value mismatches: ${roundTrip.valueMismatches.toLocaleString()}`,
+      `• Missing on right: ${roundTrip.missingOnRight.toLocaleString()}`,
+      `• Missing on left: ${roundTrip.missingOnLeft.toLocaleString()}`,
+    ].join("\n");
+
+    this.pendingPlan = plan;
+
+    if (this.autoApproveTransactions) {
+      const approvalResult = this.approvePendingPlan();
+      approvalResult.message = `✅ [Auto-Approved] ${plan.description}\n\n${approvalResult.message}`;
+      return approvalResult;
+    }
+
+    return {
+      success: true,
+      message: formatPlanForChat(plan) + "\n" + rtSummary + "\n\n**Reply 'apply' to confirm or 'cancel' to discard.**",
+      pendingPlan: plan,
+      queryResult: { matches: [], summary: "" }
+    };
   }
 
   // MEMORY LEAK FIX: Helper methods to limit array sizes using BoundedResourceManager
@@ -76,6 +143,10 @@ export class CommandExecutor {
       "# Replication & Compare",
       "• copy ... — Clone settings: \"copy power settings from group 1 to groups 2-8\"",
       "• compare ... — Diff tool: \"compare grid between group 1 and group 5\"",
+      "",
+      "# Setfile Loader",
+      "• import set — Paste .set content to preview and apply: \"import set\" then triple-backticks block",
+      "• Round-trip verification included (exact key/value diff)",
       "",
       "# Meta Controls",
       "• apply / cancel — Transaction Plan approval workflow",
@@ -705,6 +776,8 @@ export class CommandExecutor {
         return this.executeReset(command);
       case "formula":
         return this.executeFormula(command);
+      case "import":
+        return this.executeImport(command);
       case "unknown":
         return {
           success: false,
@@ -845,7 +918,11 @@ export class CommandExecutor {
     const { value } = command.params;
 
     if (!field || value === undefined) {
-      return { success: false, message: "Missing field or value" };
+      const missing = !field && value === undefined ? "both field and value" : !field ? "field" : "value";
+      return { 
+        success: false, 
+        message: `❌ Missing ${missing}.\n\nExamples:\n"set grid to 600 for groups 1-8"\n"set initial_lot to 0.02 for power"\n"set multiplier to 1.5 for all logics"` 
+      };
     }
 
     const numValue = typeof value === "number" ? value : parseFloat(value);
@@ -886,7 +963,14 @@ export class CommandExecutor {
         }
       };
     } catch (error: any) {
-      return { success: false, message: error.message || "Failed to create change plan" };
+      const errorMsg = error.message || "Failed to create change plan";
+      if (errorMsg.includes("Target too vague")) {
+        return { 
+          success: false, 
+          message: `${errorMsg}\n\nTry these instead:\n"set ${field} to ${value} for all groups"\n"set ${field} to ${value} for all logics"\n"set ${field} to ${value} for power groups 1-8"` 
+        };
+      }
+      return { success: false, message: errorMsg };
     }
   }
 
@@ -994,10 +1078,22 @@ export class CommandExecutor {
       return { success: false, message: "Need field and at least 2 groups for progression" };
     }
 
+    let defaultStart = startValue;
+    if (defaultStart === undefined && groups && groups.length > 0) {
+      let found: number | undefined = undefined;
+      this.iterateConfig(engines, [groups[0]], logics, (engine, group, logic) => {
+        const cur = (logic as any)[field];
+        if (typeof cur === "number" && found === undefined) {
+          found = cur;
+        }
+      });
+      defaultStart = found !== undefined ? found : 600;
+    }
+
     const plan = createProgressionPlan(this.config!, {
       field,
       progressionType: progressionType || "fibonacci",
-      startValue: startValue || 600,
+      startValue: defaultStart || 600,
       endValue,
       factor,
       engines,
@@ -1145,6 +1241,73 @@ export class CommandExecutor {
     }
   }
 
+  private buildLogicTargets(logics: string[] | undefined) {
+    const base = new Set<string>();
+    const byEngine = new Map<string, Set<string>>();
+
+    if (!logics || logics.length === 0) {
+      return { base, byEngine };
+    }
+
+    for (const raw of logics) {
+      const trimmed = String(raw).trim();
+      if (!trimmed) continue;
+      const upper = trimmed.toUpperCase();
+      if (upper === "ALL") {
+        base.add("ALL");
+        continue;
+      }
+
+      const mColon = trimmed.match(/^([ABC])\s*[:/\\-]\s*(.+)$/i);
+      if (mColon) {
+        const engineId = mColon[1].toUpperCase();
+        const logicName = String(mColon[2]).trim().toUpperCase();
+        if (!logicName) continue;
+        const set = byEngine.get(engineId) || new Set<string>();
+        set.add(logicName);
+        byEngine.set(engineId, set);
+        continue;
+      }
+
+      const mLogicUnderscore = trimmed.match(/^LOGIC[_-]([ABC])[_-](.+)$/i);
+      if (mLogicUnderscore) {
+        const engineId = mLogicUnderscore[1].toUpperCase();
+        const logicName = String(mLogicUnderscore[2]).trim().toUpperCase();
+        if (!logicName) continue;
+        const set = byEngine.get(engineId) || new Set<string>();
+        set.add(logicName);
+        byEngine.set(engineId, set);
+        continue;
+      }
+
+      const mLogicCompact = trimmed.match(/^LOGIC[_-]([ABC])(.+)$/i);
+      if (mLogicCompact) {
+        const engineId = mLogicCompact[1].toUpperCase();
+        const logicName = String(mLogicCompact[2]).trim().toUpperCase();
+        if (!logicName) continue;
+        const set = byEngine.get(engineId) || new Set<string>();
+        set.add(logicName);
+        byEngine.set(engineId, set);
+        continue;
+      }
+
+      base.add(upper);
+    }
+
+    return { base, byEngine };
+  }
+
+  private logicIsAllowed(engineId: string, logicName: string, targets: ReturnType<CommandExecutor["buildLogicTargets"]>) {
+    if (targets.base.size === 0 && targets.byEngine.size === 0) return true;
+    if (targets.base.has("ALL")) return true;
+
+    const logicUpper = logicName.toUpperCase();
+    const perEngine = targets.byEngine.get(engineId);
+    if (perEngine && perEngine.has(logicUpper)) return true;
+    if (targets.base.has(logicUpper)) return true;
+    return false;
+  }
+
   private iterateConfig(
     engines: string[] | undefined,
     groups: number[] | undefined,
@@ -1153,6 +1316,8 @@ export class CommandExecutor {
   ) {
     if (!this.config) return;
 
+    const logicTargets = this.buildLogicTargets(logics);
+
     for (const engine of this.config.engines) {
       if (engines && engines.length > 0 && !engines.includes(engine.engine_id)) continue;
 
@@ -1160,7 +1325,7 @@ export class CommandExecutor {
         if (groups && groups.length > 0 && !groups.includes(group.group_number)) continue;
 
         for (const logic of group.logics) {
-          if (logics && logics.length > 0 && !logics.includes(logic.logic_name.toUpperCase())) continue;
+          if (logics && logics.length > 0 && !this.logicIsAllowed(engine.engine_id, logic.logic_name, logicTargets)) continue;
           callback(engine, group, logic);
         }
       }
@@ -1174,6 +1339,8 @@ export class CommandExecutor {
     logics: string[] | undefined,
     callback: (engine: EngineConfig, group: GroupConfig, logic: LogicConfig) => void
   ) {
+    const logicTargets = this.buildLogicTargets(logics);
+
     for (const engine of config.engines) {
       if (engines && engines.length > 0 && !engines.includes(engine.engine_id)) continue;
 
@@ -1181,7 +1348,7 @@ export class CommandExecutor {
         if (groups && groups.length > 0 && !groups.includes(group.group_number)) continue;
 
         for (const logic of group.logics) {
-          if (logics && logics.length > 0 && !logics.includes(logic.logic_name.toUpperCase())) continue;
+          if (logics && logics.length > 0 && !this.logicIsAllowed(engine.engine_id, logic.logic_name, logicTargets)) continue;
           callback(engine, group, logic);
         }
       }

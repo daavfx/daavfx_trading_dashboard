@@ -1,27 +1,47 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FolderOpen, Save, FileText, FileJson, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  FolderOpen,
+  Save,
+  FileText,
+  FileJson,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
+} from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
 import type { MTConfig } from "@/types/mt-config";
-import type { Platform } from "@/components/layout/TopBar";
 import { useSettings } from "@/contexts/SettingsContext";
 import { withUseDirectPriceGrid } from "@/utils/unit-mode";
+import type { Platform } from "@/components/layout/TopBar";
 
 interface ExportOptionsModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   config: MTConfig | null;
-  platform: Platform;
   defaultFormat?: ".set" | "JSON";
+  platform?: Platform;
 }
 
 // Trade direction for set file export
@@ -31,8 +51,8 @@ export function ExportOptionsModal({
   open: isOpen,
   onOpenChange,
   config,
+  defaultFormat = ".set",
   platform,
-  defaultFormat = ".set"
 }: ExportOptionsModalProps) {
   const { settings } = useSettings();
   const [fileName, setFileName] = useState("");
@@ -50,20 +70,20 @@ export function ExportOptionsModal({
   useEffect(() => {
     if (isOpen && config) {
       const ext = format === ".set" ? "set" : "json";
-      const timestamp = new Date().toISOString().split('T')[0];
+      const timestamp = new Date().toISOString().split("T")[0];
       const defaultName = config.current_set_name
         ? config.current_set_name.replace(/\.(set|json)$/i, "")
-        : `DAAVFX_${platform.toUpperCase()}_${timestamp}`;
+        : `DAAVFX_Config_${timestamp}`;
 
       setFileName(defaultName);
 
       if (config.tags) setTags(config.tags.join(", "));
       if (config.comments) setComments(config.comments);
 
-      // Try to get a default download dir or similar? 
+      // Try to get a default download dir or similar?
       // For now leave empty to force user selection or use default if empty
     }
-  }, [isOpen, config, format, platform]);
+  }, [isOpen, config, format]);
 
   const handleBrowseDir = async () => {
     try {
@@ -102,7 +122,9 @@ export function ExportOptionsModal({
     try {
       const configToExport = withUseDirectPriceGrid(config, settings);
       const ext = format === ".set" ? "set" : "json";
-      const fullFileName = fileName.endsWith(`.${ext}`) ? fileName : `${fileName}.${ext}`;
+      const fullFileName = fileName.endsWith(`.${ext}`)
+        ? fileName
+        : `${fileName}.${ext}`;
 
       // Handle path separator based on likely OS (User agent check or just use forward slash which often works, but let's try to be safe)
       const separator = navigator.userAgent.includes("Win") ? "\\" : "/";
@@ -110,25 +132,28 @@ export function ExportOptionsModal({
         ? `${exportDir}${fullFileName}`
         : `${exportDir}${separator}${fullFileName}`;
 
-      const tagList = tags.split(",").map(t => t.trim()).filter(Boolean);
+      const tagList = tags
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean);
 
       // 1. Export File
       if (format === ".set") {
         await invoke("export_set_file", {
           config: configToExport,
-          file_path: fullPath,
-          platform: platform === "mt5" ? "MT5" : "MT4",
-          include_optimization_hints: includeOptimization,
-          trade_direction: tradeDirection,
+          filePath: fullPath,
+          platform: "MT4",
+          includeOptimizationHints: includeOptimization,
+          tradeDirection: tradeDirection,
           tags: tagList.length > 0 ? tagList : null,
-          comments: comments || null
+          comments: comments || null,
         });
       } else {
         await invoke("export_json_file", {
           config: configToExport,
-          file_path: fullPath,
+          filePath: fullPath,
           tags: tagList.length > 0 ? tagList : null,
-          comments: comments || null
+          comments: comments || null,
         });
       }
 
@@ -143,7 +168,7 @@ export function ExportOptionsModal({
           tags: tagList.length > 0 ? tagList : null,
           comments: comments || null,
           format: format === ".set" ? "set" : "json",
-          vault_path_override: settings.vaultPath
+          vault_path_override: settings.vaultPath,
         });
         toast.success("Saved copy to Vault");
       }
@@ -165,7 +190,6 @@ export function ExportOptionsModal({
         </DialogHeader>
 
         <div className="grid gap-4 py-4">
-
           {/* Format Selection */}
           <div className="grid grid-cols-4 items-center gap-4">
             <Label className="text-right">Format</Label>
@@ -177,7 +201,7 @@ export function ExportOptionsModal({
                 className="flex-1"
               >
                 <FileText className="w-4 h-4 mr-2" />
-                MT4/MT5 (.set)
+                Set File (.set)
               </Button>
               <Button
                 variant={format === "JSON" ? "default" : "outline"}
@@ -229,7 +253,9 @@ export function ExportOptionsModal({
 
           {/* File Name */}
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="filename" className="text-right">File Name</Label>
+            <Label htmlFor="filename" className="text-right">
+              File Name
+            </Label>
             <Input
               id="filename"
               value={fileName}
@@ -259,7 +285,9 @@ export function ExportOptionsModal({
 
           {/* Metadata */}
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="tags" className="text-right">Tags</Label>
+            <Label htmlFor="tags" className="text-right">
+              Tags
+            </Label>
             <Input
               id="tags"
               value={tags}
@@ -270,7 +298,9 @@ export function ExportOptionsModal({
           </div>
 
           <div className="grid grid-cols-4 items-start gap-4">
-            <Label htmlFor="comments" className="text-right pt-2">Comments</Label>
+            <Label htmlFor="comments" className="text-right pt-2">
+              Comments
+            </Label>
             <Textarea
               id="comments"
               value={comments}
@@ -285,20 +315,26 @@ export function ExportOptionsModal({
           {/* Options */}
           {format === ".set" && (
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label className="text-right text-xs text-muted-foreground">Optimization</Label>
+              <Label className="text-right text-xs text-muted-foreground">
+                Optimization
+              </Label>
               <div className="col-span-3 flex items-center space-x-2">
                 <Switch
                   id="opt-hints"
                   checked={includeOptimization}
                   onCheckedChange={setIncludeOptimization}
                 />
-                <Label htmlFor="opt-hints" className="font-normal text-sm">Include optimization hints</Label>
+                <Label htmlFor="opt-hints" className="font-normal text-sm">
+                  Include optimization hints
+                </Label>
               </div>
             </div>
           )}
 
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label className="text-right text-xs text-muted-foreground">Vault</Label>
+            <Label className="text-right text-xs text-muted-foreground">
+              Vault
+            </Label>
             <div className="col-span-3 flex items-center gap-4">
               <div className="flex items-center space-x-2">
                 <Switch
@@ -306,7 +342,9 @@ export function ExportOptionsModal({
                   checked={saveToVault}
                   onCheckedChange={setSaveToVault}
                 />
-                <Label htmlFor="save-vault" className="font-normal text-sm">Save copy to Vault</Label>
+                <Label htmlFor="save-vault" className="font-normal text-sm">
+                  Save copy to Vault
+                </Label>
               </div>
 
               {saveToVault && (
@@ -326,11 +364,12 @@ export function ExportOptionsModal({
               )}
             </div>
           </div>
-
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
           <Button onClick={handleExport} disabled={isExporting}>
             {isExporting ? "Exporting..." : "Export File"}
           </Button>

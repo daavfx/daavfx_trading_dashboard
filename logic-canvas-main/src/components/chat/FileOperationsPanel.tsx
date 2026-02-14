@@ -117,7 +117,7 @@ export function FileOperationsPanel({
                   )}
                 >
                   <FileText className="w-5 h-5 text-emerald-500" />
-                  <span className="text-[10px] font-medium">MT4/MT5 .set</span>
+                  <span className="text-[10px] font-medium">Set File (.set)</span>
                   <span className="text-[9px] text-muted-foreground">Standard format</span>
                 </button>
                 <button
@@ -190,7 +190,7 @@ export function FileOperationsPanel({
                 >
                   <FileText className="w-5 h-5 text-amber-500" />
                   <span className="text-[10px] font-medium">Load .set</span>
-                  <span className="text-[9px] text-muted-foreground">MT4/MT5 format</span>
+                  <span className="text-[9px] text-muted-foreground">Set File format</span>
                 </button>
                 <button
                   onClick={() => handleLoad("json")}

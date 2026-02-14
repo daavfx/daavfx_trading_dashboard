@@ -1,0 +1,61 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+.vite
+.turbo
+.cache
+coverage
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Data and caches
+data/
+.Vault_Presets/
+Vault_Presets/
+src_backup_*/
+.backup/
+*.sqlite
+*.db
+*.env
+
+# Tauri / Rust
+src-tauri/target/
+
+# TS build outputs
+*.tsbuildinfo
+
+# Vite timestamp artifacts
+vite.config.ts.timestamp-*.mjs
+
+# Local build helpers / binaries
+build_*.txt
+build_nsis.txt
+build_release.bat
+dashboard_dev.bat
+generate_now.bat
+generate_triggers.exe
+generate_triggers.pdb
+massive-setfile-generator.html
+nul
+
+# OS
+Thumbs.db

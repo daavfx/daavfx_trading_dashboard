@@ -4,43 +4,36 @@ import { ChevronRight, Copy, RotateCcw, GitCompare, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LogicModule } from "./LogicModule";
-import { Platform } from "@/components/layout/TopBar";
 import { CompareModal } from "./CompareModal";
 import { DuplicateModal } from "./DuplicateModal";
+import type { Platform } from "@/components/layout/TopBar";
 
 interface EngineCardProps {
   engine: string;
   tradingType: string;
   groups: string[];
-  platform: Platform;
   engineData?: any;
   mtConfig?: any;
   selectedLogics: string[];
   selectedFields?: string[];
   onUpdateLogic?: (logic: string, field: string, value: any) => void;
   mode?: 1 | 2;
+  platform?: Platform;
 }
 
-const platformIndicator: Record<Platform, string> = {
-  mt4: "bg-platform-mt4",
-  mt5: "bg-platform-mt5",
-  python: "bg-platform-python",
-  c: "bg-platform-c",
-  cpp: "bg-platform-cpp",
-  rust: "bg-platform-rust",
-};
+const platformIndicatorClass = "bg-platform-mt4";
 
 export function EngineCard({
   engine,
   tradingType,
   groups,
-  platform,
   engineData,
   mtConfig,
   selectedLogics,
   selectedFields = [],
   onUpdateLogic,
   mode = 1,
+  platform,
 }: EngineCardProps) {
   const [expanded, setExpanded] = useState(engine === "Engine A");
   const [expandedLogics, setExpandedLogics] = useState<string[]>(["POWER"]);
@@ -87,12 +80,7 @@ export function EngineCard({
           className="w-full px-5 py-4 flex items-center justify-between hover:bg-card-hover transition-colors"
         >
           <div className="flex items-center gap-4">
-            <div
-              className={cn(
-                "w-1.5 h-10 rounded-full",
-                platformIndicator[platform],
-              )}
-            />
+            <div className={cn("w-1.5 h-10 rounded-full", platformIndicatorClass)} />
             <motion.div
               animate={{ rotate: expanded ? 90 : 0 }}
               transition={{ duration: 0.1 }}
@@ -174,7 +162,6 @@ export function EngineCard({
                       engine={engine}
                       expanded={expandedLogics.includes(logic)}
                       onToggle={() => toggleLogic(logic)}
-                      platform={platform}
                       logicConfig={logicConfig}
                       groups={groups}
                       engineData={engineData}

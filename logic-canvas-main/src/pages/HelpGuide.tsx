@@ -301,7 +301,7 @@ export default function HelpGuide() {
                           
                           {entry.mt4Variable && (
                             <div className="text-xs text-muted-foreground/60 font-mono bg-muted/30 rounded px-2 py-1 inline-block">
-                              MT4/MT5: {entry.mt4Variable}
+                              EA Variable: {entry.mt4Variable}
                             </div>
                           )}
                         </div>
@@ -393,7 +393,7 @@ export default function HelpGuide() {
                   
 {selectedEntry.mt4Variable && (
                      <div className="border-t pt-4">
-                       <span className="text-xs text-muted-foreground">MT4/MT5 Variable Pattern:</span>
+                       <span className="text-xs text-muted-foreground">EA Variable Pattern:</span>
                        <code className="block mt-1 text-sm font-mono bg-muted/50 rounded px-3 py-2">
                          {selectedEntry.mt4Variable}
                        </code>
@@ -403,7 +403,7 @@ export default function HelpGuide() {
                    {/* Quick export for this entry */}
                    <div className="border-t pt-4">
                      <QuickExport 
-                       content={`${selectedEntry.title}\n\n${selectedEntry.fullDesc}\n\nMT4: ${selectedEntry.mt4Variable || 'N/A'}`}
+                       content={`${selectedEntry.title}\n\n${selectedEntry.fullDesc}\n\nVariable: ${selectedEntry.mt4Variable || 'N/A'}`}
                        title={`help_${selectedEntry.id}`}
                      />
                    </div>

@@ -1,0 +1,20 @@
+---
+source: tests/semantic_tests.rs
+assertion_line: 201
+expression: result
+---
+{
+  "input": "set grid",
+  "parsed": {
+    "command_type": "set",
+    "target": {
+      "field": "grid"
+    },
+    "params": {}
+  },
+  "result": {
+    "success": false,
+    "message": "Missing field or value"
+  },
+  "status": "fail"
+}

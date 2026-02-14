@@ -38,10 +38,19 @@ function formatValue(val: any): string {
 // Trail method to number
 function trailMethodToInt(method: string): number {
   switch (method) {
-    case "Trail_Points": return 0;
-    case "Trail_AVG_Percent": return 1;
-    case "Trail_Profit_Percent": return 2;
-    default: return 0;
+    case "Trail_Points":
+    case "Points":
+      return 0;
+    case "Trail_AVG_Percent":
+    case "AVG_Percent":
+      return 1;
+    case "Trail_AVG_Points":
+    case "AVG_Points":
+    case "Trail_Profit_Percent":
+    case "Percent":
+      return 2;
+    default:
+      return 0;
   }
 }
 
@@ -161,55 +170,50 @@ function breakevenModeToInt(mode: string): number {
   }
 }
 
+// Resolve logic suffix based on engine and logic name
+function getLogicSuffix(engineId: "A" | "B" | "C", logicName: string): string {
+  const key = engineId === "A" ? logicName : (engineId + logicName) as keyof typeof LOGIC_SUFFIX_MAP;
+  const mapped = (LOGIC_SUFFIX_MAP as any)[key];
+  return mapped?.suffix || (LOGIC_SUFFIX_MAP[logicName]?.suffix ?? "AP");
+}
+
 // Export logic config to setfile entries
 function exportLogicConfig(
+  engineId: "A" | "B" | "C",
+  engineMaxPower: number,
   logic: LogicConfig,
   group: number,
-  suffix: string,
   entries: Map<string, string>
 ): void {
-  const logicType = LOGIC_SUFFIX_MAP[logic.logic_name];
-  if (!logicType) return;
+  const suffix = getLogicSuffix(engineId, logic.logic_name);
+
+  const direction: "B" | "S" = (logic.allowBuy && !logic.allowSell) ? "B" : ((logic.allowSell && !logic.allowBuy) ? "S" : "B");
 
   // Helper to add entry
-  const add = (param: string, value: any, direction?: "B" | "S") => {
+  const add = (param: string, value: any) => {
     const key = formatKey(param, suffix, group, direction);
     entries.set(key, formatValue(value));
   };
 
   // Base controls (3 fields)
   add("Start", logic.enabled);
-  add("AllowBuy", logic.allowBuy);
-  add("AllowSell", logic.allowSell);
+  add("AllowBuy", direction === "B");
+  add("AllowSell", direction === "S");
 
   // Order params (5 fields) - Export both BUY and SELL versions
-  const orderParams = [
-    { key: "Initial_loT", value: logic.initialLot },
-    { key: "LastLot", value: logic.lastLot },
-    { key: "Mult", value: logic.multiplier },
-    { key: "Grid", value: logic.grid }
-  ];
-  
-  orderParams.forEach(param => {
-    add(param.key, param.value, "B"); // Buy version
-    add(param.key, param.value, "S"); // Sell version
-  });
-  
+  add("Initial_loT", logic.initialLot);
+  add("LastLotPower", logic.lastLot);
+  add("LastLot", logic.lastLot);
+  add("Mult", logic.multiplier);
+  add("Grid", logic.grid);
+  add("MaxPowerOrders", engineMaxPower);
   add("GridBehavior", gridBehaviorToInt(logic.gridBehavior));
 
   // Trail config (4 fields) - Export both BUY and SELL versions
-  const trailParams = [
-    { key: "TrailValue", value: logic.trailValue },
-    { key: "TrailStep", value: logic.trailStep }
-  ];
-  
   add("Trail", trailMethodToInt(logic.trailMethod));
+  add("TrailValue", logic.trailValue);
   add("Trail_Start", logic.trailStart);
-  
-  trailParams.forEach(param => {
-    add(param.key, param.value, "B"); // Buy version
-    add(param.key, param.value, "S"); // Sell version
-  });
+  add("TrailStep", logic.trailStep);
 
   // Trail steps - 7 levels (35 fields)
   const stepSuffixes = ["", "2", "3", "4", "5", "6", "7"];
@@ -217,9 +221,9 @@ function exportLogicConfig(
     const s = stepSuffixes[idx];
     add(`TrailStep${s}`, step.step);
     add(`TrailStepMethod${s}`, trailStepMethodToInt(step.method));
-    add(`TrailStepMode${s}`, trailStepModeToInt(step.mode));
     add(`TrailStepCycle${s}`, step.cycle);
     add(`TrailStepBalance${s}`, step.balance);
+    add(`TrailStepMode${s}`, trailStepModeToInt(step.mode));
   });
 
   // Partial close - 4 levels (32 fields)
@@ -230,11 +234,15 @@ function exportLogicConfig(
     add(`ClosePartialCycle${s}`, partial.cycle);
     add(`ClosePartialMode${s}`, partialModeToInt(partial.mode));
     add(`ClosePartialBalance${s}`, partialBalanceToInt(partial.balance));
+    add(`ClosePartialTrailMode${s}`, trailStepModeToInt(partial.trailMode));
+    add(`ClosePartialTrigger${s}`, partialTriggerToInt(partial.trigger));
+    add(`ClosePartialProfitThreshold${s}`, partial.profitThreshold);
+    add(`ClosePartialHours${s}`, partial.hours);
     // Note: trailMode, trigger, profitThreshold, hours not in standard setfile format
     // but we can add them if Loader supports them
   });
 
-  // TP/SL (6 fields)
+  // TP/SL - Dummy/Backup (6 fields)
   add("UseTP", logic.useTP);
   add("TPMode", tpslModeToInt(logic.tpMode));
   add("TPValue", logic.takeProfit);
@@ -255,13 +263,11 @@ function exportLogicConfig(
   add("ProfitTrailCloseOnTrigger", logic.profitTrailCloseOnTrigger);
   add("ProfitTrailUseBreakEven", logic.profitTrailUseBreakEven);
 
-  // Triggers (4 fields) - only for Group 1
-  if (group === 1) {
-    add("G1_TriggerType", entryTriggerToInt(logic.triggerType));
-    add("G1_TriggerBars", logic.triggerBars);
-    add("G1_TriggerMinutes", logic.triggerMinutes);
-    add("G1_TriggerPips", logic.triggerPips);
-  }
+  // Triggers (4 fields)
+  add("TriggerType", entryTriggerToInt(logic.triggerType));
+  add("TriggerBars", logic.triggerBars);
+  add("TriggerMinutes", logic.triggerMinutes);
+  add("TriggerPips", logic.triggerPips);
 
   // Cross-logic (8 fields)
   add("ReverseEnabled", logic.reverseEnabled);
@@ -270,11 +276,11 @@ function exportLogicConfig(
   add("HedgeEnabled", logic.hedgeEnabled);
   add("HedgeReference", logicReferenceToString(logic.hedgeReference));
   add("HedgeScale", logic.hedgeScale);
-  add("OrderCountReference", logicReferenceToString(logic.orderCountReferenceLogic));
+  add("OrderCountReference", logic.orderCountReference);
+  add("OrderCountReferenceLogic", logicReferenceToString(logic.orderCountReferenceLogic));
   add("CloseTargets", logic.closeTargets);
 
   // Engine-specific (4 fields)
-  add("MaxPowerOrders", logic.orderCountReference);
   if (!logic.logic_name.includes("Power")) {
     add("StartLevel", logic.startLevel);
     add("LastLotPower", logic.lastLot);
@@ -381,25 +387,8 @@ export function exportToSetFile(config: MTConfig): string {
   config.engines.forEach(engine => {
     engine.groups.forEach(group => {
       group.logics.forEach(logic => {
-        const logicType = LOGIC_SUFFIX_MAP[logic.logic_name];
-        if (logicType) {
-          // Export BUY direction
-          exportLogicConfig(logic, group.group_number, logicType.suffix, entries);
-          
-          // Export SELL direction with separate _S suffix for key parameters
-          const addSell = (param: string, value: any) => {
-            const key = formatKey(param, logicType.suffix, group.group_number, "S");
-            entries.set(key, formatValue(value));
-          };
-          
-          // Add SELL-specific values for key parameters
-          addSell("Initial_loT", logic.initialLot);
-          addSell("Mult", logic.multiplier);
-          addSell("Grid", logic.grid);
-          addSell("TrailValue", logic.trailValue);
-          addSell("TrailStep", logic.trailStep);
-          addSell("LastLot", logic.lastLot);
-        }
+        // Export direction-aware full schema
+        exportLogicConfig(engine.engine_id, engine.max_power_orders, logic, group.group_number, entries);
       });
     });
   });
@@ -432,25 +421,8 @@ export function exportToSetFileWithDirections(config: MTConfig): string {
   config.engines.forEach(engine => {
     engine.groups.forEach(group => {
       group.logics.forEach(logic => {
-        const logicType = LOGIC_SUFFIX_MAP[logic.logic_name];
-        if (logicType) {
-          // Export BUY direction
-          exportLogicConfig(logic, group.group_number, logicType.suffix, entries);
-          
-          // Export SELL direction (duplicate for now, but could have different values)
-          // We'll add _S suffix entries for SELL-specific values
-          const addSell = (param: string, value: any) => {
-            const key = formatKey(param, logicType.suffix, group.group_number, "S");
-            entries.set(key, formatValue(value));
-          };
-          
-          // Add SELL-specific values (can be customized)
-          addSell("Initial_loT", logic.initialLot);
-          addSell("Mult", logic.multiplier);
-          addSell("Grid", logic.grid);
-          addSell("TrailValue", logic.trailValue);
-          addSell("TrailStep", logic.trailStep);
-        }
+        // Export direction-aware full schema
+        exportLogicConfig(engine.engine_id, engine.max_power_orders, logic, group.group_number, entries);
       });
     });
   });

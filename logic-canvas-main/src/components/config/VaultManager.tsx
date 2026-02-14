@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open as dialogOpen, save } from "@tauri-apps/plugin-dialog";
 import { toast } from "sonner";
@@ -17,7 +17,16 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { FileText, Trash2, Upload, Download, RefreshCw, Folder, Hash, Play, Terminal } from "lucide-react";
+import {
+  FileText,
+  Trash2,
+  Upload,
+  Download,
+  RefreshCw,
+  Folder,
+  Hash,
+  Play,
+} from "lucide-react";
 import type { MTConfig } from "@/types/mt-config";
 import { useSettings } from "@/contexts/SettingsContext";
 
@@ -43,17 +52,23 @@ interface VaultManagerProps {
   onLoadConfig: (config: MTConfig) => void;
 }
 
-export function VaultManager({ open, onClose, onLoadConfig }: VaultManagerProps) {
+export function VaultManager({
+  open,
+  onClose,
+  onLoadConfig,
+}: VaultManagerProps) {
   const [files, setFiles] = useState<VaultFile[]>([]);
   const [vaultPath, setVaultPath] = useState<string>("-");
   const [loading, setLoading] = useState(false);
   const { settings } = useSettings();
   const tauriAvailable = useMemo(
-    () => typeof window !== "undefined" && Boolean((window as any).__TAURI_INTERNALS__),
-    []
+    () =>
+      typeof window !== "undefined" &&
+      Boolean((window as any).__TAURI_INTERNALS__),
+    [],
   );
 
-  const loadFiles = async () => {
+  const loadFiles = useCallback(async () => {
     try {
       if (!tauriAvailable) {
         setFiles([]);
@@ -63,7 +78,7 @@ export function VaultManager({ open, onClose, onLoadConfig }: VaultManagerProps)
 
       setLoading(true);
       const result = await invoke<VaultListing>("list_vault_files", {
-        vault_path_override: settings.vaultPath
+        vault_path_override: settings.vaultPath,
       });
       setFiles(result.files);
       setVaultPath(result.vault_path);
@@ -72,13 +87,13 @@ export function VaultManager({ open, onClose, onLoadConfig }: VaultManagerProps)
     } finally {
       setLoading(false);
     }
-  };
+  }, [settings.vaultPath, tauriAvailable]);
 
   useEffect(() => {
     if (open) {
       loadFiles();
     }
-  }, [open, settings.vaultPath]);
+  }, [open, loadFiles]);
 
   const groupedFiles = useMemo(() => {
     const grouped: Record<string, VaultFile[]> = {};
@@ -102,13 +117,17 @@ export function VaultManager({ open, onClose, onLoadConfig }: VaultManagerProps)
     try {
       setLoading(true);
       let config: MTConfig;
-      
+
       if (file.name.endsWith(".json")) {
-        config = await invoke<MTConfig>("import_json_file", { filePath: file.path });
+        config = await invoke<MTConfig>("import_json_file", {
+          filePath: file.path,
+        });
       } else {
-        config = await invoke<MTConfig>("import_set_file", { filePath: file.path });
+        config = await invoke<MTConfig>("import_set_file", {
+          filePath: file.path,
+        });
       }
-      
+
       onLoadConfig(config);
       toast.success(`Loaded configuration: ${file.name}`);
       onClose();
@@ -121,11 +140,11 @@ export function VaultManager({ open, onClose, onLoadConfig }: VaultManagerProps)
 
   const handleDelete = async (file: VaultFile) => {
     if (!confirm(`Are you sure you want to delete ${file.name}?`)) return;
-    
+
     try {
       await invoke("delete_from_vault", {
         filename: file.path,
-        vault_path_override: settings.vaultPath
+        vault_path_override: settings.vaultPath,
       });
       toast.success("File deleted");
       loadFiles();
@@ -138,14 +157,19 @@ export function VaultManager({ open, onClose, onLoadConfig }: VaultManagerProps)
     try {
       const path = await save({
         defaultPath: file.name,
-        filters: [{
-          name: file.name.endsWith('.json') ? 'JSON Config' : 'MT Set File',
-          extensions: [file.name.endsWith('.json') ? 'json' : 'set']
-        }]
+        filters: [
+          {
+            name: file.name.endsWith(".json") ? "JSON Config" : "Set File",
+            extensions: [file.name.endsWith(".json") ? "json" : "set"],
+          },
+        ],
       });
-      
+
       if (path) {
-        await invoke("export_vault_file", { filename: file.path, targetPath: path });
+        await invoke("_export_vault_file", {
+          filename: file.path,
+          target_path: path,
+        });
         toast.success(`Exported to ${path}`);
       }
     } catch (error) {
@@ -153,30 +177,18 @@ export function VaultManager({ open, onClose, onLoadConfig }: VaultManagerProps)
     }
   };
 
-  const handleExportToMT4 = async (file: VaultFile) => {
-    try {
-      setLoading(true);
-      // Export the vault file directly to MT4's Common Files directory
-      await invoke("export_vault_file_to_mt_common_files", { 
-        sourceFilePath: file.path,
-        terminalType: "mt4"
-      });
-      toast.success(`Exported ${file.name} to MT4 Common Files`);
-    } catch (error) {
-      toast.error(`Failed to export to MT4: ${error}`);
-    } finally {
-      setLoading(false);
-    }
-  };
+  
 
   const handleImportToVault = async () => {
     try {
       const selected = await dialogOpen({
         multiple: false,
-        filters: [{
-          name: 'Configuration Files',
-          extensions: ['set', 'json']
-        }]
+        filters: [
+          {
+            name: "Configuration Files",
+            extensions: ["set", "json"],
+          },
+        ],
       });
 
       if (selected) {
@@ -185,21 +197,29 @@ export function VaultManager({ open, onClose, onLoadConfig }: VaultManagerProps)
         // 1. Load the config
         let config: MTConfig;
         if (filePath.endsWith(".json")) {
-            config = await invoke<MTConfig>("import_json_file", { filePath });
+          config = await invoke<MTConfig>("import_json_file", {
+            filePath: filePath,
+          });
         } else {
-            config = await invoke<MTConfig>("import_set_file", { filePath });
+          config = await invoke<MTConfig>("import_set_file", {
+            filePath: filePath,
+          });
         }
 
         // 2. Extract filename for the vault name
         // Simple extraction from path
-        const fileName = filePath.split(/[\\/]/).pop()?.replace(/\.(set|json)$/, "") || "Imported_Config";
+        const fileName =
+          filePath
+            .split(/[\\/]/)
+            .pop()
+            ?.replace(/\.(set|json)$/, "") || "Imported_Config";
 
         // 3. Save to Vault (defaulting to 'Imported' category)
         await invoke("save_to_vault", {
           config,
           name: fileName,
           category: "Imported",
-          vault_path_override: settings.vaultPath
+          vault_path_override: settings.vaultPath,
         });
 
         toast.success(`Imported ${fileName} to Vault`);
@@ -214,33 +234,38 @@ export function VaultManager({ open, onClose, onLoadConfig }: VaultManagerProps)
   };
 
   const FileItem = ({ file }: { file: VaultFile }) => (
-    <div
-      className="grid grid-cols-12 gap-4 items-center p-3 hover:bg-muted/50 rounded-lg transition-colors border border-transparent hover:border-border group"
-    >
+    <div className="grid grid-cols-12 gap-4 items-center p-3 hover:bg-muted/50 rounded-lg transition-colors border border-transparent hover:border-border group">
       <div className="col-span-6 font-medium flex flex-col gap-1">
         <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${file.name.endsWith(".json") ? "bg-blue-500" : "bg-green-500"}`} />
-            <span className="truncate" title={file.name}>{file.name}</span>
-            {file.magic_number !== undefined && (
-                <span className="flex items-center gap-1 text-[10px] font-mono bg-muted text-muted-foreground px-1.5 py-0.5 rounded ml-2 border border-border/50">
-                    <Hash className="w-3 h-3" />
-                    {file.magic_number}
-                </span>
-            )}
+          <div
+            className={`w-2 h-2 rounded-full ${file.name.endsWith(".json") ? "bg-blue-500" : "bg-green-500"}`}
+          />
+          <span className="truncate" title={file.name}>
+            {file.name}
+          </span>
+          {file.magic_number !== undefined && (
+            <span className="flex items-center gap-1 text-[10px] font-mono bg-muted text-muted-foreground px-1.5 py-0.5 rounded ml-2 border border-border/50">
+              <Hash className="w-3 h-3" />
+              {file.magic_number}
+            </span>
+          )}
         </div>
         {file.tags && file.tags.length > 0 && (
-            <div className="flex gap-1 flex-wrap ml-4">
-                {file.tags.map(tag => (
-                    <span key={tag} className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
-                        {tag}
-                    </span>
-                ))}
-            </div>
+          <div className="flex gap-1 flex-wrap ml-4">
+            {file.tags.map((tag) => (
+              <span
+                key={tag}
+                className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
         )}
         {file.comments && (
-             <div className="text-xs text-muted-foreground ml-4 line-clamp-1 group-hover:line-clamp-none transition-all">
-                {file.comments}
-             </div>
+          <div className="text-xs text-muted-foreground ml-4 line-clamp-1 group-hover:line-clamp-none transition-all">
+            {file.comments}
+          </div>
         )}
       </div>
       <div className="col-span-3 text-sm text-muted-foreground">
@@ -258,15 +283,6 @@ export function VaultManager({ open, onClose, onLoadConfig }: VaultManagerProps)
           className="h-8 w-8"
         >
           <Upload className="h-4 w-4 text-primary" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => handleExportToMT4(file)}
-          title="Send to MT4"
-          className="h-8 w-8"
-        >
-          <Terminal className="h-4 w-4 text-orange-500" />
         </Button>
         <Button
           variant="ghost"
@@ -305,7 +321,8 @@ export function VaultManager({ open, onClose, onLoadConfig }: VaultManagerProps)
               </DialogDescription>
               {!tauriAvailable ? (
                 <div className="mt-2 text-xs text-amber-500">
-                  Vault requires the Tauri app backend. Browser-only localhost cannot access files.
+                  Vault requires the Tauri app backend. Browser-only localhost
+                  cannot access files.
                 </div>
               ) : (
                 <div className="mt-2 text-xs text-muted-foreground font-mono">
@@ -314,7 +331,12 @@ export function VaultManager({ open, onClose, onLoadConfig }: VaultManagerProps)
               )}
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={handleImportToVault} disabled={loading || !tauriAvailable}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleImportToVault}
+                disabled={loading || !tauriAvailable}
+              >
                 <Upload className="h-4 w-4 mr-2" />
                 Import File
               </Button>
@@ -324,7 +346,7 @@ export function VaultManager({ open, onClose, onLoadConfig }: VaultManagerProps)
                 onClick={async () => {
                   try {
                     await invoke("open_vault_folder", {
-                      vault_path_override: settings.vaultPath
+                      vault_path_override: settings.vaultPath,
                     });
                   } catch (error) {
                     toast.error(`Failed to open folder: ${error}`);
@@ -335,8 +357,15 @@ export function VaultManager({ open, onClose, onLoadConfig }: VaultManagerProps)
                 <Folder className="h-4 w-4 mr-2" />
                 Open Folder
               </Button>
-              <Button variant="outline" size="sm" onClick={loadFiles} disabled={loading}>
-                <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={loadFiles}
+                disabled={loading}
+              >
+                <RefreshCw
+                  className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
+                />
                 Refresh
               </Button>
             </div>
@@ -362,23 +391,35 @@ export function VaultManager({ open, onClose, onLoadConfig }: VaultManagerProps)
                 <>
                   {/* Categorized Files */}
                   {Object.keys(groupedFiles.grouped).length > 0 && (
-                    <Accordion type="multiple" defaultValue={Object.keys(groupedFiles.grouped)} className="mb-2">
-                      {Object.entries(groupedFiles.grouped).map(([category, catFiles]) => (
-                        <AccordionItem value={category} key={category} className="border-b-0 mb-1">
-                          <AccordionTrigger className="hover:no-underline py-2 px-3 bg-muted/30 rounded-md data-[state=open]:rounded-b-none text-sm font-semibold">
-                            <div className="flex items-center gap-2">
-                              <Folder className="h-4 w-4 text-amber-500" />
-                              {category}
-                              <span className="text-xs text-muted-foreground font-normal ml-2">({catFiles.length})</span>
-                            </div>
-                          </AccordionTrigger>
-                          <AccordionContent className="pt-1 pb-2 pl-2">
-                            {catFiles.map((file) => (
-                              <FileItem key={file.path} file={file} />
-                            ))}
-                          </AccordionContent>
-                        </AccordionItem>
-                      ))}
+                    <Accordion
+                      type="multiple"
+                      defaultValue={Object.keys(groupedFiles.grouped)}
+                      className="mb-2"
+                    >
+                      {Object.entries(groupedFiles.grouped).map(
+                        ([category, catFiles]) => (
+                          <AccordionItem
+                            value={category}
+                            key={category}
+                            className="border-b-0 mb-1"
+                          >
+                            <AccordionTrigger className="hover:no-underline py-2 px-3 bg-muted/30 rounded-md data-[state=open]:rounded-b-none text-sm font-semibold">
+                              <div className="flex items-center gap-2">
+                                <Folder className="h-4 w-4 text-amber-500" />
+                                {category}
+                                <span className="text-xs text-muted-foreground font-normal ml-2">
+                                  ({catFiles.length})
+                                </span>
+                              </div>
+                            </AccordionTrigger>
+                            <AccordionContent className="pt-1 pb-2 pl-2">
+                              {catFiles.map((file) => (
+                                <FileItem key={file.path} file={file} />
+                              ))}
+                            </AccordionContent>
+                          </AccordionItem>
+                        ),
+                      )}
                     </Accordion>
                   )}
 

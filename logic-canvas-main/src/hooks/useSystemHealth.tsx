@@ -9,6 +9,7 @@ interface HealthMetrics {
     used: number;
     total: number;
     limit: number;
+    peak: number;
     status: 'healthy' | 'warning' | 'critical';
   };
   renders: {
@@ -26,7 +27,7 @@ interface HealthMetrics {
 
 export function useSystemHealth() {
   const [metrics, setMetrics] = useState<HealthMetrics>({
-    memory: { used: 0, total: 0, limit: 0, status: 'healthy' },
+    memory: { used: 0, total: 0, limit: 0, peak: 0, status: 'healthy' },
     renders: { count: 0, rate: 0, status: 'healthy' },
     state: { mode: 'none', hasPending: false, selectionCount: 0, status: 'healthy' },
   });
@@ -43,14 +44,19 @@ export function useSystemHealth() {
         else if (ratio > 0.75) memoryStatus = 'warning';
       }
 
+      if (!memInfo) return prev;
+      const usedMb = Math.round(memInfo.usedJSHeapSize / 1024 / 1024);
+      const totalMb = Math.round(memInfo.totalJSHeapSize / 1024 / 1024);
+      const limitMb = Math.round(memInfo.jsHeapSizeLimit / 1024 / 1024);
       return {
         ...prev,
-        memory: memInfo ? {
-          used: Math.round(memInfo.usedJSHeapSize / 1024 / 1024),
-          total: Math.round(memInfo.totalJSHeapSize / 1024 / 1024),
-          limit: Math.round(memInfo.jsHeapSizeLimit / 1024 / 1024),
+        memory: {
+          used: usedMb,
+          total: totalMb,
+          limit: limitMb,
+          peak: Math.max(prev.memory.peak, usedMb),
           status: memoryStatus,
-        } : prev.memory,
+        },
       };
     });
   }, []);

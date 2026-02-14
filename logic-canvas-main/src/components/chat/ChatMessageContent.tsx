@@ -212,6 +212,7 @@ function TransactionPlanRenderer({
   onSend?: (text: string) => void;
 }) {
   const [editedPlan, setEditedPlan] = useState<TransactionPlan>(plan);
+  const [expanded, setExpanded] = useState(() => plan.preview.length <= 8);
   
   // Use the visual review interface for pending plans
   if (!isApplied && plan.status === "pending" && onSend) {
@@ -254,7 +255,6 @@ function TransactionPlanRenderer({
   }
 
   // For applied plans, use the original premium styling
-  const [expanded, setExpanded] = useState(plan.preview.length <= 8);
   const changes = expanded ? plan.preview : plan.preview.slice(0, 8);
 
   const riskLevel = plan.risk.level;
@@ -281,9 +281,7 @@ function TransactionPlanRenderer({
               <Icon className="w-5 h-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <h3 className="text-sm font-bold text-foreground truncate">
-                Tactical Changes Applied
-              </h3>
+              <h3 className="text-sm font-bold text-foreground truncate">Changes Applied</h3>
               <p className="text-[10px] text-muted-foreground opacity-80 uppercase tracking-widest font-medium truncate">
                 {plan.type} • {riskLevel} risk assessment
               </p>

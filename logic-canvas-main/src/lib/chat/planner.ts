@@ -19,6 +19,73 @@ export interface ProgressionPlanParams {
   logics?: string[];
 }
 
+function buildLogicTargets(logics: string[] | undefined) {
+  const base = new Set<string>();
+  const byEngine = new Map<string, Set<string>>();
+
+  if (!logics || logics.length === 0) {
+    return { base, byEngine };
+  }
+
+  for (const raw of logics) {
+    const trimmed = String(raw).trim();
+    if (!trimmed) continue;
+    const upper = trimmed.toUpperCase();
+    if (upper === "ALL") {
+      base.add("ALL");
+      continue;
+    }
+
+    const mColon = trimmed.match(/^([ABC])\s*[:/\\-]\s*(.+)$/i);
+    if (mColon) {
+      const engineId = mColon[1].toUpperCase();
+      const logicName = String(mColon[2]).trim().toUpperCase();
+      if (!logicName) continue;
+      const set = byEngine.get(engineId) || new Set<string>();
+      set.add(logicName);
+      byEngine.set(engineId, set);
+      continue;
+    }
+
+    const mLogicUnderscore = trimmed.match(/^LOGIC[_-]([ABC])[_-](.+)$/i);
+    if (mLogicUnderscore) {
+      const engineId = mLogicUnderscore[1].toUpperCase();
+      const logicName = String(mLogicUnderscore[2]).trim().toUpperCase();
+      if (!logicName) continue;
+      const set = byEngine.get(engineId) || new Set<string>();
+      set.add(logicName);
+      byEngine.set(engineId, set);
+      continue;
+    }
+
+    const mLogicCompact = trimmed.match(/^LOGIC[_-]([ABC])(.+)$/i);
+    if (mLogicCompact) {
+      const engineId = mLogicCompact[1].toUpperCase();
+      const logicName = String(mLogicCompact[2]).trim().toUpperCase();
+      if (!logicName) continue;
+      const set = byEngine.get(engineId) || new Set<string>();
+      set.add(logicName);
+      byEngine.set(engineId, set);
+      continue;
+    }
+
+    base.add(upper);
+  }
+
+  return { base, byEngine };
+}
+
+function logicIsAllowed(engineId: string, logicName: string, targets: ReturnType<typeof buildLogicTargets>) {
+  if (targets.base.size === 0 && targets.byEngine.size === 0) return true;
+  if (targets.base.has("ALL")) return true;
+
+  const logicUpper = logicName.toUpperCase();
+  const perEngine = targets.byEngine.get(engineId);
+  if (perEngine && perEngine.has(logicUpper)) return true;
+  if (targets.base.has(logicUpper)) return true;
+  return false;
+}
+
 /**
  * Create a transaction plan for a progression command
  * Performs dry-run simulation without modifying state
@@ -28,6 +95,8 @@ export function createProgressionPlan(
   params: ProgressionPlanParams
 ): TransactionPlan {
   const { field, progressionType, startValue, endValue, factor, engines, groups, logics } = params;
+
+  const logicTargets = buildLogicTargets(logics);
 
   // Calculate progression values
   const progression = calculateProgression({
@@ -55,10 +124,8 @@ export function createProgressionPlan(
       const group = engine.groups.find(g => g.group_number === groupNum);
       if (!group) continue;
 
-      const targetLogics = logics || group.logics.map(l => l.logic_name.toUpperCase());
-
       for (const logic of group.logics) {
-        if (!targetLogics.includes(logic.logic_name.toUpperCase())) continue;
+        if (logics && logics.length > 0 && !logicIsAllowed(engine.engine_id, logic.logic_name, logicTargets)) continue;
 
         const currentValue = (logic as any)[field];
         if (currentValue === undefined) continue;
@@ -138,6 +205,8 @@ export function createSetPlan(
 ): TransactionPlan {
   const { field, value, engines, groups, logics } = params;
 
+  const logicTargets = buildLogicTargets(logics);
+
   // VALIDATION: Ensure at least one target is specified
   if ((!engines || engines.length === 0) &&
     (!groups || groups.length === 0) &&
@@ -159,8 +228,7 @@ export function createSetPlan(
       if (groups && groups.length > 0 && !groups.includes(group.group_number)) continue;
 
       for (const logic of group.logics) {
-        // Skip logic if logics filter specified and this logic not in list
-        if (logics && logics.length > 0 && !logics.includes(logic.logic_name.toUpperCase())) continue;
+        if (logics && logics.length > 0 && !logicIsAllowed(engine.engine_id, logic.logic_name, logicTargets)) continue;
 
         const currentValue = (logic as any)[field];
         if (currentValue === undefined) continue;
@@ -209,15 +277,22 @@ export function applyTransactionPlan(
   const newConfig = structuredClone(config);
 
   for (const change of plan.preview) {
+    if (change.engine === "GLOBAL") {
+      (newConfig.global as any)[change.field] = change.newValue;
+      continue;
+    }
     const engine = newConfig.engines.find(e => e.engine_id === change.engine);
     if (!engine) continue;
-
+    if (change.group <= 0) {
+      if (change.field === "max_power_orders") {
+        engine.max_power_orders = change.newValue as number;
+      }
+      continue;
+    }
     const group = engine.groups.find(g => g.group_number === change.group);
     if (!group) continue;
-
     const logic = group.logics.find(l => l.logic_name.toUpperCase() === change.logic.toUpperCase());
     if (!logic) continue;
-
     (logic as any)[change.field] = change.newValue;
   }
 

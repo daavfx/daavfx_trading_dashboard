@@ -33,27 +33,6 @@ export function ConsoleOverlay() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  const flushLogs = useEffect(() => {
-    if (flushTimeoutRef.current !== null) {
-      return;
-    }
-    
-    flushTimeoutRef.current = window.setTimeout(() => {
-      if (pendingLogsRef.current.length > 0) {
-        setLogs(prev => [...prev.slice(-99), ...pendingLogsRef.current]);
-        pendingLogsRef.current = [];
-      }
-      flushTimeoutRef.current = null;
-    }, 100);
-    
-    return () => {
-      if (flushTimeoutRef.current !== null) {
-        clearTimeout(flushTimeoutRef.current);
-        flushTimeoutRef.current = null;
-      }
-    };
-  }, [pendingLogsRef.current]);
-
   // Capture console logs - defer updates to avoid setState during render
   useEffect(() => {
     const originalLog = console.log;
@@ -75,6 +54,16 @@ export function ConsoleOverlay() {
       };
       
       pendingLogsRef.current.push(newLog);
+
+      if (flushTimeoutRef.current === null) {
+        flushTimeoutRef.current = window.setTimeout(() => {
+          if (pendingLogsRef.current.length > 0) {
+            setLogs((prev) => [...prev.slice(-99), ...pendingLogsRef.current]);
+            pendingLogsRef.current = [];
+          }
+          flushTimeoutRef.current = null;
+        }, 100);
+      }
     };
 
     console.log = (...args) => {
@@ -102,6 +91,11 @@ export function ConsoleOverlay() {
       console.warn = originalWarn;
       console.error = originalError;
       console.debug = originalDebug;
+
+      if (flushTimeoutRef.current !== null) {
+        clearTimeout(flushTimeoutRef.current);
+        flushTimeoutRef.current = null;
+      }
     };
   }, []);
 

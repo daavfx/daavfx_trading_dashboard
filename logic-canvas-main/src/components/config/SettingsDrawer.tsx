@@ -3,13 +3,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
   Settings,
-  Palette,
-  Monitor,
-  Moon,
-  Sun,
-  Laptop,
-  Grid3X3,
-  Type,
   Save,
   RotateCcw,
   Keyboard,
@@ -20,8 +13,6 @@ import {
   FolderOpen,
   ChevronRight,
   Info,
-  Sparkles,
-  Layout,
   Clock,
   Volume2,
   MousePointer,
@@ -51,37 +42,9 @@ interface SettingsDrawerProps {
   onClose: () => void;
 }
 
-const accentColors = [
-  { id: "gold", color: "#D4AF37", label: "Gold", description: "Classic trading aesthetic" },
-  { id: "blue", color: "#3B82F6", label: "Ocean", description: "Calm and professional" },
-  { id: "emerald", color: "#10B981", label: "Emerald", description: "Growth and success" },
-  { id: "purple", color: "#8B5CF6", label: "Royal", description: "Premium experience" },
-  { id: "rose", color: "#F43F5E", label: "Coral", description: "Bold and energetic" },
-  { id: "orange", color: "#F97316", label: "Sunset", description: "Warm and inviting" },
-];
+// appearance controls removed
 
-const densityOptions = [
-  { 
-    id: "compact", 
-    label: "Compact", 
-    description: "Maximum information density",
-    detail: "Best for power users with large monitors"
-  },
-  { 
-    id: "comfortable", 
-    label: "Comfortable", 
-    description: "Balanced spacing",
-    detail: "Recommended for most users"
-  },
-  { 
-    id: "spacious", 
-    label: "Spacious", 
-    description: "Generous whitespace",
-    detail: "Easier on the eyes for long sessions"
-  },
-];
-
-type TabId = "appearance" | "behavior" | "shortcuts" | "data";
+type TabId = "behavior" | "shortcuts" | "data";
 
 interface SettingsSection {
   id: TabId;
@@ -91,12 +54,6 @@ interface SettingsSection {
 }
 
 const sections: SettingsSection[] = [
-  { 
-    id: "appearance", 
-    label: "Appearance", 
-    icon: Palette,
-    description: "Customize visual style"
-  },
   { 
     id: "behavior", 
     label: "Behavior", 
@@ -187,7 +144,7 @@ function ElegantToggle({
 
 export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
   const { settings, updateSetting, saveSettings, resetSettings, hasChanges } = useSettings();
-  const [activeTab, setActiveTab] = useState<TabId>("appearance");
+  const [activeTab, setActiveTab] = useState<TabId>("behavior");
   const [storageInfo, setStorageInfo] = useState({
     used: 0,
     available: 0,
@@ -345,173 +302,7 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
                 <div className="flex-1 overflow-y-auto">
                   <div className="p-6 space-y-6">
                     
-                    {/* Appearance Tab */}
-                    {activeTab === "appearance" && (
-                      <>
-                        {/* Theme Selection */}
-                        <SettingCard 
-                          title="Theme" 
-                          description="Choose your preferred color scheme"
-                          icon={Monitor}
-                        >
-                          <div className="grid grid-cols-3 gap-3">
-                            {[
-                              { id: "dark", label: "Dark", icon: Moon },
-                              { id: "light", label: "Light", icon: Sun },
-                              { id: "system", label: "System", icon: Laptop },
-                            ].map((theme) => {
-                              const Icon = theme.icon;
-                              const isActive = settings.theme === theme.id;
-                              return (
-                                <button
-                                  key={theme.id}
-                                  onClick={() => updateSetting("theme", theme.id)}
-                                  className={cn(
-                                    "flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all duration-200",
-                                    isActive
-                                      ? "border-primary bg-primary/5"
-                                      : "border-border/50 hover:border-border hover:bg-muted/30"
-                                  )}
-                                >
-                                  <Icon className={cn("w-5 h-5", isActive ? "text-primary" : "text-muted-foreground")} />
-                                  <span className={cn("text-xs font-medium", isActive ? "text-primary" : "text-muted-foreground")}>
-                                    {theme.label}
-                                  </span>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </SettingCard>
-
-                        {/* Accent Color */}
-                        <SettingCard 
-                          title="Accent Color" 
-                          description="Personalize your interface"
-                          icon={Sparkles}
-                        >
-                          <div className="grid grid-cols-3 gap-3">
-                            {accentColors.map((color) => {
-                              const isActive = settings.accentColor === color.id;
-                              return (
-                                <button
-                                  key={color.id}
-                                  onClick={() => updateSetting("accentColor", color.id)}
-                                  className={cn(
-                                    "group relative flex items-center gap-3 p-3 rounded-xl border-2 transition-all duration-200 text-left",
-                                    isActive
-                                      ? "border-primary bg-primary/5"
-                                      : "border-border/50 hover:border-border/80 hover:bg-muted/20"
-                                  )}
-                                >
-                                  <div 
-                                    className="w-8 h-8 rounded-full shadow-sm ring-2 ring-white/20"
-                                    style={{ backgroundColor: color.color }}
-                                  />
-                                  <div className="flex-1 min-w-0">
-                                    <div className="text-xs font-medium">{color.label}</div>
-                                    <div className="text-[10px] text-muted-foreground truncate">{color.description}</div>
-                                  </div>
-                                  {isActive && (
-                                    <div className="absolute top-2 right-2">
-                                      <div className="w-4 h-4 rounded-full bg-primary flex items-center justify-center">
-                                        <svg className="w-2.5 h-2.5 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                        </svg>
-                                      </div>
-                                    </div>
-                                  )}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </SettingCard>
-
-                        {/* Density */}
-                        <SettingCard 
-                          title="Layout Density" 
-                          description="Control information density"
-                          icon={Layout}
-                        >
-                          <div className="space-y-2">
-                            {densityOptions.map((option) => {
-                              const isActive = settings.density === option.id;
-                              return (
-                                <button
-                                  key={option.id}
-                                  onClick={() => updateSetting("density", option.id as any)}
-                                  className={cn(
-                                    "w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all duration-200 text-left",
-                                    isActive
-                                      ? "border-primary bg-primary/5"
-                                      : "border-border/50 hover:border-border/80 hover:bg-muted/20"
-                                  )}
-                                >
-                                  <div className={cn(
-                                    "flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center",
-                                    isActive ? "bg-primary/20" : "bg-muted"
-                                  )}>
-                                    <Grid3X3 className={cn("w-5 h-5", isActive ? "text-primary" : "text-muted-foreground")} />
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2">
-                                      <span className={cn("text-sm font-medium", isActive && "text-primary")}>
-                                        {option.label}
-                                      </span>
-                                      {isActive && (
-                                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/20 text-primary font-medium">
-                                          Active
-                                        </span>
-                                      )}
-                                    </div>
-                                    <div className="text-xs text-muted-foreground">{option.description}</div>
-                                    <div className="text-[10px] text-muted-foreground/60 mt-0.5">{option.detail}</div>
-                                  </div>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </SettingCard>
-
-                        {/* Font Size */}
-                        <SettingCard title="Font Size" icon={Type}>
-                          <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs text-muted-foreground">Preview</span>
-                              <span className="text-xs font-medium">{settings.fontSize}px</span>
-                            </div>
-                            <div 
-                              className="p-4 rounded-lg bg-muted/30 text-center transition-all duration-200"
-                              style={{ fontSize: `${settings.fontSize}px` }}
-                            >
-                              The quick brown fox
-                            </div>
-                            <Slider
-                              value={[settings.fontSize]}
-                              onValueChange={([v]) => updateSetting("fontSize", v)}
-                              min={11}
-                              max={16}
-                              step={1}
-                              className="w-full"
-                            />
-                            <div className="flex justify-between text-[10px] text-muted-foreground">
-                              <span>Small</span>
-                              <span>Large</span>
-                            </div>
-                          </div>
-                        </SettingCard>
-
-                        {/* Animations */}
-                        <SettingCard>
-                          <ElegantToggle
-                            label="Smooth Animations"
-                            description="Enable transitions and micro-interactions"
-                            checked={settings.animations}
-                            onCheckedChange={(v) => updateSetting("animations", v)}
-                            icon={Sparkles}
-                          />
-                        </SettingCard>
-                      </>
-                    )}
+                    {/* appearance tab removed */}
 
                     {/* Behavior Tab */}
                     {activeTab === "behavior" && (
@@ -611,7 +402,7 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
                             { key: "Ctrl + S", action: "Save Configuration" },
                             { key: "Ctrl + Z", action: "Undo Last Change" },
                             { key: "Ctrl + Shift + Z", action: "Redo Change" },
-                            { key: "Ctrl + E", action: "Export to MT4" },
+                            { key: "Ctrl + E", action: "Export .set file" },
                             { key: "Esc", action: "Close Panels" },
                             { key: "?", action: "Show Help" },
                           ].map((shortcut, i) => (
@@ -783,8 +574,8 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
                         {/* Export Format */}
                         <SettingCard title="Export Format" icon={FileJson}>
                           <div className="grid grid-cols-2 gap-3">
-                            {[
-                              { id: "set", label: ".set File", desc: "MT4/MT5 format" },
+                            {[ 
+                              { id: "set", label: ".set File", desc: "Set File format" },
                               { id: "json", label: "JSON", desc: "Human-readable" },
                             ].map((format) => (
                               <button

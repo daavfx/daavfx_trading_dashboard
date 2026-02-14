@@ -369,7 +369,6 @@ export interface EngineCardData {
   engine: string;
   tradingType: string;
   groups: string[];
-  platform: Platform;
 }
 
 export interface BatchEditData {

@@ -1,0 +1,59 @@
+---
+source: tests/semantic_tests.rs
+assertion_line: 28
+expression: result
+---
+{
+  "input": "make it 30% safer",
+  "parsed": {
+    "command_type": "semantic",
+    "target": {},
+    "params": {},
+    "semantic": {
+      "description": "Increase safety by 30%",
+      "operations": [
+        {
+          "field": "grid",
+          "op": "scale",
+          "factor": 1.3
+        },
+        {
+          "field": "multiplier",
+          "op": "scale",
+          "factor": 0.85
+        },
+        {
+          "field": "initial_lot",
+          "op": "scale",
+          "factor": 0.85
+        }
+      ]
+    }
+  },
+  "result": {
+    "success": true,
+    "message": "[SEMANTIC PREVIEW] Increase safety by 30%",
+    "preview": {
+      "description": "Increase safety by 30%",
+      "operations": [
+        {
+          "factor": 1.3,
+          "field": "grid",
+          "op": "scale"
+        },
+        {
+          "factor": 0.85,
+          "field": "multiplier",
+          "op": "scale"
+        },
+        {
+          "factor": 0.85,
+          "field": "initial_lot",
+          "op": "scale"
+        }
+      ],
+      "target": {}
+    }
+  },
+  "status": "pass"
+}

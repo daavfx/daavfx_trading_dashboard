@@ -21,7 +21,7 @@ import { ExportOptionsModal } from "@/components/config/ExportOptionsModal";
 import { VaultPage } from "@/components/config/VaultPage";
 import { SettingsPage } from "@/components/config/SettingsPage";
 import { BatchEditTab } from "@/components/config/BatchEditTab";
-import TacticalView from "@/pages/TacticalView";
+
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useMTConfig, useConfigUpdater } from "@/hooks/useMTConfig";
@@ -242,39 +242,25 @@ export default function Index() {
     saveConfig: realSaveConfig,
     setConfigOnly,
   } = useMTConfig(mtPlatform);
-  const { batchUpdateLogics, updateGeneral, updateLogic } =
-    useConfigUpdater(mtPlatform);
+  const { batchUpdateLogics, updateGeneral, updateLogic } = useConfigUpdater(
+    realConfig,
+    realSaveConfig,
+  );
   const { exportCompleteV3LegacySetfile } = useMTFileOps(
     mtPlatform,
     realConfig,
   );
-
-  const [mockConfig, setMockConfig] = useState<MTConfig | null>(null);
   const [configWarnings, setConfigWarnings] = useState<ConfigWarning[]>([]);
   const [exportModalOpen, setExportModalOpen] = useState(false);
-  const config = realConfig || mockConfig;
+  const config = realConfig;
 
   const handleGeneralUpdate = async (updates: Partial<GeneralConfig>) => {
-    if (realConfig) {
-      await updateGeneral(updates);
-    } else {
-      // For mock config or fallback
-      if (mockConfig) {
-        setMockConfig({
-          ...mockConfig,
-          general: { ...mockConfig.general, ...updates },
-        });
-      }
-    }
+    if (!config) return;
+    await updateGeneral(updates);
   };
 
   const handleSaveConfig = async (newConfig: MTConfig) => {
-    if (realConfig) {
-      await realSaveConfig(newConfig);
-    } else {
-      setMockConfig(newConfig);
-      toast.info("Updated mock configuration (not saved to disk)");
-    }
+    await realSaveConfig(newConfig);
   };
 
   const lastSavedLabel = config?.last_saved_at
@@ -286,17 +272,13 @@ export default function Index() {
     loadConfig()
       .then((loaded) => {
         if (!loaded) {
-          // console.log("Using mock data - config not loaded");
-          setMockConfig(hydrateMTConfigDefaults(mockFullConfig));
-        } else {
-          setMockConfig(null);
+          setConfigOnly(hydrateMTConfigDefaults(mockFullConfig));
         }
       })
       .catch(() => {
-        // console.log("Using mock data - config load failed");
-        setMockConfig(hydrateMTConfigDefaults(mockFullConfig));
+        setConfigOnly(hydrateMTConfigDefaults(mockFullConfig));
       });
-  }, [loadConfig]);
+  }, [loadConfig, setConfigOnly]);
 
   // Validate config on changes and show warnings
   useEffect(() => {
@@ -349,20 +331,6 @@ export default function Index() {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [config]);
-
-  // Load last config on startup (if available)
-  useEffect(() => {
-    const lastConfig = localStorage.getItem("daavfx-last-config");
-    if (lastConfig && !config) {
-      try {
-        const parsed = JSON.parse(lastConfig);
-        setMockConfig(parsed);
-        toast.success("Restored last configuration");
-      } catch (e) {
-        console.warn("[AutoSave] Failed to restore last config:", e);
-      }
-    }
-  }, []);
 
   // Get real engine data from config or use mock
   const realEngineConfigs =
@@ -432,8 +400,19 @@ export default function Index() {
     }
 
     if (target.logics) {
-      // Map "Power" -> "POWER"
-      const mappedLogics = target.logics.map((l) => l.toUpperCase());
+      const mappedLogics = target.logics
+        .map((l) => {
+          const trimmed = String(l).trim();
+          const mColon = trimmed.match(/^([A-Z])\s*[:/\\-]\s*(.+)$/i);
+          if (mColon) return String(mColon[2]).trim();
+          const mLogicUnderscore = trimmed.match(/^LOGIC[_-]([A-Z])[_-](.+)$/i);
+          if (mLogicUnderscore) return String(mLogicUnderscore[2]).trim();
+          const mLogicCompact = trimmed.match(/^LOGIC[_-]([A-Z])(.+)$/i);
+          if (mLogicCompact) return String(mLogicCompact[2]).trim();
+          return trimmed;
+        })
+        .filter(Boolean)
+        .map((l) => l.toUpperCase());
       setSelectedLogics(mappedLogics);
     }
 
@@ -497,13 +476,15 @@ export default function Index() {
             if (logic.initial_lot) logic.initial_lot_s = logic.initial_lot;
             if (logic.multiplier) logic.multiplier_s = logic.multiplier;
             if (logic.grid) logic.grid_s = logic.grid;
-            if (logic.trail_method !== undefined) logic.trail_method_s = logic.trail_method;
+            if (logic.trail_method !== undefined)
+              logic.trail_method_s = logic.trail_method;
             if (logic.trail_value) logic.trail_value_s = logic.trail_value;
             // Copy Sell values to Buy
             if (logic.initial_lot_s) logic.initial_lot = logic.initial_lot_s;
             if (logic.multiplier_s) logic.multiplier = logic.multiplier_s;
             if (logic.grid_s) logic.grid = logic.grid_s;
-            if (logic.trail_method_s !== undefined) logic.trail_method = logic.trail_method_s;
+            if (logic.trail_method_s !== undefined)
+              logic.trail_method = logic.trail_method_s;
             if (logic.trail_value_s) logic.trail_value = logic.trail_value_s;
           });
         }
@@ -522,7 +503,7 @@ export default function Index() {
           : `${data.exportPath}${separator}${fileName}`;
 
         const configToExport = withUseDirectPriceGrid(configToSave, settings);
-        
+
         // ALWAYS export with AllowBuy=1 and AllowSell=1 regardless of strategyType
         // User controls actual trading in MT4/MT5 terminal directly
         if (configToExport.general) {
@@ -530,26 +511,30 @@ export default function Index() {
           configToExport.general.allow_sell = true;
         }
         // Also force all logic allow_buy/allow_sell to true
-        if (configToExport.logics) {
-          configToExport.logics.forEach((logic: any) => {
-            logic.allow_buy = true;
-            logic.allow_sell = true;
+        if (configToExport.engines) {
+          configToExport.engines.forEach((engine: any) => {
+            engine.groups?.forEach((group: any) => {
+              group.logics?.forEach((logic: any) => {
+                logic.allow_buy = true;
+                logic.allow_sell = true;
+              });
+            });
           });
         }
 
         if (data.format === "json") {
           await invoke("export_json_file", {
             config: configToExport,
-            file_path: fullPath,
+            filePath: fullPath,
             tags: data.tags,
             comments: data.comments,
           });
         } else {
           await invoke("export_set_file", {
             config: configToExport,
-            file_path: fullPath,
+            filePath: fullPath,
             platform: platform === "mt5" ? "MT5" : "MT4",
-            include_optimization_hints: true,
+            includeOptimizationHints: true,
             tags: data.tags,
             comments: data.comments,
           });
@@ -644,6 +629,15 @@ export default function Index() {
         }
         mode={mode}
         onModeChange={setMode}
+        onLoadConfig={(c) => {
+          handleSaveConfig(c);
+          setHasStarted(true);
+          if (c?.engines?.length) {
+            setSelectedEngines(["Engine A"]);
+            setSelectedGroups(["Group 1"]);
+            setSelectedLogics(["POWER"]);
+          }
+        }}
       />
 
       <div className="flex-1 overflow-hidden">
@@ -663,6 +657,8 @@ export default function Index() {
               platform={platform}
               viewMode={viewMode}
               onViewModeChange={handleViewModeChange}
+              config={config}
+              onConfigChange={handleSaveConfig}
               selectedGeneralCategory={selectedGeneralCategory}
               onSelectGeneralCategory={handleGeneralCategoryChange}
             />
@@ -673,7 +669,6 @@ export default function Index() {
             id="main-content"
             order={2}
             defaultSize={
-              viewMode === "tactical" ||
               viewMode === "vault" ||
               viewMode === "save_config" ||
               viewMode === "version-control" ||
@@ -728,7 +723,6 @@ export default function Index() {
                     <div
                       className={cn(
                         "p-5 w-full",
-                        viewMode === "tactical" && "p-0",
                       )}
                     >
                       {/* Multi-Edit Indicator */}
@@ -807,46 +801,52 @@ export default function Index() {
                                   selectedFields={selectedFields || []}
                                   mode={mode}
                                   onUpdateLogic={(logic, field, value) => {
-                                    if (selectedGroups.length > 0) {
-                                      // Get the group number from selectedGroups
-                                      const groupNum = parseInt(
-                                        selectedGroups[0].replace("Group ", ""),
-                                      );
-
-                                      // Convert value to appropriate type based on field
-                                      let processedValue = value;
-                                      if (
-                                        field.includes("enabled") ||
+                                    if (!config || selectedGroups.length === 0) return;
+                                    const groupNum = parseInt(
+                                      selectedGroups[0].replace("Group ", ""),
+                                    );
+                                    let processedValue = value;
+                                    if (
+                                      typeof value === "string" &&
+                                      (field.includes("enabled") ||
                                         field.includes("allow_") ||
-                                        field === "close_partial"
-                                      ) {
-                                        if (typeof value === "string") {
-                                          processedValue =
-                                            value === "ON" ||
-                                            value === "true" ||
-                                            value === "1";
-                                        }
-                                      } else if (
-                                        typeof value === "string" &&
-                                        !isNaN(Number(value))
-                                      ) {
-                                        // If it's a numeric string, convert to number
-                                        processedValue = Number(value);
-                                      }
-
-                                      // Use the proper updateLogic function from the hook
-                                      updateLogic(
-                                        engineConfig.engineData?.engine_id as
-                                          | "A"
-                                          | "B"
-                                          | "C",
-                                        groupNum,
-                                        logic,
-                                        {
-                                          [field]: processedValue,
-                                        } as Partial<LogicConfig>,
-                                      );
+                                        field === "close_partial")
+                                    ) {
+                                      processedValue =
+                                        value === "ON" || value === "true" || value === "1";
+                                    } else if (
+                                      typeof value === "string" &&
+                                      !isNaN(Number(value))
+                                    ) {
+                                      processedValue = Number(value);
                                     }
+                                    const targetEngineId = engineConfig.engineData?.engine_id as
+                                      | "A"
+                                      | "B"
+                                      | "C";
+                                    const newConfig: MTConfig = {
+                                      ...config,
+                                      engines: config.engines.map((e) => {
+                                        if (e.engine_id !== targetEngineId) return e;
+                                        return {
+                                          ...e,
+                                          groups: e.groups.map((g) => {
+                                            if (g.group_number !== groupNum) return g;
+                                            return {
+                                              ...g,
+                                              logics: g.logics.map((l) => {
+                                                if (l.logic_name !== logic) return l;
+                                                return {
+                                                  ...l,
+                                                  [field]: processedValue as any,
+                                                };
+                                              }),
+                                            };
+                                          }),
+                                        };
+                                      }),
+                                    };
+                                    handleSaveConfig(newConfig);
                                   }}
                                 />
                               ))
@@ -881,12 +881,6 @@ export default function Index() {
                             onConfigChange={handleSaveConfig}
                             onNavigate={handleChatNavigation}
                           />
-                        </div>
-                      )}
-
-                      {viewMode === "tactical" && (
-                        <div className="mt-0 h-full">
-                          <TacticalView mtPlatform={mtPlatform} />
                         </div>
                       )}
 
@@ -966,7 +960,6 @@ export default function Index() {
           </ResizablePanel>
 
           {viewMode !== "batch" &&
-            viewMode !== "tactical" &&
             viewMode !== "save_config" &&
             viewMode !== "vault" &&
             viewMode !== "version-control" &&

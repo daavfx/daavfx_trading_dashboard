@@ -95,7 +95,6 @@ export function VaultSavePage({
       .split(",")
       .map((t) => t.trim())
       .filter(Boolean);
-    const platform = rawTags.find((t) => t === "MT4" || t === "MT5") || "MT5";
     const engineLetters = rawTags
       .filter((t) => /^Engine[A-C]$/i.test(t))
       .map((t) => t.replace(/^Engine/i, "").toUpperCase());
@@ -103,16 +102,16 @@ export function VaultSavePage({
     const groups = rawTags.filter((t) => /^G\d+$/i.test(t)).map((t) => t.toUpperCase());
     const groupToken = groups.length ? groups.join("-") : "G";
     const logicCandidates = rawTags.filter(
-      (t) => /^[A-Z]{2,8}$/.test(t) && !["MT4", "MT5"].includes(t) && !/^G\d+$/.test(t)
+      (t) => /^[A-Z]{2,8}$/.test(t) && !/^G\d+$/.test(t)
     );
     const logicToken = logicCandidates.length ? logicCandidates.slice(0, 3).join("-") : "LOGIC";
-    return { platform, engines, groups: groupToken, logics: logicToken };
+    return { engines, groups: groupToken, logics: logicToken };
   };
 
   const generateName = (nextRecipeId?: string) => {
     const recipe = getRecipe(nextRecipeId || nameRecipe);
-    const { platform, engines, groups, logics } = inferTokens();
-    const base = `${platform}_${recipe.code}_${engines}_${groups}_${logics}`;
+    const { engines, groups, logics } = inferTokens();
+    const base = `${recipe.code}_${engines}_${groups}_${logics}`;
     return `${base}_v1`;
   };
 
@@ -279,7 +278,7 @@ export function VaultSavePage({
                         <Input
                           value={name}
                           onChange={(e) => setName(e.target.value)}
-                          placeholder="e.g. MT5_SCALP_EA_G1_POWER_v1"
+                        placeholder="e.g. SCALP_EA_G1_POWER_v1"
                           className="bg-background border-border-subtle h-10"
                           autoFocus
                         />
@@ -397,7 +396,7 @@ export function VaultSavePage({
                           <SelectValue placeholder="Select format" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="set">MT4/MT5 Set File (.set)</SelectItem>
+                          <SelectItem value="set">Set File (.set)</SelectItem>
                           <SelectItem value="json">JSON Template (.json)</SelectItem>
                         </SelectContent>
                       </Select>

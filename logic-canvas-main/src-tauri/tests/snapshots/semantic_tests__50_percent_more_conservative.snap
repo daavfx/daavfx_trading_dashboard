@@ -1,0 +1,67 @@
+---
+source: tests/semantic_tests.rs
+assertion_line: 34
+expression: result
+---
+{
+  "input": "50% more conservative for engine A",
+  "parsed": {
+    "command_type": "semantic",
+    "target": {
+      "engines": [
+        "A"
+      ]
+    },
+    "params": {},
+    "semantic": {
+      "description": "Increase safety by 50%",
+      "operations": [
+        {
+          "field": "grid",
+          "op": "scale",
+          "factor": 1.5
+        },
+        {
+          "field": "multiplier",
+          "op": "scale",
+          "factor": 0.75
+        },
+        {
+          "field": "initial_lot",
+          "op": "scale",
+          "factor": 0.75
+        }
+      ]
+    }
+  },
+  "result": {
+    "success": true,
+    "message": "[SEMANTIC PREVIEW] Increase safety by 50%",
+    "preview": {
+      "description": "Increase safety by 50%",
+      "operations": [
+        {
+          "factor": 1.5,
+          "field": "grid",
+          "op": "scale"
+        },
+        {
+          "factor": 0.75,
+          "field": "multiplier",
+          "op": "scale"
+        },
+        {
+          "factor": 0.75,
+          "field": "initial_lot",
+          "op": "scale"
+        }
+      ],
+      "target": {
+        "engines": [
+          "A"
+        ]
+      }
+    }
+  },
+  "status": "pass"
+}

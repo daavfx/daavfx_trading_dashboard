@@ -97,18 +97,18 @@ function createDefaultLogicConfig(logicName: string, groupNum: number, isPower: 
     // Trail steps (35 fields)
     trailSteps,
     
-    // Partials (32 fields)
-    partials,
-    
-    // TP/SL
-    useTP: false,
-    takeProfit: 0.0,
-    tpMode: "TPSL_Points",
-    useSL: false,
-    stopLoss: 0.0,
-    slMode: "TPSL_Points",
-    
-    // Break-even
+     // Partials (32 fields)
+     partials,
+     
+     // TP/SL - Dummy/Backup
+     useTP: false,
+     takeProfit: 0.0,
+     tpMode: "TPSL_Points",
+     useSL: false,
+     stopLoss: 0.0,
+     slMode: "TPSL_Points",
+     
+      // Break-even
     breakEvenMode: "Breakeven_Disabled",
     breakEvenActivation: 0.0,
     breakEvenLock: 0.0,
@@ -211,13 +211,13 @@ function generateLogicConfig(
     base.partials[i].hours = (variationSeed + i) % 24;
   }
   
-  // Vary TP/SL
+  // Vary TP/SL (dummy/backup settings)
   base.useTP = variationSeed % 2 === 0;
   base.takeProfit = 50.0 + (variationSeed % 20) * 10;
   base.useSL = variationSeed % 3 === 0;
   base.stopLoss = 30.0 + (variationSeed % 15) * 5;
   
-  // Vary triggers
+   // Vary triggers
   if (groupNum === 1) {
     const triggers: EntryTrigger[] = [
       "Trigger_Immediate",
@@ -329,16 +329,24 @@ function generateGlobalConfig(): GlobalConfig {
 export function generateMassiveCompleteConfig(): MTConfig {
   const logicTypes = ["Power", "Repower", "Scalp", "Stopper", "STO", "SCA", "RPO"];
   const engines: Array<"A" | "B" | "C"> = ["A", "B", "C"];
-  
+  const directions: Array<"B" | "S"> = ["B", "S"];
+
   const generatedEngines: EngineConfig[] = engines.map((engineId, engineIdx) => {
     const groups: GroupConfig[] = [];
-    
+
     for (let groupNum = 1; groupNum <= 15; groupNum++) {
-      const logics: LogicConfig[] = logicTypes.map((logicType, logicIdx) => {
+      const logics: LogicConfig[] = [];
+      logicTypes.forEach((logicType, logicIdx) => {
         const isPower = logicType === "Power";
-        return generateLogicConfig(logicType, groupNum, engineIdx, logicIdx, isPower);
+        directions.forEach((dir) => {
+          const base = generateLogicConfig(logicType, groupNum, engineIdx, logicIdx, isPower);
+          base.logic_id = `${engineId}_${logicType}_${dir}_G${groupNum}`;
+          base.allowBuy = dir === "B";
+          base.allowSell = dir === "S";
+          logics.push(base);
+        });
       });
-      
+
       groups.push({
         group_number: groupNum,
         enabled: true,
@@ -350,7 +358,7 @@ export function generateMassiveCompleteConfig(): MTConfig {
         logics
       });
     }
-    
+
     return {
       engine_id: engineId,
       engine_name: `Engine ${engineId}`,
@@ -358,7 +366,7 @@ export function generateMassiveCompleteConfig(): MTConfig {
       groups
     };
   });
-  
+
   return {
     version: "18.0",
     platform: "MT4",

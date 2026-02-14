@@ -13,7 +13,6 @@ import {
 import { cn } from "@/lib/utils";
 import { useMTFileOps } from "@/hooks/useMTFileOps";
 import { useNavigate } from "react-router-dom";
-import { MemoryWidget } from "@/components/debug/MemoryWidget";
 import type { MTConfig } from "@/types/mt-config";
 
 export type Platform = "mt4" | "mt5" | "python" | "c" | "cpp" | "rust";
@@ -22,8 +21,6 @@ interface TopBarProps {
   onSaveToVault: () => void;
   onOpenVaultManager: () => void;
   onOpenExport?: () => void;
-  platform: Platform;
-  onPlatformChange: (platform: Platform) => void;
   onOpenSettings: () => void;
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
@@ -33,32 +30,17 @@ interface TopBarProps {
   onMagicNumberChange?: (value: number) => void;
   mode?: 1 | 2;
   onModeChange?: (mode: 1 | 2) => void;
+  platform?: Platform;
+  onPlatformChange?: (p: Platform) => void;
+  onLoadConfig?: (config: MTConfig) => void;
 }
 
-const platforms: { id: Platform; label: string }[] = [
-  { id: "mt4", label: "MT4" },
-  { id: "mt5", label: "MT5" },
-  { id: "python", label: "PY" },
-  { id: "c", label: "C" },
-  { id: "cpp", label: "C++" },
-  { id: "rust", label: "RS" },
-];
-
-const platformColors: Record<Platform, { active: string; inactive: string }> = {
-  mt4: { active: "bg-platform-mt4 text-background", inactive: "text-platform-mt4" },
-  mt5: { active: "bg-platform-mt5 text-background", inactive: "text-platform-mt5" },
-  python: { active: "bg-platform-python text-background", inactive: "text-platform-python" },
-  c: { active: "bg-platform-c text-background", inactive: "text-platform-c" },
-  cpp: { active: "bg-platform-cpp text-background", inactive: "text-platform-cpp" },
-  rust: { active: "bg-platform-rust text-background", inactive: "text-platform-rust" },
-};
+ 
 
 export function TopBar({
   onSaveToVault,
   onOpenVaultManager,
   onOpenExport,
-  platform,
-  onPlatformChange,
   onOpenSettings,
   viewMode,
   onViewModeChange,
@@ -68,10 +50,12 @@ export function TopBar({
   onMagicNumberChange,
   mode = 1,
   onModeChange,
+  platform,
+  onPlatformChange,
+  onLoadConfig,
 }: TopBarProps) {
-  // Map UI platform (lowercase) to Hook platform (uppercase)
-  const mtPlatform = (platform === "mt5" ? "MT5" : "MT4");
-  const { exportSetFile, exportSetFileToMTCommonFiles, importSetFile, importSetFileLocally, exportJsonFile, importJsonFile, generateMassiveSetfile, exportMassiveCompleteSetfile, activeSetStatus } = useMTFileOps(mtPlatform, currentConfig);
+  const mtPlatform = platform === "mt5" ? "MT5" : "MT4";
+  const { exportSetFile, importSetFile, exportJsonFile, importJsonFile } = useMTFileOps(mtPlatform, currentConfig, onLoadConfig);
   const navigate = useNavigate();
 
   return (
@@ -88,37 +72,9 @@ export function TopBar({
           </div>
         </div>
 
-        {/* Platform Selector */}
-        <div className="flex items-center bg-background rounded border border-border/60">
-          {platforms.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => onPlatformChange(p.id)}
-              className={cn(
-                "px-2.5 py-1.5 text-[11px] font-medium transition-colors",
-                platform === p.id
-                  ? platformColors[p.id].active
-                  : cn("text-muted-foreground hover:text-foreground", "hover:bg-muted/50")
-              )}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
+        
 
-        {platform === "mt4" && activeSetStatus && (
-          <div
-            className={cn(
-              "px-2 py-1 rounded text-[10px] font-medium border",
-              activeSetStatus.ready
-                ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
-                : "bg-red-500/10 text-red-600 border-red-500/20"
-            )}
-            title={`${activeSetStatus.path}\nexists=${activeSetStatus.exists}\nkeys=${activeSetStatus.keys_total}\nstartKeys=${activeSetStatus.keys_start}`}
-          >
-            {activeSetStatus.ready ? "READY" : "NOT READY"}
-          </div>
-        )}
+        
 
         {/* Tools Dropdown - Consolidated extra features */}
         <DropdownMenu>
@@ -267,15 +223,11 @@ export function TopBar({
           <DropdownMenuContent align="end">
             <DropdownMenuItem className="text-xs" onClick={importSetFile}>
               <FolderOpen className="w-3.5 h-3.5 mr-2" />
-              Load .set file (sync to MT)
+              Load .set file
             </DropdownMenuItem>
-            <DropdownMenuItem className="text-xs" onClick={() => importSetFileLocally()}>
+            <DropdownMenuItem className="text-xs" onClick={importJsonFile}>
               <FolderOpen className="w-3.5 h-3.5 mr-2" />
-              Load .set file (local only)
-            </DropdownMenuItem>
-            <DropdownMenuItem className="text-xs font-bold text-green-600" onClick={generateMassiveSetfile}>
-              <Plus className="w-3.5 h-3.5 mr-2" />
-              Generate MASSIVE Setfile (15×3×7)
+              Load .json file
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -296,17 +248,10 @@ export function TopBar({
             <DropdownMenuItem className="text-xs" onClick={exportSetFile}>
               Quick Export (.set)
             </DropdownMenuItem>
-            <DropdownMenuItem className="text-xs" onClick={exportSetFileToMTCommonFiles}>
-              Sync ACTIVE.set to MT Common
-            </DropdownMenuItem>
             <DropdownMenuItem className="text-xs" onClick={exportJsonFile}>
               Quick Export (.json)
             </DropdownMenuItem>
-            <div className="h-px bg-border my-1" />
-            <DropdownMenuItem className="text-xs font-bold text-green-600 bg-green-500/10" onClick={exportMassiveCompleteSetfile}>
-              <Plus className="w-3.5 h-3.5 mr-2" />
-              Export MASSIVE Complete (55,500+ inputs)
-            </DropdownMenuItem>
+            
           </DropdownMenuContent>
         </DropdownMenu>
 
@@ -339,9 +284,6 @@ export function TopBar({
           <Settings className="w-4 h-4" />
         </Button>
 
-        {/* Memory Monitor - For debugging memory leaks */}
-        <MemoryWidget />
-        
         <Button 
           variant="ghost" 
           size="sm" 

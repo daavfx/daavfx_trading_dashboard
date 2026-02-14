@@ -3,10 +3,6 @@ import { motion } from "framer-motion";
 import {
   X,
   Settings,
-  Palette,
-  Monitor,
-  Grid3X3,
-  Type,
   Save,
   RotateCcw,
   Keyboard,
@@ -15,7 +11,6 @@ import {
   HardDrive,
   ArrowLeft,
   ChevronRight,
-  Check,
   Zap,
   Home,
   LayoutGrid,
@@ -26,9 +21,6 @@ import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { invoke } from "@tauri-apps/api/core";
-import { open as openDialog } from "@tauri-apps/plugin-dialog";
-import { toast } from "sonner";
 import { useSettings } from "@/contexts/SettingsContext";
 
 interface SettingsPageProps {
@@ -38,20 +30,7 @@ interface SettingsPageProps {
   onNavigateToChat?: () => void;
 }
 
-const accentColors = [
-  { id: "gold", color: "#B8860B", label: "Gold" },
-  { id: "blue", color: "#3B82F6", label: "Blue" },
-  { id: "emerald", color: "#10B981", label: "Emerald" },
-  { id: "purple", color: "#8B5CF6", label: "Purple" },
-  { id: "rose", color: "#F43F5E", label: "Rose" },
-  { id: "orange", color: "#F97316", label: "Orange" },
-];
-
-const densityOptions = [
-  { id: "compact", label: "Compact", description: "Dense layout for power users" },
-  { id: "comfortable", label: "Comfortable", description: "Balanced spacing" },
-  { id: "spacious", label: "Spacious", description: "More breathing room" },
-];
+// appearance controls removed
 
 export function SettingsPage({ 
   onClose, 
@@ -60,56 +39,10 @@ export function SettingsPage({
   onNavigateToChat 
 }: SettingsPageProps) {
   const { settings, updateSetting, saveSettings, resetSettings, hasChanges } = useSettings();
-  const [activeTab, setActiveTab] = useState<"appearance" | "behavior" | "data">("appearance");
-  const [mt4Path, setMt4Path] = useState<string | null>(null);
-  const [mt5Path, setMt5Path] = useState<string | null>(null);
-
-  const setBridgePath = async (platform: "MT4" | "MT5", path: string) => {
-    try {
-      await invoke("set_mt_path", { platform, path });
-      if (platform === "MT4") setMt4Path(path);
-      else setMt5Path(path);
-      toast.success(`Set ${platform} path`);
-    } catch (err) {
-      toast.error(`Failed to set ${platform} path: ${err}`);
-    }
-  };
-
-  const handleDetectPath = async (platform: "MT4" | "MT5") => {
-    try {
-      const cmd = platform === "MT4" ? "get_default_mt4_path" : "get_default_mt5_path";
-      const path = await invoke<string>(cmd);
-      await setBridgePath(platform, path);
-    } catch (err) {
-      toast.error(`Could not detect ${platform} path: ${err}`);
-    }
-  };
-
-  const handleBrowsePath = async (platform: "MT4" | "MT5") => {
-    try {
-      const filePath = await openDialog({
-        filters: [{ name: "Config JSON", extensions: ["json"] }],
-        multiple: false,
-      });
-      if (!filePath) return;
-      const path = Array.isArray(filePath) ? filePath[0] : filePath;
-      await setBridgePath(platform, String(path));
-    } catch (err) {
-      toast.error(`Failed to select ${platform} path: ${err}`);
-    }
-  };
-
-  const handleTestBridge = async (platform: "MT4" | "MT5") => {
-    try {
-      await invoke("load_mt_config", { platform });
-      toast.success(`${platform} bridge OK (config loadable)`);
-    } catch (err) {
-      toast.error(`Failed to load ${platform} config: ${err}`);
-    }
-  };
+  const [activeTab, setActiveTab] = useState<"behavior" | "data">("behavior");
+  
 
   const tabs = [
-    { id: "appearance" as const, label: "Appearance", icon: Palette },
     { id: "behavior" as const, label: "Behavior", icon: Settings },
     { id: "data" as const, label: "Data & Storage", icon: HardDrive },
   ];
@@ -232,112 +165,7 @@ export function SettingsPage({
         {/* Content */}
         <ScrollArea className="flex-1 p-8">
           <div className="max-w-3xl mx-auto space-y-8">
-            {activeTab === "appearance" && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="space-y-8"
-              >
-                {/* Theme Section */}
-                <section className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <Monitor className="w-5 h-5 text-primary" />
-                    <h2 className="text-lg font-semibold">Theme</h2>
-                  </div>
-                  <div className="grid grid-cols-3 gap-3">
-                    {(["dark", "light", "system"] as const).map((theme) => (
-                      <button
-                        key={theme}
-                        onClick={() => updateSetting("theme", theme)}
-                        className={cn(
-                          "px-4 py-4 rounded-xl border-2 transition-all duration-200 capitalize",
-                          settings.theme === theme
-                            ? "bg-primary/10 border-primary text-primary"
-                            : "border-border/40 hover:border-border text-muted-foreground hover:text-foreground"
-                        )}
-                      >
-                        <div className="text-sm font-medium">{theme}</div>
-                      </button>
-                    ))}
-                  </div>
-                </section>
-
-                {/* Accent Color Section */}
-                <section className="space-y-4">
-                  <h2 className="text-lg font-semibold">Accent Color</h2>
-                  <div className="flex gap-3">
-                    {accentColors.map((color) => (
-                      <button
-                        key={color.id}
-                        onClick={() => updateSetting("accentColor", color.id)}
-                        className={cn(
-                          "w-12 h-12 rounded-xl border-2 transition-all duration-200 hover:scale-110",
-                          settings.accentColor === color.id
-                            ? "border-foreground scale-110 shadow-lg"
-                            : "border-transparent hover:border-foreground/30"
-                        )}
-                        style={{ backgroundColor: color.color }}
-                        title={color.label}
-                      >
-                        {settings.accentColor === color.id && (
-                          <Check className="w-5 h-5 text-white mx-auto drop-shadow-md" />
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </section>
-
-                {/* Density Section */}
-                <section className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <Grid3X3 className="w-5 h-5 text-primary" />
-                    <h2 className="text-lg font-semibold">Density</h2>
-                  </div>
-                  <div className="space-y-3">
-                    {densityOptions.map((option) => (
-                      <button
-                        key={option.id}
-                        onClick={() => updateSetting("density", option.id as any)}
-                        className={cn(
-                          "w-full px-5 py-4 rounded-xl border-2 text-left transition-all duration-200",
-                          settings.density === option.id
-                            ? "bg-primary/10 border-primary"
-                            : "border-border/40 hover:border-border"
-                        )}
-                      >
-                        <div className="text-sm font-medium">{option.label}</div>
-                        <div className="text-xs text-muted-foreground mt-1">{option.description}</div>
-                      </button>
-                    ))}
-                  </div>
-                </section>
-
-                {/* Font Size Section */}
-                <section className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <Type className="w-5 h-5 text-primary" />
-                    <h2 className="text-lg font-semibold">Font Size</h2>
-                    <span className="text-sm text-muted-foreground ml-auto">{settings.fontSize}px</span>
-                  </div>
-                  <Slider
-                    value={[settings.fontSize]}
-                    onValueChange={([v]) => updateSetting("fontSize", v)}
-                    min={11}
-                    max={16}
-                    step={1}
-                    className="w-full"
-                  />
-                </section>
-
-                {/* Animations Toggle */}
-                <SettingToggle
-                  label="Animations"
-                  description="Enable smooth transitions and animations throughout the interface"
-                  checked={settings.animations}
-                  onCheckedChange={(v) => updateSetting("animations", v)}
-                />
-              </motion.div>
-            )}
+            {/* appearance tab removed */}
 
             {activeTab === "behavior" && (
               <motion.div
@@ -433,84 +261,7 @@ export function SettingsPage({
                 animate={{ opacity: 1, y: 0 }}
                 className="space-y-6"
               >
-                {/* MT4 / MT5 Bridge */}
-                <section className="p-6 rounded-xl border border-border bg-muted/10 space-y-4">
-                  <div className="flex items-center gap-3">
-                    <HardDrive className="w-5 h-5 text-primary" />
-                    <h2 className="text-lg font-semibold">MT4 / MT5 Bridge</h2>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Configure connection to your MetaTrader config files (DAAVFX_Config.json).
-                  </p>
-
-                  {/* MT4 */}
-                  <div className="space-y-3 pt-2">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium">MT4</span>
-                      <span className="text-sm text-muted-foreground truncate max-w-[300px]">
-                        {mt4Path || "Path not set"}
-                      </span>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDetectPath("MT4")}
-                      >
-                        Detect
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleBrowsePath("MT4")}
-                      >
-                        Browse
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleTestBridge("MT4")}
-                      >
-                        Test
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="border-t border-border/40" />
-
-                  {/* MT5 */}
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium">MT5</span>
-                      <span className="text-sm text-muted-foreground truncate max-w-[300px]">
-                        {mt5Path || "Path not set"}
-                      </span>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDetectPath("MT5")}
-                      >
-                        Detect
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleBrowsePath("MT5")}
-                      >
-                        Browse
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleTestBridge("MT5")}
-                      >
-                        Test
-                      </Button>
-                    </div>
-                  </div>
-                </section>
+                
 
                 {/* Grid Lines */}
                 <SettingToggle

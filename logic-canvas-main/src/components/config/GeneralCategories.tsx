@@ -22,22 +22,22 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ConfigField } from "./ConfigField";
-import { Platform } from "@/components/layout/TopBar";
-import type { GeneralConfig, Platform as MTPlatform } from "@/types/mt-config";
+import type { GeneralConfig } from "@/types/mt-config";
 import { generalInputs } from "@/data/general-inputs";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import type { Platform } from "@/components/layout/TopBar";
 
 interface GeneralCategoriesProps {
-  platform: Platform;
   allCollapsed?: boolean;
   generalConfig?: GeneralConfig;
-  mtPlatform?: MTPlatform;
   selectedCategory?: string;
   onSelectGeneralCategory?: (category: string | null) => void;
   onConfigChange?: (config: GeneralConfig) => void;
+  platform?: Platform;
+  mtPlatform?: Platform;
 }
 
 export const generalCategoriesList = [
@@ -53,13 +53,13 @@ export const generalCategoriesList = [
 ] as const;
 
 export function GeneralCategories({ 
-  platform, 
   allCollapsed, 
   generalConfig, 
-  mtPlatform, 
   selectedCategory,
   onSelectGeneralCategory,
-  onConfigChange
+  onConfigChange,
+  platform,
+  mtPlatform
 }: GeneralCategoriesProps) {
   const [expandedCategories, setExpandedCategories] = useState<string[]>(["risk_management"]);
 

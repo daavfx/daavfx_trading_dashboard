@@ -11,14 +11,14 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { Platform } from "@/components/layout/TopBar";
+import type { Platform } from "@/components/layout/TopBar";
 
 interface BatchEditPanelProps {
   selectedCount: { engines: number; groups: number; logics: number };
-  platform: Platform;
   onClearEngines?: () => void;
   onClearGroups?: () => void;
   onClearLogics?: () => void;
+  platform?: Platform;
 }
 
 const filterTags = ["trading", "risk", "lot", "trail", "grid", "hedge", "tp", "sl"];
@@ -26,10 +26,10 @@ const sortOptions = ["Name", "Type", "Category", "Modified"];
 
 export function BatchEditPanel({ 
   selectedCount, 
-  platform,
   onClearEngines,
   onClearGroups,
   onClearLogics,
+  platform,
 }: BatchEditPanelProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilters, setActiveFilters] = useState<string[]>([]);

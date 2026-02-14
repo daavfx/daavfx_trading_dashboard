@@ -158,7 +158,7 @@ export class MemorySystemManager {
     }
 
     // Check if this combination already exists
-    let existingPref = this.state.userPreferences.find(pref =>
+    const existingPref = this.state.userPreferences.find(pref =>
       this.isSameParameterCombination(pref.parameterCombination, paramCombo) && pref.userId === entry.userId
     );
 
@@ -196,7 +196,7 @@ export class MemorySystemManager {
     );
 
     // Check if this combination matches any existing pattern
-    let matchedPattern = this.state.strategyPatterns.find(pattern =>
+    const matchedPattern = this.state.strategyPatterns.find(pattern =>
       this.isSubsetOf(paramKeys, Object.keys(pattern.parameterCombinations[0] || {}))
     );
 
@@ -248,7 +248,7 @@ export class MemorySystemManager {
       }
 
       // Find existing prediction for this parameter
-      let existingPred = this.state.changePredictions[paramKey].find(p => p.parameter === change.parameter);
+      const existingPred = this.state.changePredictions[paramKey].find(p => p.parameter === change.parameter);
 
       if (existingPred) {
         // Update existing prediction using learning rate

@@ -104,7 +104,16 @@ export function ChatPanel({
         return m ? parseInt(m[1], 10) : null;
       })
       .filter((n): n is number => typeof n === "number" && !Number.isNaN(n)),
-    logics: selectedLogics.map((l) => l.toUpperCase()),
+    logics: selectedLogics
+      .map((l) => {
+        const trimmed = String(l).trim();
+        const mColon = trimmed.match(/^([A-Z])\s*[:/\\-]\s*(.+)$/i);
+        if (mColon) {
+          return `${mColon[1].toUpperCase()}:${String(mColon[2]).trim().toUpperCase()}`;
+        }
+        return trimmed.toUpperCase();
+      })
+      .filter(Boolean),
   };
 
   const targetLabelParts: string[] = [];

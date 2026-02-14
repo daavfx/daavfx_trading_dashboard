@@ -1,16 +1,4 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { invoke } from "@tauri-apps/api/core";
-
-export interface MT4SettingsState {
-  autoDetected: boolean;
-  terminalPath: string;
-  commonFilesPath: string;
-  profilesPath: string;
-  brokerName: string;
-  isValid: boolean;
-  lastTestResult: string | null;
-  lastTestTime: number | null;
-}
 
 export interface SettingsState {
   // Appearance
@@ -33,7 +21,6 @@ export interface SettingsState {
   // Data & Storage
   vaultPath: string;
   exportFormat: "set" | "json";
-  autoExportToMT4: boolean;
   backupOnExport: boolean;
   maxVaultFiles: number;
   
@@ -52,10 +39,6 @@ export interface SettingsState {
   msLearningRate: number;
   msEnabled: boolean;
   
-  // MT4 Integration
-  mt4: MT4SettingsState;
-  mt5: MT4SettingsState;
-  autoDetectMTPaths: boolean;
   
   // Trading Defaults
   defaultLotSize: number;
@@ -79,28 +62,10 @@ export interface SettingsState {
   unitSymbol: string;
   unitModeBySymbol: Record<string, "direct_price" | "fx_pips">;
   
-  // MT4/MT5 Paths
-  mt4CommonFilesPath: string | null;
-  mt5CommonFilesPath: string | null;
+  
 }
 
-interface MT4TestResult {
-  success: boolean;
-  timestamp: number;
-  message: string;
-  path: string;
-}
-
-export const defaultMT4Settings: MT4SettingsState = {
-  autoDetected: false,
-  terminalPath: "",
-  commonFilesPath: "",
-  profilesPath: "",
-  brokerName: "",
-  isValid: false,
-  lastTestResult: null,
-  lastTestTime: null,
-};
+ 
 
 export const defaultSettings: SettingsState = {
   // Appearance
@@ -123,7 +88,6 @@ export const defaultSettings: SettingsState = {
   // Data & Storage
   vaultPath: "./Vault_Presets",
   exportFormat: "set",
-  autoExportToMT4: true,
   backupOnExport: false,
   maxVaultFiles: 100,
   
@@ -142,10 +106,6 @@ export const defaultSettings: SettingsState = {
   msLearningRate: 0.1,
   msEnabled: true,
   
-  // MT4 Integration
-  mt4: { ...defaultMT4Settings },
-  mt5: { ...defaultMT4Settings },
-  autoDetectMTPaths: true,
   
   // Trading Defaults
   defaultLotSize: 0.01,
@@ -169,9 +129,7 @@ export const defaultSettings: SettingsState = {
   unitSymbol: "",
   unitModeBySymbol: {},
   
-  // MT4/MT5 Paths
-  mt4CommonFilesPath: null,
-  mt5CommonFilesPath: null,
+  
 };
 
 interface SettingsContextType {
@@ -180,14 +138,6 @@ interface SettingsContextType {
   saveSettings: () => void;
   resetSettings: () => void;
   hasChanges: boolean;
-  testMT4Connection: () => Promise<boolean>;
-  testMT5Connection: () => Promise<boolean>;
-  getMT4Settings: () => Promise<MT4SettingsState>;
-  getMT5Settings: () => Promise<MT4SettingsState>;
-  setMT4Path: (path: string) => Promise<boolean>;
-  setMT5Path: (path: string) => Promise<boolean>;
-  autoDetectMT4: () => Promise<MT4SettingsState>;
-  autoDetectMT5: () => Promise<MT4SettingsState>;
 }
 
 const STORAGE_KEY = "daavfx-settings";
@@ -229,123 +179,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem(STORAGE_KEY);
   };
 
-  // MT4 Integration functions
-  const testMT4Connection = async (): Promise<boolean> => {
-    try {
-      const result = await invoke<boolean>("test_mt4_connection");
-      
-      // Update last test result
-      const testResult: MT4TestResult = {
-        success: result,
-        timestamp: Date.now(),
-        message: result ? "Connection successful" : "Cannot access MT4 Common Files",
-        path: settings.mt4.commonFilesPath,
-      };
-      
-      updateSetting("mt4", {
-        ...settings.mt4,
-        lastTestResult: JSON.stringify(testResult),
-        lastTestTime: Date.now(),
-        isValid: result,
-      });
-      
-      return result;
-    } catch (e) {
-      console.error("MT4 test failed:", e);
-      return false;
-    }
-  };
-
-  const testMT5Connection = async (): Promise<boolean> => {
-    try {
-      const result = await invoke<boolean>("test_mt5_connection");
-      
-      const testResult: MT4TestResult = {
-        success: result,
-        timestamp: Date.now(),
-        message: result ? "Connection successful" : "Cannot access MT5 Common Files",
-        path: settings.mt5.commonFilesPath,
-      };
-      
-      updateSetting("mt5", {
-        ...settings.mt5,
-        lastTestResult: JSON.stringify(testResult),
-        lastTestTime: Date.now(),
-        isValid: result,
-      });
-      
-      return result;
-    } catch (e) {
-      console.error("MT5 test failed:", e);
-      return false;
-    }
-  };
-
-  const getMT4Settings = async (): Promise<MT4SettingsState> => {
-    try {
-      const result = await invoke<MT4SettingsState>("get_mt4_settings");
-      updateSetting("mt4", result);
-      return result;
-    } catch (e) {
-      console.error("Failed to get MT4 settings:", e);
-      return settings.mt4;
-    }
-  };
-
-  const getMT5Settings = async (): Promise<MT4SettingsState> => {
-    try {
-      const result = await invoke<MT4SettingsState>("get_mt5_settings");
-      updateSetting("mt5", result);
-      return result;
-    } catch (e) {
-      console.error("Failed to get MT5 settings:", e);
-      return settings.mt5;
-    }
-  };
-
-  const setMT4Path = async (path: string): Promise<boolean> => {
-    try {
-      const result = await invoke<MT4SettingsState>("configure_mt4_path", { path });
-      updateSetting("mt4", { ...result, autoDetected: false });
-      return result.isValid;
-    } catch (e) {
-      console.error("Failed to set MT4 path:", e);
-      return false;
-    }
-  };
-
-  const setMT5Path = async (path: string): Promise<boolean> => {
-    try {
-      const result = await invoke<MT4SettingsState>("configure_mt5_path", { path });
-      updateSetting("mt5", { ...result, autoDetected: false });
-      return result.isValid;
-    } catch (e) {
-      console.error("Failed to set MT5 path:", e);
-      return false;
-    }
-  };
-
-  const autoDetectMT4 = async (): Promise<MT4SettingsState> => {
-    try {
-      const result = await invoke<MT4SettingsState>("auto_detect_mt4_paths");
-      updateSetting("mt4", { ...result, autoDetected: true });
-      return result;
-    } catch (e) {
-      console.error("MT4 auto-detect failed:", e);
-      return settings.mt4;
-    }
-  };
-
-  const autoDetectMT5 = async (): Promise<MT4SettingsState> => {
-    try {
-      const result = await invoke<MT4SettingsState>("auto_detect_mt5_paths");
-      updateSetting("mt5", { ...result, autoDetected: true });
-      return result;
-    } catch (e) {
-      console.error("MT5 auto-detect failed:", e);
-      return settings.mt5;
-    }
-  };
+  
 
   return (
     <SettingsContext.Provider
@@ -355,14 +189,6 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         saveSettings,
         resetSettings,
         hasChanges,
-        testMT4Connection,
-        testMT5Connection,
-        getMT4Settings,
-        getMT5Settings,
-        setMT4Path,
-        setMT5Path,
-        autoDetectMT4,
-        autoDetectMT5,
       }}
     >
       {children}

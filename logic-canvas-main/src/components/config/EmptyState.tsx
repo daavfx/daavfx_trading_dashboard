@@ -1,5 +1,12 @@
 import { motion } from "framer-motion";
-import { Zap, ArrowRight, FileUp, FileJson, Grid3X3, MousePointerClick } from "lucide-react";
+import {
+  Zap,
+  ArrowRight,
+  FileUp,
+  FileJson,
+  Grid3X3,
+  MousePointerClick,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -15,9 +22,10 @@ export function EmptyState({ onLoadSetfile, onChooseEngine }: EmptyStateProps) {
   const handleLoadFile = async (format: ".set" | "JSON") => {
     try {
       const filePath = await open({
-        filters: format === ".set"
-          ? [{ name: "MT4/MT5 Settings", extensions: ["set"] }]
-          : [{ name: "JSON", extensions: ["json"] }],
+        filters:
+          format === ".set"
+            ? [{ name: "Set File", extensions: ["set"] }]
+            : [{ name: "JSON", extensions: ["json"] }],
         multiple: false,
       });
 
@@ -34,33 +42,56 @@ export function EmptyState({ onLoadSetfile, onChooseEngine }: EmptyStateProps) {
             config: MTConfig | null;
           }
 
-          const result = await invoke<ParseResult>("parse_massive_setfile", { filePath });
-          
+          const result = await invoke<ParseResult>("parse_massive_setfile", {
+            filePath,
+          });
+
           if (result.success && result.config) {
             config = result.config;
             if (result.logic_directions_found >= 630) {
-              toast.success(`Loaded MASSIVE setfile: ${result.total_inputs_parsed} inputs (${result.logic_directions_found} logic-directions)`);
+              toast.success(
+                `Loaded MASSIVE setfile: ${result.total_inputs_parsed} inputs (${result.logic_directions_found} logic-directions)`,
+              );
             } else {
-              toast.success(`Loaded ${result.total_inputs_parsed} inputs (${result.logic_directions_found} logic-directions)`);
+              toast.success(
+                `Loaded ${result.total_inputs_parsed} inputs (${result.logic_directions_found} logic-directions)`,
+              );
             }
           } else {
             // Fallback to standard parser
-            config = await invoke<MTConfig>("import_set_file", { filePath });
-            toast.success(`Loaded ${format} file (${config.total_inputs} inputs)`);
+            config = await invoke<MTConfig>("import_set_file", {
+              filePath: filePath,
+            });
+            toast.success(
+              `Loaded ${format} file (${config.total_inputs} inputs)`,
+            );
           }
         } catch (parseErr) {
           // Fallback to standard parser
-          console.warn("Massive parser failed, using standard parser:", parseErr);
-          config = await invoke<MTConfig>("import_set_file", { filePath });
-          toast.success(`Loaded ${format} file (${config.total_inputs} inputs)`);
+          console.warn(
+            "Massive parser failed, using standard parser:",
+            parseErr,
+          );
+          config = await invoke<MTConfig>("import_set_file", {
+            filePath: filePath,
+          });
+          toast.success(
+            `Loaded ${format} file (${config.total_inputs} inputs)`,
+          );
         }
       } else {
-        config = await invoke<MTConfig>("import_json_file", { filePath });
+        config = await invoke<MTConfig>("import_json_file", {
+          filePath: filePath,
+        });
       }
 
       const name = Array.isArray(filePath)
-        ? String(filePath[0]).split(/[/\\\\]/).pop() || String(filePath[0])
-        : String(filePath).split(/[/\\\\]/).pop() || String(filePath);
+        ? String(filePath[0])
+            .split(/[/\\\\]/)
+            .pop() || String(filePath[0])
+        : String(filePath)
+            .split(/[/\\\\]/)
+            .pop() || String(filePath);
       config = {
         ...config,
         current_set_name: name,
@@ -96,7 +127,9 @@ export function EmptyState({ onLoadSetfile, onChooseEngine }: EmptyStateProps) {
           >
             <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-amber-500/30 to-yellow-600/20 blur-xl animate-pulse" />
             <div className="relative w-full h-full rounded-2xl bg-gradient-to-br from-amber-500 via-yellow-500 to-amber-600 flex items-center justify-center shadow-2xl border border-amber-400/30">
-              <span className="text-black font-black text-3xl tracking-tight">D</span>
+              <span className="text-black font-black text-3xl tracking-tight">
+                D
+              </span>
             </div>
             <motion.div
               initial={{ opacity: 0, x: 10 }}
@@ -107,16 +140,18 @@ export function EmptyState({ onLoadSetfile, onChooseEngine }: EmptyStateProps) {
               RYIUK
             </motion.div>
           </motion.div>
-          
-          <motion.h1 
+
+          <motion.h1
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
             className="text-3xl font-black text-foreground mb-1 tracking-tight"
           >
-            <span className="bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-500 bg-clip-text text-transparent">DAAVFX</span>
+            <span className="bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-500 bg-clip-text text-transparent">
+              DAAVFX
+            </span>
           </motion.h1>
-          <motion.p 
+          <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
@@ -127,7 +162,7 @@ export function EmptyState({ onLoadSetfile, onChooseEngine }: EmptyStateProps) {
         </div>
 
         {/* Quick Steps - Compact Horizontal */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
@@ -140,8 +175,12 @@ export function EmptyState({ onLoadSetfile, onChooseEngine }: EmptyStateProps) {
                   <step.icon className="w-3 h-3 text-primary" />
                 </div>
                 <div>
-                  <div className="text-[10px] font-semibold text-foreground leading-tight">{step.title}</div>
-                  <div className="text-[8px] text-muted-foreground leading-tight">{step.desc}</div>
+                  <div className="text-[10px] font-semibold text-foreground leading-tight">
+                    {step.title}
+                  </div>
+                  <div className="text-[8px] text-muted-foreground leading-tight">
+                    {step.desc}
+                  </div>
                 </div>
               </div>
               {index < steps.length - 1 && (
@@ -159,22 +198,33 @@ export function EmptyState({ onLoadSetfile, onChooseEngine }: EmptyStateProps) {
           className="text-center mb-6 px-4 py-2 rounded-lg bg-amber-500/5 border border-amber-500/20 max-w-md mx-auto"
         >
           <span className="text-[10px] text-amber-500/80">
-            <strong>TIP:</strong> Group 1 is unique — multi-select logics/engines only. Groups 2-20 support full multi-select.
+            <strong>TIP:</strong> Group 1 is unique — multi-select
+            logics/engines only. Groups 2-20 support full multi-select.
           </span>
         </motion.div>
 
         {/* Quick actions */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
           className="flex justify-center gap-3"
         >
-          <Button variant="outline" size="lg" onClick={() => handleLoadFile(".set")} className="gap-2 h-10">
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={() => handleLoadFile(".set")}
+            className="gap-2 h-10"
+          >
             <FileUp className="w-4 h-4" />
             Load .set
           </Button>
-          <Button variant="outline" size="lg" onClick={() => handleLoadFile("JSON")} className="gap-2 h-10">
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={() => handleLoadFile("JSON")}
+            className="gap-2 h-10"
+          >
             <FileJson className="w-4 h-4" />
             Load JSON
           </Button>

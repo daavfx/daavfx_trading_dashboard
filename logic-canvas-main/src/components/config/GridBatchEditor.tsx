@@ -20,13 +20,11 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { Platform } from "@/components/layout/TopBar";
 import { useMTConfig } from "@/hooks/useMTConfig";
-import type { Platform as MTPlatform, MTConfig } from "@/types/mt-config";
+import type { MTConfig } from "@/types/mt-config";
 import { toast } from "sonner";
 
 interface GridBatchEditorProps {
-  platform: Platform;
   selectedEngines: string[];
   selectedGroups: string[];
   selectedLogics: string[];
@@ -53,15 +51,9 @@ const FORMULA_PRESETS = [
   { id: "custom", label: "Custom Formula", formula: "", example: "Your formula" },
 ];
 
-// Helper to map UI platform to MT platform
-const platformToMT = (p: Platform): MTPlatform => {
-  if (p === "mt4") return "MT4";
-  if (p === "mt5") return "MT5";
-  return "MT4"; // fallback
-};
+const mtPlatformFixed = "MT4" as const;
 
 export function GridBatchEditor({
-  platform,
   selectedEngines,
   selectedGroups,
   selectedLogics,
@@ -81,8 +73,7 @@ export function GridBatchEditor({
   const [previewMode, setPreviewMode] = useState(false);
 
   // Get config and save function
-  const mtPlatform = platformToMT(platform);
-  const { config, saveConfig } = useMTConfig(mtPlatform);
+  const { config, saveConfig } = useMTConfig(mtPlatformFixed);
 
   const filteredInputs = useMemo(() => {
     return availableInputs.filter(

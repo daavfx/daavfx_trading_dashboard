@@ -103,7 +103,7 @@ export function EnhancedTooltip({
       {helpEntry.mt4Variable && (
         <div className="pt-1">
           <p className="text-xs text-muted-foreground">
-            MT4 Variable:{" "}
+            EA Variable:{" "}
             <span className="font-mono bg-muted px-1 rounded">
               {helpEntry.mt4Variable}
             </span>

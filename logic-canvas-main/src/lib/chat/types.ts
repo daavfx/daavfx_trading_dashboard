@@ -11,6 +11,7 @@ export type CommandType =
   | "compare"     // "compare grid between group 1 and group 5"
   | "reset"       // "reset group 3 to defaults"
   | "formula"     // "apply formula grid * 1.5 to groups 2-8"
+  | "import"      // "import .set content"
   | "unknown";
 
 export type RiskLevel = "low" | "medium" | "high" | "critical";
@@ -23,7 +24,7 @@ export interface RiskAssessment {
 
 export interface TransactionPlan {
   id: string;
-  type: "set" | "progression" | "copy" | "formula" | "reset";
+  type: "set" | "progression" | "copy" | "formula" | "reset" | "import";
   description: string;
   preview: ChangePreview[];
   changes?: any[]; // Added to support legacy/flexible usage

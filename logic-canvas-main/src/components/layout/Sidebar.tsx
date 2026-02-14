@@ -20,34 +20,31 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { generalCategoriesList } from "@/components/config/GeneralCategories";
-import { Platform } from "./TopBar";
+import { useVersionControl } from "@/hooks/useVersionControl";
+import type { MTConfig } from "@/types/mt-config";
+import type { Platform } from "@/components/layout/TopBar";
 
 const engines = ["Engine A", "Engine B", "Engine C"] as const;
 const groups = Array.from({ length: 20 }, (_, i) => `Group ${i + 1}`);
 const logics = ["POWER", "REPOWER", "SCALPER", "STOPPER", "STO", "SCA", "RPO"] as const;
 
-export type ViewMode = "logics" | "general" | "batch" | "tactical" | "vault" | "version-control" | "analytics" | "undo-redo" | "memory" | "grouping" | "collaboration";
+export type ViewMode = "logics" | "general" | "batch" | "vault" | "version-control" | "analytics" | "undo-redo" | "memory" | "grouping" | "collaboration" | "save_config";
 
 interface SidebarProps {
   selectedEngines: string[];
   selectedGroups: string[];
   selectedLogics: string[];
   onSelectionChange: (type: "engines" | "groups" | "logics", items: string[]) => void;
-  platform: Platform;
+  config?: MTConfig | null;
+  onConfigChange?: (config: MTConfig) => void;
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
   selectedGeneralCategory?: string;
   onSelectGeneralCategory?: (category: string) => void;
+  platform?: Platform;
 }
 
-const platformBorder: Record<Platform, string> = {
-  mt4: "border-l-platform-mt4/50",
-  mt5: "border-l-platform-mt5/50",
-  python: "border-l-platform-python/50",
-  c: "border-l-platform-c/50",
-  cpp: "border-l-platform-cpp/50",
-  rust: "border-l-platform-rust/50",
-};
+const sidebarBorderClass = "border-l-platform-mt4/50";
 
 const logicColors: Record<string, string> = {
   POWER: "bg-[hsl(43_80%_50%)]",
@@ -64,11 +61,13 @@ export function Sidebar({
   selectedGroups,
   selectedLogics,
   onSelectionChange,
-  platform,
+  config,
+  onConfigChange,
   viewMode,
   onViewModeChange,
   selectedGeneralCategory,
   onSelectGeneralCategory,
+  platform,
 }: SidebarProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const sidebarRef = useRef<HTMLElement>(null);
@@ -105,6 +104,9 @@ export function Sidebar({
   const expandAll = () => {
     setExpandedSections({ engines: true, groups: true, logics: true, vault: true });
   };
+
+  const { state, createSnapshot, restoreFromSnapshot, getSnapshots } = useVersionControl(config || undefined);
+  const snapshots = state.snapshots;
 
   // Group 1 unique selection logic
   const hasGroup1Selected = selectedGroups.includes("Group 1");
@@ -168,7 +170,7 @@ export function Sidebar({
   return (
     <aside ref={sidebarRef} className={cn(
       "h-full border-r border-border bg-sidebar flex flex-col border-l-2 transition-all duration-200",
-      platformBorder[platform]
+      sidebarBorderClass
     )}>
       {/* View Mode Toggle */}
       <div className={cn("p-3 border-b border-border", isCompact && "p-2")}>
@@ -211,19 +213,6 @@ export function Sidebar({
           >
             <TableProperties className="w-4 h-4" />
             {!isCompact && <span className="w-full truncate text-[9px] font-medium leading-none text-center">Batch</span>}
-          </button>
-          <button
-            onClick={() => onViewModeChange("tactical")}
-            title="Tactical"
-            className={cn(
-              "min-w-0 w-full flex flex-col items-center justify-center gap-0.5 py-1.5 px-1 rounded-md transition-all",
-              viewMode === "tactical"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <Sparkles className="w-4 h-4" />
-            {!isCompact && <span className="w-full truncate text-[9px] font-medium leading-none text-center">Tactical</span>}
           </button>
           <button
             onClick={() => onViewModeChange("vault")}
@@ -310,6 +299,178 @@ export function Sidebar({
                 />
               ))}
             </div>
+          ) : viewMode === "batch" ? (
+            <>
+              <Section
+                title="Batch Workspace"
+                icon={<TableProperties className="w-3.5 h-3.5" />}
+                expanded={true}
+                onToggle={() => {}}
+                compact={isCompact}
+              >
+                <div className="grid grid-cols-2 gap-1">
+                  <button
+                    onClick={() => onViewModeChange("version-control")}
+                    className="text-xs px-2 py-1 rounded-md border border-border/50 hover:bg-muted/30 transition-colors"
+                  >
+                    Version Control
+                  </button>
+                  <button
+                    onClick={() => onViewModeChange("vault")}
+                    className="text-xs px-2 py-1 rounded-md border border-border/50 hover:bg-muted/30 transition-colors"
+                  >
+                    Vault
+                  </button>
+                </div>
+              </Section>
+
+              <Section
+                title="Recent Snapshots"
+                icon={<Sparkles className="w-3.5 h-3.5" />}
+                expanded={true}
+                onToggle={() => {}}
+                compact={isCompact}
+              >
+                <div className="space-y-0.5">
+                  {snapshots.length === 0 ? (
+                    <div className="text-[11px] text-muted-foreground px-2 py-1">No snapshots yet</div>
+                  ) : (
+                    [...snapshots].slice(-6).reverse().map((s) => (
+                      <button
+                        key={s.id}
+                        onClick={() => onViewModeChange("version-control")}
+                        className="w-full text-left text-xs px-2 py-1 rounded-md hover:bg-muted/30 transition-colors"
+                        title={new Date(s.metadata.timestamp).toLocaleString()}
+                      >
+                        {s.metadata.message || "Snapshot"}
+                      </button>
+                    ))
+                  )}
+                </div>
+              </Section>
+
+              <Section
+                title="Source Control"
+                icon={<Sparkles className="w-3.5 h-3.5" />}
+                expanded={true}
+                onToggle={() => {}}
+                compact={isCompact}
+              >
+                <div className="flex gap-2">
+                  <button
+                    onClick={async () => {
+                      if (!config) return;
+                      await createSnapshot(config, "Batch snapshot");
+                    }}
+                    className="text-xs px-2 py-1 rounded-md border border-border/50 hover:bg-muted/30 transition-colors"
+                  >
+                    Create Snapshot
+                  </button>
+                  <button
+                    onClick={async () => {
+                      const snaps = getSnapshots();
+                      if (snaps.length) {
+                        const lastId = snaps[snaps.length - 1].id;
+                        const ok = await restoreFromSnapshot(lastId);
+                        if (ok) {
+                          const last = getSnapshots().find(s => s.id === lastId);
+                          if (last) onConfigChange?.(last.config);
+                        }
+                      }
+                    }}
+                    className="text-xs px-2 py-1 rounded-md border border-border/50 hover:bg-muted/30 transition-colors"
+                  >
+                    Restore Last
+                  </button>
+                </div>
+              </Section>
+
+              <Section
+                title="Bulk Operations"
+                icon={<Zap className="w-3.5 h-3.5" />}
+                expanded={true}
+                onToggle={() => {}}
+                compact={isCompact}
+              >
+                <div className="grid grid-cols-3 gap-1">
+                  <button
+                    onClick={() => {
+                      onViewModeChange("batch");
+                      const groupNums = selectedGroups
+                        .map((g) => {
+                          const m = g.match(/(\d+)/);
+                          return m ? parseInt(m[1], 10) : NaN;
+                        })
+                        .filter((n) => Number.isFinite(n));
+                      window.dispatchEvent(
+                        new CustomEvent("batch-sidebar-command", {
+                          detail: {
+                            action: "apply",
+                            engines: selectedEngines,
+                            groups: groupNums,
+                            logics: selectedLogics,
+                            fields: [],
+                          },
+                        })
+                      );
+                    }}
+                    className="text-xs px-2 py-1 rounded-md border border-border/50 hover:bg-muted/30 transition-colors"
+                  >
+                    Apply All
+                  </button>
+                  <button
+                    onClick={() => {
+                      onViewModeChange("batch");
+                      const groupNums = selectedGroups
+                        .map((g) => {
+                          const m = g.match(/(\d+)/);
+                          return m ? parseInt(m[1], 10) : NaN;
+                        })
+                        .filter((n) => Number.isFinite(n));
+                      window.dispatchEvent(
+                        new CustomEvent("batch-sidebar-command", {
+                          detail: {
+                            action: "apply 1-5",
+                            engines: selectedEngines,
+                            groups: groupNums,
+                            logics: selectedLogics,
+                            fields: [],
+                          },
+                        })
+                      );
+                    }}
+                    className="text-xs px-2 py-1 rounded-md border border-border/50 hover:bg-muted/30 transition-colors"
+                  >
+                    Apply 1-5
+                  </button>
+                  <button
+                    onClick={() => {
+                      onViewModeChange("batch");
+                      const groupNums = selectedGroups
+                        .map((g) => {
+                          const m = g.match(/(\d+)/);
+                          return m ? parseInt(m[1], 10) : NaN;
+                        })
+                        .filter((n) => Number.isFinite(n));
+                      window.dispatchEvent(
+                        new CustomEvent("batch-sidebar-command", {
+                          detail: {
+                            action: "apply remaining",
+                            engines: selectedEngines,
+                            groups: groupNums,
+                            logics: selectedLogics,
+                            fields: [],
+                          },
+                        })
+                      );
+                    }}
+                    className="text-xs px-2 py-1 rounded-md border border-border/50 hover:bg-muted/30 transition-colors"
+                  >
+                    Apply Remaining
+                  </button>
+                </div>
+              </Section>
+            </>
           ) : (
             <>
               <Section

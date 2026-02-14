@@ -187,6 +187,7 @@ export function runExecutorTests(): { passed: number; failed: number; total: num
   const executor = new CommandExecutor();
   const config = createTestConfig();
   executor.setConfig(config);
+  executor.setAutoApprove(true);
 
   let passed = 0;
   let failed = 0;

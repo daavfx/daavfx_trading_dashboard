@@ -250,7 +250,7 @@ export function VaultSaveModal({ open, onClose, onSave, defaultName = "", defaul
                         <SelectValue placeholder="Select format" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="set">MT4/MT5 Set File (.set)</SelectItem>
+                        <SelectItem value="set">Set File (.set)</SelectItem>
                         <SelectItem value="json">JSON Template (.json)</SelectItem>
                       </SelectContent>
                     </Select>

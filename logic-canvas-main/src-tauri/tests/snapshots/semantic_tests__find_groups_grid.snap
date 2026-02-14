@@ -1,0 +1,20 @@
+---
+source: tests/semantic_tests.rs
+assertion_line: 140
+expression: result
+---
+{
+  "input": "find groups with grid > 500",
+  "parsed": {
+    "command_type": "query",
+    "target": {
+      "field": "grid"
+    },
+    "params": {}
+  },
+  "result": {
+    "success": true,
+    "message": "Query for field: Some(\"grid\")"
+  },
+  "status": "pass"
+}

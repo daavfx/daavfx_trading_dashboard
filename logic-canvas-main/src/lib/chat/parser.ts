@@ -6,11 +6,12 @@ import { parseSemanticCommand, type SemanticCommand } from "./semanticEngine";
 // Field name aliases - includes V17.04+ Reverse/Hedge and TrailStep fields
 const FIELD_ALIASES: Record<string, string> = {
   // Core
+  "initial_lot": "initial_lot",
   "lot": "initial_lot",
   "lots": "initial_lot",
   "initial": "initial_lot",
-  "mult": "multiplier",
   "multiplier": "multiplier",
+  "mult": "multiplier",
   "grid": "grid",
   "spacing": "grid",
   // Trail
@@ -63,6 +64,7 @@ const LOGIC_ALIASES: Record<string, string> = {
   "sca": "SCA",
   "rpo": "RPO",
   "powe": "POWER",
+  "all": "ALL",  // Special: means all logics
 };
 
 // Progression type detection
@@ -141,6 +143,11 @@ function detectCommandType(input: string): CommandType {
   if (/^(apply|formula|calculate|compute)/.test(input)) {
     return "formula";
   }
+
+  // Import patterns
+  if (/(import|load|apply)\s+(set|\.set|setfile)/.test(input)) {
+    return "import";
+  }
   
   return "unknown";
 }
@@ -207,15 +214,31 @@ function extractTarget(input: string): CommandTarget {
   
   // Extract logics - use word boundaries to prevent substring collisions
   // e.g., "power" should not match inside "repower"
+  let hasAllLogic = false;
   for (const [alias, logic] of Object.entries(LOGIC_ALIASES)) {
     // Use word boundary regex to ensure exact word match
     const wordBoundaryRegex = new RegExp(`\\b${alias}\\b`, 'i');
     if (wordBoundaryRegex.test(input)) {
-      target.logics = target.logics || [];
-      if (!target.logics.includes(logic)) {
-        target.logics.push(logic);
+      if (logic === "ALL") {
+        hasAllLogic = true;
+      } else {
+        target.logics = target.logics || [];
+        if (!target.logics.includes(logic)) {
+          target.logics.push(logic);
+        }
       }
     }
+  }
+  
+  // Handle "all" keywords - "all groups", "all logics", "all engines"
+  if (/\ball\s+groups?\b/i.test(input)) {
+    target.groups = Array.from({ length: 15 }, (_, i) => i + 1); // Groups 1-15
+  }
+  if (/\ball\s+logics?\b/i.test(input) || /\ball\s+logic\b/i.test(input) || hasAllLogic) {
+    target.logics = ["POWER", "REPOWER", "SCALPER", "STOPPER", "STO", "SCA", "RPO"];
+  }
+  if (/\ball\s+engines?\b/i.test(input)) {
+    target.engines = ["A", "B", "C"];
   }
   
   // Extract field - sort aliases by length (longest first) to prevent partial matches
@@ -225,10 +248,21 @@ function extractTarget(input: string): CommandTarget {
   
   for (const [alias, field] of sortedFieldAliases) {
     // Use word boundary for multi-word aliases, substring for single words
-    const hasSpace = alias.includes(' ') || alias.includes('_');
-    const regex = hasSpace 
-      ? new RegExp(alias.replace(/_/g, '[_ ]'), 'i')
-      : new RegExp(`\\b${alias}\\b`, 'i');
+    const hasSpace = alias.includes(' ');
+    const hasUnderscore = alias.includes('_');
+    let regex: RegExp;
+    
+    if (hasSpace) {
+      // Multi-word alias with spaces: replace space with flexible space/underscore pattern
+      regex = new RegExp(alias.replace(/ /g, '[ _]'), 'i');
+    } else if (hasUnderscore) {
+      // Underscore-containing field: match underscore OR space between words
+      // e.g., "initial_lot" should match "initial lot" or "initial_lot"
+      regex = new RegExp(alias.replace(/_/g, '[ _]'), 'i');
+    } else {
+      // Single word: use word boundaries
+      regex = new RegExp(`\\b${alias}\\b`, 'i');
+    }
     
     if (regex.test(input)) {
       target.field = field;
@@ -252,19 +286,30 @@ function extractParams(input: string, type: CommandType): Record<string, any> {
       if (explicitMatch) {
         params.value = parseFloat(explicitMatch[1]);
       } else {
-        // 2. Fallback: Scan for numbers and verify they aren't group IDs
+        // 2. Fallback: Scan for numbers and verify they aren't group IDs or engine letters
         // This allows "set grid 600" to work while ignoring "set group 1 grid 600"
         const numberMatches = [...input.matchAll(/(\d+(?:\.\d+)?)/g)];
         for (const match of numberMatches) {
           const val = match[1];
+          const numVal = parseFloat(val);
           const idx = match.index || 0;
+          
+          // Skip single digits that could be engine identifiers (a=1, b=2, c=3)
+          // when preceded by "power", "engine", "repower", "scalper", etc.
+          if (numVal >= 1 && numVal <= 3) {
+            const precedingText = input.slice(Math.max(0, idx - 12), idx).trim().toLowerCase();
+            if (/(power|engine|repower|scalper|scalp|stopper|sto|sca|rpo|for)\s*$/i.test(precedingText)) {
+              continue; // Skip this number - it's likely an engine identifier
+            }
+          }
+          
           // Check text immediately preceding this number
           // Look at the 7 chars before (enough for "groups ")
           const precedingText = input.slice(Math.max(0, idx - 8), idx).trim();
           
           // If NOT preceded by "group" or "groups", treat as value
           if (!/groups?$/i.test(precedingText)) {
-             params.value = parseFloat(val);
+             params.value = numVal;
              break; // Use first non-group number found
           }
         }
@@ -328,6 +373,19 @@ function extractParams(input: string, type: CommandType): Record<string, any> {
       const formulaMatch = input.match(/formula\s*(.+?)(?:\s+(?:to|for)|$)/i);
       if (formulaMatch) {
         params.formula = formulaMatch[1].trim();
+      }
+      break;
+    }
+    case "import": {
+      const block = input.match(/```[\s\S]*?```/);
+      if (block) {
+        const inner = block[0].replace(/^```/, "").replace(/```$/, "");
+        params.setContent = inner.trim();
+      } else {
+        const contentMatch = input.match(/content\s*:(.+)$/i);
+        if (contentMatch) {
+          params.setContent = contentMatch[1].trim();
+        }
       }
       break;
     }

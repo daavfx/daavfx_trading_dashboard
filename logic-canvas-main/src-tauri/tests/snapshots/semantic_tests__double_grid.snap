@@ -1,0 +1,43 @@
+---
+source: tests/semantic_tests.rs
+assertion_line: 50
+expression: result
+---
+{
+  "input": "double the grid",
+  "parsed": {
+    "command_type": "semantic",
+    "target": {
+      "field": "grid"
+    },
+    "params": {},
+    "semantic": {
+      "description": "Double grid",
+      "operations": [
+        {
+          "field": "grid",
+          "op": "scale",
+          "factor": 2.0
+        }
+      ]
+    }
+  },
+  "result": {
+    "success": true,
+    "message": "[SEMANTIC PREVIEW] Double grid",
+    "preview": {
+      "description": "Double grid",
+      "operations": [
+        {
+          "factor": 2.0,
+          "field": "grid",
+          "op": "scale"
+        }
+      ],
+      "target": {
+        "field": "grid"
+      }
+    }
+  },
+  "status": "pass"
+}

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { save, open as dialogOpen } from "@tauri-apps/plugin-dialog";
 import { toast } from "sonner";
@@ -10,7 +10,17 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { FileText, Trash2, Upload, Download, RefreshCw, Folder, Hash, Search, Plus } from "lucide-react";
+import {
+  FileText,
+  Trash2,
+  Upload,
+  Download,
+  RefreshCw,
+  Folder,
+  Hash,
+  Search,
+  Plus,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import type { MTConfig } from "@/types/mt-config";
 import { useSettings } from "@/contexts/SettingsContext";
@@ -42,11 +52,13 @@ export function VaultPage({ onLoadConfig }: VaultPageProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const { settings } = useSettings();
   const tauriAvailable = useMemo(
-    () => typeof window !== "undefined" && Boolean((window as any).__TAURI_INTERNALS__),
-    []
+    () =>
+      typeof window !== "undefined" &&
+      Boolean((window as any).__TAURI_INTERNALS__),
+    [],
   );
 
-  const loadFiles = async () => {
+  const loadFiles = useCallback(async () => {
     try {
       if (!tauriAvailable) {
         setFiles([]);
@@ -56,7 +68,7 @@ export function VaultPage({ onLoadConfig }: VaultPageProps) {
 
       setLoading(true);
       const result = await invoke<VaultListing>("list_vault_files", {
-        vault_path_override: settings.vaultPath
+        vault_path_override: settings.vaultPath,
       });
       setFiles(result.files);
       setVaultPath(result.vault_path);
@@ -65,19 +77,20 @@ export function VaultPage({ onLoadConfig }: VaultPageProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [settings.vaultPath, tauriAvailable]);
 
   useEffect(() => {
     loadFiles();
-  }, [settings.vaultPath]);
+  }, [loadFiles]);
 
   const filteredFiles = useMemo(() => {
     if (!searchQuery) return files;
     const query = searchQuery.toLowerCase();
-    return files.filter(f => 
-      f.name.toLowerCase().includes(query) || 
-      f.tags?.some(t => t.toLowerCase().includes(query)) ||
-      f.category?.toLowerCase().includes(query)
+    return files.filter(
+      (f) =>
+        f.name.toLowerCase().includes(query) ||
+        f.tags?.some((t) => t.toLowerCase().includes(query)) ||
+        f.category?.toLowerCase().includes(query),
     );
   }, [files, searchQuery]);
 
@@ -103,13 +116,17 @@ export function VaultPage({ onLoadConfig }: VaultPageProps) {
     try {
       setLoading(true);
       let config: MTConfig;
-      
+
       if (file.name.endsWith(".json")) {
-        config = await invoke<MTConfig>("import_json_file", { filePath: file.path });
+        config = await invoke<MTConfig>("import_json_file", {
+          filePath: file.path,
+        });
       } else {
-        config = await invoke<MTConfig>("import_set_file", { filePath: file.path });
+        config = await invoke<MTConfig>("import_set_file", {
+          filePath: file.path,
+        });
       }
-      
+
       onLoadConfig(config);
       toast.success(`Loaded configuration: ${file.name}`);
     } catch (error) {
@@ -121,11 +138,11 @@ export function VaultPage({ onLoadConfig }: VaultPageProps) {
 
   const handleDelete = async (file: VaultFile) => {
     if (!confirm(`Are you sure you want to delete ${file.name}?`)) return;
-    
+
     try {
       await invoke("delete_from_vault", {
         filename: file.path,
-        vault_path_override: settings.vaultPath
+        vault_path_override: settings.vaultPath,
       });
       toast.success("File deleted");
       loadFiles();
@@ -138,14 +155,19 @@ export function VaultPage({ onLoadConfig }: VaultPageProps) {
     try {
       const path = await save({
         defaultPath: file.name,
-        filters: [{
-          name: file.name.endsWith('.json') ? 'JSON Config' : 'MT Set File',
-          extensions: [file.name.endsWith('.json') ? 'json' : 'set']
-        }]
+        filters: [
+          {
+            name: file.name.endsWith(".json") ? "JSON Config" : "MT Set File",
+            extensions: [file.name.endsWith(".json") ? "json" : "set"],
+          },
+        ],
       });
-      
+
       if (path) {
-        await invoke("export_vault_file", { filename: file.path, targetPath: path });
+        await invoke("_export_vault_file", {
+          filename: file.path,
+          target_path: path,
+        });
         toast.success(`Exported to ${path}`);
       }
     } catch (error) {
@@ -157,10 +179,12 @@ export function VaultPage({ onLoadConfig }: VaultPageProps) {
     try {
       const selected = await dialogOpen({
         multiple: false,
-        filters: [{
-          name: 'Configuration Files',
-          extensions: ['set', 'json']
-        }]
+        filters: [
+          {
+            name: "Configuration Files",
+            extensions: ["set", "json"],
+          },
+        ],
       });
 
       if (selected) {
@@ -169,20 +193,28 @@ export function VaultPage({ onLoadConfig }: VaultPageProps) {
         // 1. Load the config
         let config: MTConfig;
         if (filePath.endsWith(".json")) {
-            config = await invoke<MTConfig>("import_json_file", { filePath });
+          config = await invoke<MTConfig>("import_json_file", {
+            filePath: filePath,
+          });
         } else {
-            config = await invoke<MTConfig>("import_set_file", { filePath });
+          config = await invoke<MTConfig>("import_set_file", {
+            filePath: filePath,
+          });
         }
 
         // 2. Extract filename for the vault name
-        const fileName = filePath.split(/[\\/]/).pop()?.replace(/\.(set|json)$/, "") || "Imported_Config";
+        const fileName =
+          filePath
+            .split(/[\\/]/)
+            .pop()
+            ?.replace(/\.(set|json)$/, "") || "Imported_Config";
 
         // 3. Save to Vault (defaulting to 'Imported' category)
         await invoke("save_to_vault", {
           config,
           name: fileName,
           category: "Imported",
-          vault_path_override: settings.vaultPath
+          vault_path_override: settings.vaultPath,
         });
 
         toast.success(`Imported ${fileName} to Vault`);
@@ -199,7 +231,7 @@ export function VaultPage({ onLoadConfig }: VaultPageProps) {
   const handleOpenVaultFolder = async () => {
     try {
       await invoke("open_vault_folder", {
-        vault_path_override: settings.vaultPath
+        vault_path_override: settings.vaultPath,
       });
     } catch (error) {
       toast.error(`Failed to open folder: ${error}`);
@@ -207,33 +239,41 @@ export function VaultPage({ onLoadConfig }: VaultPageProps) {
   };
 
   const FileItem = ({ file }: { file: VaultFile }) => (
-    <div
-      className="grid grid-cols-12 gap-4 items-center p-4 bg-card/50 hover:bg-muted/50 rounded-xl transition-all border border-border/40 hover:border-border group shadow-sm hover:shadow-md"
-    >
+    <div className="grid grid-cols-12 gap-4 items-center p-4 bg-card/50 hover:bg-muted/50 rounded-xl transition-all border border-border/40 hover:border-border group shadow-sm hover:shadow-md">
       <div className="col-span-5 font-medium flex flex-col gap-1.5">
         <div className="flex items-center gap-3">
-            <div className={`w-2.5 h-2.5 rounded-full ${file.name.endsWith(".json") ? "bg-blue-500 shadow-blue-500/20" : "bg-emerald-500 shadow-emerald-500/20"} shadow-lg`} />
-            <span className="truncate text-sm font-semibold text-foreground" title={file.name}>{file.name}</span>
-            {file.magic_number !== undefined && (
-                <span className="flex items-center gap-1 text-[10px] font-mono bg-muted text-muted-foreground px-1.5 py-0.5 rounded ml-2 border border-border/50">
-                    <Hash className="w-3 h-3" />
-                    {file.magic_number}
-                </span>
-            )}
+          <div
+            className={`w-2.5 h-2.5 rounded-full ${file.name.endsWith(".json") ? "bg-blue-500 shadow-blue-500/20" : "bg-emerald-500 shadow-emerald-500/20"} shadow-lg`}
+          />
+          <span
+            className="truncate text-sm font-semibold text-foreground"
+            title={file.name}
+          >
+            {file.name}
+          </span>
+          {file.magic_number !== undefined && (
+            <span className="flex items-center gap-1 text-[10px] font-mono bg-muted text-muted-foreground px-1.5 py-0.5 rounded ml-2 border border-border/50">
+              <Hash className="w-3 h-3" />
+              {file.magic_number}
+            </span>
+          )}
         </div>
         {file.tags && file.tags.length > 0 && (
-            <div className="flex gap-1.5 flex-wrap ml-5">
-                {file.tags.map(tag => (
-                    <span key={tag} className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-md font-medium">
-                        {tag}
-                    </span>
-                ))}
-            </div>
+          <div className="flex gap-1.5 flex-wrap ml-5">
+            {file.tags.map((tag) => (
+              <span
+                key={tag}
+                className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-md font-medium"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
         )}
         {file.comments && (
-             <div className="text-xs text-muted-foreground ml-5 line-clamp-1 group-hover:line-clamp-none transition-all">
-                {file.comments}
-             </div>
+          <div className="text-xs text-muted-foreground ml-5 line-clamp-1 group-hover:line-clamp-none transition-all">
+            {file.comments}
+          </div>
         )}
       </div>
       <div className="col-span-3 text-xs text-muted-foreground">
@@ -291,7 +331,8 @@ export function VaultPage({ onLoadConfig }: VaultPageProps) {
             </p>
             {!tauriAvailable ? (
               <div className="text-xs text-amber-500 mt-2 ml-12">
-                Vault requires the Tauri app backend. Browser-only localhost cannot access files.
+                Vault requires the Tauri app backend. Browser-only localhost
+                cannot access files.
               </div>
             ) : (
               <div className="text-xs text-muted-foreground font-mono mt-2 ml-12">
@@ -300,11 +341,19 @@ export function VaultPage({ onLoadConfig }: VaultPageProps) {
             )}
           </div>
           <div className="flex gap-3">
-            <Button onClick={handleImportToVault} disabled={loading || !tauriAvailable} className="shadow-lg shadow-primary/20">
+            <Button
+              onClick={handleImportToVault}
+              disabled={loading || !tauriAvailable}
+              className="shadow-lg shadow-primary/20"
+            >
               <Plus className="h-4 w-4 mr-2" />
               Import Configuration
             </Button>
-            <Button onClick={handleOpenVaultFolder} disabled={loading || !tauriAvailable} variant="outline">
+            <Button
+              onClick={handleOpenVaultFolder}
+              disabled={loading || !tauriAvailable}
+              variant="outline"
+            >
               <Folder className="h-4 w-4 mr-2" />
               Open Folder
             </Button>
@@ -314,14 +363,20 @@ export function VaultPage({ onLoadConfig }: VaultPageProps) {
         <div className="flex gap-4">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input 
-              placeholder="Search configurations, tags, categories..." 
+            <Input
+              placeholder="Search configurations, tags, categories..."
               className="pl-9 bg-muted/30 border-border/50 focus:bg-background transition-colors"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <Button variant="outline" size="icon" onClick={loadFiles} disabled={loading} title="Refresh">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={loadFiles}
+            disabled={loading}
+            title="Refresh"
+          >
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           </Button>
         </div>
@@ -334,13 +389,19 @@ export function VaultPage({ onLoadConfig }: VaultPageProps) {
               <div className="p-4 bg-muted/30 rounded-full mb-4">
                 <Folder className="w-8 h-8 opacity-50" />
               </div>
-              <p className="text-lg font-medium text-foreground">Vault is empty</p>
+              <p className="text-lg font-medium text-foreground">
+                Vault is empty
+              </p>
               <p className="text-sm max-w-xs text-center mt-2 mb-6">
                 {!tauriAvailable
                   ? "Vault is unavailable in browser-only mode. Run the Tauri app to load presets."
                   : `Add .set/.json files under: ${vaultPath}`}
               </p>
-              <Button variant="outline" onClick={handleImportToVault} disabled={!tauriAvailable}>
+              <Button
+                variant="outline"
+                onClick={handleImportToVault}
+                disabled={!tauriAvailable}
+              >
                 <Upload className="w-4 h-4 mr-2" />
                 Import File
               </Button>
@@ -350,22 +411,24 @@ export function VaultPage({ onLoadConfig }: VaultPageProps) {
               {/* Categorized Files */}
               {Object.keys(groupedFiles.grouped).length > 0 && (
                 <div className="space-y-6">
-                  {Object.entries(groupedFiles.grouped).map(([category, catFiles]) => (
-                    <div key={category} className="space-y-3">
-                      <div className="flex items-center gap-2 text-sm font-semibold text-foreground/80 px-1">
-                        <Folder className="h-4 w-4 text-amber-500" />
-                        {category}
-                        <span className="text-xs text-muted-foreground font-normal bg-muted px-2 py-0.5 rounded-full">
-                          {catFiles.length}
-                        </span>
+                  {Object.entries(groupedFiles.grouped).map(
+                    ([category, catFiles]) => (
+                      <div key={category} className="space-y-3">
+                        <div className="flex items-center gap-2 text-sm font-semibold text-foreground/80 px-1">
+                          <Folder className="h-4 w-4 text-amber-500" />
+                          {category}
+                          <span className="text-xs text-muted-foreground font-normal bg-muted px-2 py-0.5 rounded-full">
+                            {catFiles.length}
+                          </span>
+                        </div>
+                        <div className="grid gap-3">
+                          {catFiles.map((file) => (
+                            <FileItem key={file.path} file={file} />
+                          ))}
+                        </div>
                       </div>
-                      <div className="grid gap-3">
-                        {catFiles.map((file) => (
-                          <FileItem key={file.path} file={file} />
-                        ))}
-                      </div>
-                    </div>
-                  ))}
+                    ),
+                  )}
                 </div>
               )}
 

@@ -215,7 +215,7 @@ export function HelpCenter() {
                 <h3 className="font-medium mb-2">Grouping Options</h3>
                 <ul className="text-sm text-muted-foreground space-y-1 mb-4">
                   <li>• <strong>By Engine:</strong> Group parameters by Engine A, B, or C</li>
-                  <li>• <strong>By Function:</strong> Group by grid, trail, lot, TP/SL parameters</li>
+                   <li>• <strong>By Function:</strong> Group by grid, trail, lot, TP/SL parameters</li>
                   <li>• <strong>By Strategy:</strong> Group by aggressive, conservative, scalping strategies</li>
                   <li>• <strong>Custom:</strong> Create your own parameter groups</li>
                 </ul>

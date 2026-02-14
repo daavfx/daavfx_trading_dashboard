@@ -12,7 +12,7 @@ function getLogicSuffix(logic: LogicType, engine: EngineType): string {
   return LOGIC_SUFFIX_MAP[key]?.suffix || "";
 }
 
-const PARAM_NAMES = [
+export const PARAM_NAMES = [
   "Start",
   "AllowBuy",
   "AllowSell",
