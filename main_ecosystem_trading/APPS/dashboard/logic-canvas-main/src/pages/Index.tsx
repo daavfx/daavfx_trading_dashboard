@@ -860,6 +860,7 @@ export default function Index() {
                             platform={platform}
                             generalConfig={config?.general || mockGeneralConfig}
                             mtPlatform={mtPlatform}
+                            mode={mode}
                             selectedCategory={selectedGeneralCategory}
                             onConfigChange={(newGeneralConfig) => {
                               if (config) {

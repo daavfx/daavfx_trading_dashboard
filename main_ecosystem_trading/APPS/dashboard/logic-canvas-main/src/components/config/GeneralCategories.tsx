@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronRight,
@@ -40,6 +40,7 @@ interface GeneralCategoriesProps {
   onConfigChange?: (config: GeneralConfig) => void;
   platform?: Platform;
   mtPlatform?: Platform;
+  mode?: 1 | 2;
 }
 
 export const generalCategoriesList = [
@@ -61,12 +62,21 @@ export function GeneralCategories({
   onSelectGeneralCategory,
   onConfigChange,
   platform,
-  mtPlatform
+  mtPlatform,
+  mode = 1,
 }: GeneralCategoriesProps) {
   const [expandedCategories, setExpandedCategories] = useState<string[]>(["risk_management"]);
   const [generalEditScope, setGeneralEditScope] = useState<"Buy" | "Sell" | "Both Sides">(
     "Both Sides",
   );
+
+  useEffect(() => {
+    if (mode === 2) {
+      if (generalEditScope !== "Both Sides") setGeneralEditScope("Both Sides");
+    } else {
+      if (generalEditScope === "Both Sides") setGeneralEditScope("Buy");
+    }
+  }, [mode, generalEditScope]);
 
   const toggleCategory = (id: string) => {
     setExpandedCategories((prev) =>
@@ -181,9 +191,17 @@ export function GeneralCategories({
       </div>
       <ToggleGroup
         type="single"
-        value={generalEditScope === "Both Sides" ? "both" : generalEditScope === "Buy" ? "buy" : "sell"}
+        value={
+          mode === 2
+            ? "both"
+            : generalEditScope === "Buy"
+              ? "buy"
+              : "sell"
+        }
         onValueChange={(val) => {
           if (!val) return;
+          if (mode === 2 && val !== "both") return;
+          if (mode === 1 && val === "both") return;
           if (val === "buy") setGeneralEditScope("Buy");
           else if (val === "sell") setGeneralEditScope("Sell");
           else setGeneralEditScope("Both Sides");
@@ -192,8 +210,10 @@ export function GeneralCategories({
       >
         <ToggleGroupItem
           value="buy"
+          disabled={mode === 2}
           className={cn(
             "flex-1 h-8 px-3 text-xs",
+            mode === 2 && "opacity-40 cursor-not-allowed",
             "data-[state=on]:bg-emerald-500/20 data-[state=on]:text-emerald-500 border border-border/50 data-[state=on]:border-emerald-500/30",
           )}
         >
@@ -201,8 +221,10 @@ export function GeneralCategories({
         </ToggleGroupItem>
         <ToggleGroupItem
           value="sell"
+          disabled={mode === 2}
           className={cn(
             "flex-1 h-8 px-3 text-xs",
+            mode === 2 && "opacity-40 cursor-not-allowed",
             "data-[state=on]:bg-rose-500/20 data-[state=on]:text-rose-500 border border-border/50 data-[state=on]:border-rose-500/30",
           )}
         >
@@ -210,8 +232,10 @@ export function GeneralCategories({
         </ToggleGroupItem>
         <ToggleGroupItem
           value="both"
+          disabled={mode === 1}
           className={cn(
             "flex-1 h-8 px-3 text-xs",
+            mode === 1 && "opacity-40 cursor-not-allowed",
             "data-[state=on]:bg-blue-500/20 data-[state=on]:text-blue-500 border border-border/50 data-[state=on]:border-blue-500/30",
           )}
         >
