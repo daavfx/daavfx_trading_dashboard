@@ -1,0 +1,77 @@
+[[set]]
+identifier = "mt-bridge-core"
+description = "Core permissions for local save/load and vault"
+permissions = [
+  "export-set-file",
+  "import-set-file",
+  "export-json-file",
+  "import-json-file",
+  "write-text-file",
+  "list-vault-files",
+  "save-to-vault",
+  "delete-from-vault",
+  "export-vault-file",
+  "open-vault-folder",
+  "get-vault-size"
+]
+
+# MT4/MT5 path and watcher permissions removed
+
+[[permission]]
+identifier = "export-set-file"
+description = "Export set file"
+commands.allow = ["export_set_file"]
+
+# Removed export to MT common files
+
+[[permission]]
+identifier = "import-set-file"
+description = "Import set file"
+commands.allow = ["import_set_file"]
+
+[[permission]]
+identifier = "export-json-file"
+description = "Export JSON file"
+commands.allow = ["export_json_file"]
+
+[[permission]]
+identifier = "import-json-file"
+description = "Import JSON file"
+commands.allow = ["import_json_file"]
+
+[[permission]]
+identifier = "write-text-file"
+description = "Write text file"
+commands.allow = ["write_text_file"]
+
+[[permission]]
+identifier = "list-vault-files"
+description = "List vault files"
+commands.allow = ["list_vault_files"]
+
+[[permission]]
+identifier = "save-to-vault"
+description = "Save file to vault"
+commands.allow = ["save_to_vault"]
+
+[[permission]]
+identifier = "delete-from-vault"
+description = "Delete file from vault"
+commands.allow = ["delete_from_vault"]
+
+[[permission]]
+identifier = "export-vault-file"
+description = "Export vault file"
+commands.allow = ["_export_vault_file"]
+
+[[permission]]
+identifier = "open-vault-folder"
+description = "Open vault folder"
+commands.allow = ["open_vault_folder"]
+
+[[permission]]
+identifier = "get-vault-size"
+description = "Get vault size"
+commands.allow = ["get_vault_size"]
+
+# AI-related permissions removed

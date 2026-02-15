@@ -1,0 +1,103 @@
+; DAAVFX V17.04 Generated Setfile
+; Contains Group 1 (Visible) inputs + Global Settings
+; For Hidden inputs (Groups 2-20), use the JSON config loader.
+
+MagicNumber=777
+EnableReverseMode=0
+EnableHedgeMode=0
+MaxSlippage=30.0
+EnableLogs=1
+
+; ==== GROUP 1 ====
+gInput_str1==== GROUP 1 ====
+; --- Power 1 ---
+gInput_str1_Power=Power 1
+gInput_Initial_loT_P1=0.02
+gInput_Mult_P1=1.2
+gInput_Grid_P1=300.0
+gInput_Trail_P1=0
+gInput_TrailValue_P1=3000.0
+gInput_Trail_Start_P1=1.0
+gInput_TrailStep_P1=1500.0
+gInput_TrailStepMethod_P1=0
+gInput_MaxPowerOrders=10
+gInput_LastLotPower=0.63
+
+; --- Repower 1 ---
+gInput_str1_Repower=Repower 1
+gInput_Initial_loT_R1=0.02
+gInput_Mult_R1=1.2
+gInput_Grid_R1=300.0
+gInput_Trail_R1=0
+gInput_TrailValue_R1=3000.0
+gInput_Trail_Start_R1=1.0
+gInput_TrailStep_R1=1500.0
+gInput_TrailStepMethod_R1=0
+gInput_StartRepower=4
+gInput_LastLotRepower=0.12
+
+; --- Scalper 1 ---
+gInput_str1_Scalper=Scalper 1
+gInput_Initial_loT_S1=0.02
+gInput_Mult_S1=1.2
+gInput_Grid_S1=300.0
+gInput_Trail_S1=0
+gInput_TrailValue_S1=3000.0
+gInput_Trail_Start_S1=1.0
+gInput_TrailStep_S1=1500.0
+gInput_TrailStepMethod_S1=0
+gInput_StartScalper=4
+gInput_LastLotScalper=0.12
+
+; --- Stopper 1 ---
+gInput_str1_Stopper=Stopper 1
+gInput_Initial_loT_ST1=0.02
+gInput_Mult_ST1=1.2
+gInput_Grid_ST1=300.0
+gInput_Trail_ST1=0
+gInput_TrailValue_ST1=3000.0
+gInput_Trail_Start_ST1=1.0
+gInput_TrailStep_ST1=1500.0
+gInput_TrailStepMethod_ST1=0
+gInput_StartStopper=4
+gInput_LastLotStopper=0.12
+
+; --- STO 1 ---
+gInput_str1_STO=STO 1
+gInput_Initial_loT_STO1=0.02
+gInput_Mult_STO1=1.2
+gInput_Grid_STO1=300.0
+gInput_Trail_STO1=0
+gInput_TrailValue_STO1=3000.0
+gInput_Trail_Start_STO1=1.0
+gInput_TrailStep_STO1=1500.0
+gInput_TrailStepMethod_STO1=0
+gInput_StartSTO=4
+gInput_LastLotSTO=0.12
+
+; --- SCA 1 ---
+gInput_str1_SCA=SCA 1
+gInput_Initial_loT_SCA1=0.02
+gInput_Mult_SCA1=1.2
+gInput_Grid_SCA1=300.0
+gInput_Trail_SCA1=0
+gInput_TrailValue_SCA1=3000.0
+gInput_Trail_Start_SCA1=1.0
+gInput_TrailStep_SCA1=1500.0
+gInput_TrailStepMethod_SCA1=0
+gInput_StartSCA=4
+gInput_LastLotSCA=0.12
+
+; --- RPO 1 ---
+gInput_str1_RPO=RPO 1
+gInput_Initial_loT_RPO1=0.02
+gInput_Mult_RPO1=1.2
+gInput_Grid_RPO1=300.0
+gInput_Trail_RPO1=0
+gInput_TrailValue_RPO1=3000.0
+gInput_Trail_Start_RPO1=1.0
+gInput_TrailStep_RPO1=1500.0
+gInput_TrailStepMethod_RPO1=0
+gInput_StartRPO=4
+gInput_LastLotRPO=0.12
+

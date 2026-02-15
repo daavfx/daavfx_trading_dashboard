@@ -1,0 +1,43 @@
+---
+source: tests/semantic_tests.rs
+assertion_line: 118
+expression: result
+---
+{
+  "input": "tighten grid by 200",
+  "parsed": {
+    "command_type": "semantic",
+    "target": {
+      "field": "grid"
+    },
+    "params": {},
+    "semantic": {
+      "description": "Reduce grid by 200 pips",
+      "operations": [
+        {
+          "field": "grid",
+          "op": "subtract",
+          "value": 200.0
+        }
+      ]
+    }
+  },
+  "result": {
+    "success": true,
+    "message": "[SEMANTIC PREVIEW] Reduce grid by 200 pips",
+    "preview": {
+      "description": "Reduce grid by 200 pips",
+      "operations": [
+        {
+          "field": "grid",
+          "op": "subtract",
+          "value": 200.0
+        }
+      ],
+      "target": {
+        "field": "grid"
+      }
+    }
+  },
+  "status": "pass"
+}

@@ -1,0 +1,106 @@
+{
+  "version": "17.04",
+  "platform": "MT4",
+  "timestamp": "2025-12-18T16:30:00Z",
+  "total_inputs": 11081,
+  "general": {
+    "license_key": "YOUR_LICENSE_KEY",
+    "license_server_url": "https://license.daavfx.com",
+    "require_license": true,
+    "license_check_interval": 3600,
+    "config_file_name": "daavfx_config.json",
+    "config_file_is_common": true,
+    "allow_buy": true,
+    "allow_sell": true,
+    "enable_logs": true,
+    "compounding_enabled": false,
+    "compounding_type": "Compound_Balance",
+    "compounding_target": 1000.0,
+    "compounding_increase": 0.01,
+    "restart_policy_power": "Restart_Default",
+    "restart_policy_non_power": "Restart_Default",
+    "close_non_power_on_power_close": false,
+    "hold_timeout_bars": 10,
+    "magic_number": 123456,
+    "max_slippage_points": 30.0,
+    "risk_management": {
+      "spread_filter_enabled": true,
+      "max_spread_points": 20.0,
+      "equity_stop_enabled": false,
+      "equity_stop_value": 0.0,
+      "drawdown_stop_enabled": false,
+      "max_drawdown_percent": 30.0
+    },
+    "time_filters": {
+      "sessions": []
+    },
+    "news_filter": {
+      "enabled": false,
+      "countries": "US,GB,EU",
+      "impact_level": 3,
+      "minutes_before": 30,
+      "minutes_after": 30
+    }
+  },
+  "engines": [
+    {
+      "engine_id": "A",
+      "engine_name": "Engine A",
+      "max_power_orders": 20,
+      "groups": [
+        {
+          "group_number": 1,
+          "enabled": true,
+          "logics": [
+            {
+              "logic_name": "Power",
+              "logic_id": "A_Power_G1",
+              "enabled": true,
+              
+              "_comment_base": "===== BASE PARAMS (8 fields) =====",
+              "initial_lot": 0.02,
+              "multiplier": 1.2,
+              "grid": 2750.0,
+              "trail_method": "Points",
+              "trail_value": 3000.0,
+              "trail_start": 1.0,
+              "trail_step": 1500.0,
+              "trail_step_method": "Step_Points",
+              
+              "_comment_logic": "===== LOGIC-SPECIFIC (3 for Power, no start_level/last_lot) =====",
+              "close_targets": "Logic_A_Power,Logic_A_Repower",
+              "order_count_reference": "Logic_Power",
+              "reset_lot_on_restart": true,
+              
+              "_comment_tpsl": "===== TPSL (6 fields - dashboard managed, hidden in MT4) =====",
+              "use_tp": false,
+              "tp_mode": "TPSL_Points",
+              "tp_value": 0.0,
+              "use_sl": false,
+              "sl_mode": "TPSL_Points",
+              "sl_value": 0.0,
+              
+              "_comment_toggles": "===== TOGGLES (2 fields - dashboard managed, hidden in MT4) =====",
+              "reverse_enabled": false,
+              "hedge_enabled": false,
+              
+              "_comment_partial": "===== CLOSE PARTIAL (5 fields) =====",
+              "close_partial": false,
+              "close_partial_cycle": 3,
+              "close_partial_mode": "PartialMode_Balanced",
+              "close_partial_balance": "PartialBalance_Balanced",
+              "trail_step_mode": "TrailStepMode_Auto",
+              
+              "_comment_group1": "===== GROUP 1 ONLY (3 fields) =====",
+              "trigger_type": "TriggerType_Immediate",
+              "trigger_bars": 0,
+              "trigger_minutes": 0,
+              
+              "_total_fields": "30 fields (3 metadata + 8 base + 3 logic + 6 tpsl + 2 toggles + 5 partial + 3 triggers)"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
