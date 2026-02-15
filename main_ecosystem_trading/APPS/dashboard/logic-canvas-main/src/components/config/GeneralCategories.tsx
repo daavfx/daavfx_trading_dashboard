@@ -62,6 +62,9 @@ export function GeneralCategories({
   mtPlatform
 }: GeneralCategoriesProps) {
   const [expandedCategories, setExpandedCategories] = useState<string[]>(["risk_management"]);
+  const [generalEditScope, setGeneralEditScope] = useState<"Buy" | "Sell" | "Both Sides">(
+    "Both Sides",
+  );
 
   const toggleCategory = (id: string) => {
     setExpandedCategories((prev) =>
@@ -96,6 +99,18 @@ export function GeneralCategories({
             newConfig.allow_buy = false;
             newConfig.allow_sell = false;
         }
+    } else if (categoryId === "general" && fieldId === "edit_scope") {
+        if (value === "Buy" || value === "Sell" || value === "Both Sides") {
+          setGeneralEditScope(value);
+        }
+        return;
+    } else if (categoryId === "general" && fieldId === "magic_number_both") {
+        if (typeof value === "string") {
+          const n = parseInt(value, 10);
+          if (!Number.isNaN(n)) value = n;
+        }
+        newConfig.magic_number_buy = value;
+        newConfig.magic_number_sell = value;
     } else if (categoryId === "risk_management") {
         if (!newConfig.risk_management) newConfig.risk_management = {};
         newConfig.risk_management[fieldId] = value;
@@ -217,6 +232,7 @@ export function GeneralCategories({
       case "general":
         const fields = generalInputs.global_system.fields
             .filter(f => f.id !== "allow_buy" && f.id !== "allow_sell")
+            .filter(f => f.id !== "magic_number_buy" && f.id !== "magic_number_sell")
             .map(field => ({
               id: field.id,
               label: field.mt4_variable.replace("gInput_", "").replace(/([A-Z])/g, ' $1').trim(),
@@ -227,12 +243,53 @@ export function GeneralCategories({
               onChange: createHandler(field.id)
             }));
             
+        const magicLabel =
+          generalEditScope === "Buy"
+            ? "Magic Number (Buy)"
+            : generalEditScope === "Sell"
+              ? "Magic Number (Sell)"
+              : "Magic Number (Both Sides)";
+
+        const magicValue =
+          generalEditScope === "Sell"
+            ? generalConfig.magic_number_sell
+            : generalConfig.magic_number_buy;
+
+        fields.unshift({
+          id: generalEditScope === "Both Sides"
+            ? "magic_number_both"
+            : generalEditScope === "Sell"
+              ? "magic_number_sell"
+              : "magic_number_buy",
+          label: magicLabel,
+          value: magicValue,
+          type: "number" as const,
+          description: "Terminal-facing magic number for Buy/Sell cycles",
+          onChange: createHandler(
+            generalEditScope === "Both Sides"
+              ? "magic_number_both"
+              : generalEditScope === "Sell"
+                ? "magic_number_sell"
+                : "magic_number_buy",
+          ),
+        });
+
         // Compute direction
         let direction = "Disabled";
         if (generalConfig.allow_buy && generalConfig.allow_sell) direction = "Both";
         else if (generalConfig.allow_buy) direction = "Buy Only";
         else if (generalConfig.allow_sell) direction = "Sell Only";
         
+        fields.unshift({
+          id: "edit_scope",
+          label: "Edit Mode",
+          value: generalEditScope,
+          type: "segmented" as any,
+          description: "Choose whether edits target Buy, Sell, or both sides",
+          options: ["Buy", "Sell", "Both Sides"],
+          onChange: createHandler("edit_scope"),
+        } as any);
+
         fields.unshift({
             id: "trading_direction",
             label: "Trading Direction",
