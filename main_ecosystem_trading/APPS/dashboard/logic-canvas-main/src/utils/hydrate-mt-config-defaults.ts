@@ -104,6 +104,17 @@ function normalizeSessions(sessions: SessionConfig[] | undefined): SessionConfig
   }));
 }
 
+function normalizeTimeFilters(
+  time: Partial<TimeFiltersConfig> | undefined,
+): TimeFiltersConfig {
+  const src = time ?? ({} as Partial<TimeFiltersConfig>);
+  return {
+    ...defaultTimeFilters,
+    ...src,
+    sessions: normalizeSessions(src.sessions),
+  };
+}
+
 function normalizeEngines(engines: EngineConfig[] | undefined): EngineConfig[] {
   if (!Array.isArray(engines)) return [];
   return engines.map((e) => ({
@@ -117,6 +128,12 @@ export function hydrateMTConfigDefaults(config: MTConfig): MTConfig {
   const risk = general.risk_management ?? ({} as Partial<RiskManagementConfig>);
   const time = general.time_filters ?? ({} as Partial<TimeFiltersConfig>);
   const news = general.news_filter ?? ({} as Partial<NewsFilterConfig>);
+  const riskB = general.risk_management_b;
+  const riskS = general.risk_management_s;
+  const timeB = general.time_filters_b;
+  const timeS = general.time_filters_s;
+  const newsB = general.news_filter_b;
+  const newsS = general.news_filter_s;
 
   return {
     ...config,
@@ -128,12 +145,18 @@ export function hydrateMTConfigDefaults(config: MTConfig): MTConfig {
       ...defaultGeneral,
       ...general,
       risk_management: { ...defaultRiskManagement, ...risk },
-      time_filters: {
-        ...defaultTimeFilters,
-        ...time,
-        sessions: normalizeSessions(time.sessions),
-      },
+      risk_management_b: riskB
+        ? { ...defaultRiskManagement, ...riskB }
+        : undefined,
+      risk_management_s: riskS
+        ? { ...defaultRiskManagement, ...riskS }
+        : undefined,
+      time_filters: normalizeTimeFilters(time),
+      time_filters_b: timeB ? normalizeTimeFilters(timeB) : undefined,
+      time_filters_s: timeS ? normalizeTimeFilters(timeS) : undefined,
       news_filter: { ...defaultNewsFilter, ...news },
+      news_filter_b: newsB ? { ...defaultNewsFilter, ...newsB } : undefined,
+      news_filter_s: newsS ? { ...defaultNewsFilter, ...newsS } : undefined,
     },
     engines: normalizeEngines(config?.engines),
   };

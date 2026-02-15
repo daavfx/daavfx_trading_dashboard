@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronRight,
+  ArrowLeftRight,
   Shield,
   Newspaper,
   Clock,
@@ -28,6 +29,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { Platform } from "@/components/layout/TopBar";
 
 interface GeneralCategoriesProps {
@@ -99,11 +101,6 @@ export function GeneralCategories({
             newConfig.allow_buy = false;
             newConfig.allow_sell = false;
         }
-    } else if (categoryId === "general" && fieldId === "edit_scope") {
-        if (value === "Buy" || value === "Sell" || value === "Both Sides") {
-          setGeneralEditScope(value);
-        }
-        return;
     } else if (categoryId === "general" && fieldId === "magic_number_both") {
         if (typeof value === "string") {
           const n = parseInt(value, 10);
@@ -112,27 +109,53 @@ export function GeneralCategories({
         newConfig.magic_number_buy = value;
         newConfig.magic_number_sell = value;
     } else if (categoryId === "risk_management") {
-        if (!newConfig.risk_management) newConfig.risk_management = {};
-        newConfig.risk_management[fieldId] = value;
+        const setRisk = (key: "risk_management" | "risk_management_b" | "risk_management_s") => {
+          if (!newConfig[key]) newConfig[key] = {};
+          newConfig[key][fieldId] = value;
+        };
+        if (generalEditScope === "Buy") setRisk("risk_management_b");
+        else if (generalEditScope === "Sell") setRisk("risk_management_s");
+        else {
+          setRisk("risk_management");
+          setRisk("risk_management_b");
+          setRisk("risk_management_s");
+        }
     } else if (categoryId === "time") {
-        if (fieldId.startsWith("session_")) {
-             const match = fieldId.match(/^session_(\d+)_(.+)$/);
-             if (match) {
-                 const idx = parseInt(match[1]) - 1;
-                 const prop = match[2];
-                 if (!newConfig.time_filters) newConfig.time_filters = {};
-                 if (!newConfig.time_filters.sessions) newConfig.time_filters.sessions = [];
-                 if (!newConfig.time_filters.sessions[idx]) newConfig.time_filters.sessions[idx] = {};
-                 newConfig.time_filters.sessions[idx][prop] = value;
-             }
-        } else {
-             if (!newConfig.time_filters) newConfig.time_filters = {};
-             if (!newConfig.time_filters.priority_settings) newConfig.time_filters.priority_settings = {};
-             newConfig.time_filters.priority_settings[fieldId] = value;
+        const setTime = (key: "time_filters" | "time_filters_b" | "time_filters_s") => {
+          if (!newConfig[key]) newConfig[key] = {};
+          if (fieldId.startsWith("session_")) {
+            const match = fieldId.match(/^session_(\d+)_(.+)$/);
+            if (!match) return;
+            const idx = parseInt(match[1]) - 1;
+            const prop = match[2];
+            if (!newConfig[key].sessions) newConfig[key].sessions = [];
+            if (!newConfig[key].sessions[idx]) newConfig[key].sessions[idx] = {};
+            newConfig[key].sessions[idx][prop] = value;
+          } else {
+            if (!newConfig[key].priority_settings) newConfig[key].priority_settings = {};
+            newConfig[key].priority_settings[fieldId] = value;
+          }
+        };
+
+        if (generalEditScope === "Buy") setTime("time_filters_b");
+        else if (generalEditScope === "Sell") setTime("time_filters_s");
+        else {
+          setTime("time_filters");
+          setTime("time_filters_b");
+          setTime("time_filters_s");
         }
     } else if (categoryId === "news") {
-         if (!newConfig.news_filter) newConfig.news_filter = {};
-         newConfig.news_filter[fieldId] = value;
+         const setNews = (key: "news_filter" | "news_filter_b" | "news_filter_s") => {
+           if (!newConfig[key]) newConfig[key] = {};
+           newConfig[key][fieldId] = value;
+         };
+         if (generalEditScope === "Buy") setNews("news_filter_b");
+         else if (generalEditScope === "Sell") setNews("news_filter_s");
+         else {
+           setNews("news_filter");
+           setNews("news_filter_b");
+           setNews("news_filter_s");
+         }
     } else if (categoryId === "compounding") {
          newConfig[`compounding_${fieldId}`] = value;
     } else if (categoryId === "logs") {
@@ -143,6 +166,60 @@ export function GeneralCategories({
     
     onConfigChange(newConfig);
   };
+
+  const getScopedValue = <T,>(base: T | undefined, buy: T | undefined, sell: T | undefined): T | undefined => {
+    if (generalEditScope === "Buy") return buy ?? base;
+    if (generalEditScope === "Sell") return sell ?? base;
+    return base;
+  };
+
+  const renderModeSelectors = () => (
+    <div className="mb-3 p-3 bg-muted/30 rounded-lg border border-border/50">
+      <div className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-2">
+        <ArrowLeftRight className="w-3 h-3" />
+        BuySellBoth Sides
+      </div>
+      <ToggleGroup
+        type="single"
+        value={generalEditScope === "Both Sides" ? "both" : generalEditScope === "Buy" ? "buy" : "sell"}
+        onValueChange={(val) => {
+          if (!val) return;
+          if (val === "buy") setGeneralEditScope("Buy");
+          else if (val === "sell") setGeneralEditScope("Sell");
+          else setGeneralEditScope("Both Sides");
+        }}
+        className="flex flex-col sm:flex-row justify-start gap-2 w-full"
+      >
+        <ToggleGroupItem
+          value="buy"
+          className={cn(
+            "flex-1 h-8 px-3 text-xs",
+            "data-[state=on]:bg-emerald-500/20 data-[state=on]:text-emerald-500 border border-border/50 data-[state=on]:border-emerald-500/30",
+          )}
+        >
+          Buy
+        </ToggleGroupItem>
+        <ToggleGroupItem
+          value="sell"
+          className={cn(
+            "flex-1 h-8 px-3 text-xs",
+            "data-[state=on]:bg-rose-500/20 data-[state=on]:text-rose-500 border border-border/50 data-[state=on]:border-rose-500/30",
+          )}
+        >
+          Sell
+        </ToggleGroupItem>
+        <ToggleGroupItem
+          value="both"
+          className={cn(
+            "flex-1 h-8 px-3 text-xs",
+            "data-[state=on]:bg-blue-500/20 data-[state=on]:text-blue-500 border border-border/50 data-[state=on]:border-blue-500/30",
+          )}
+        >
+          Both Sides
+        </ToggleGroupItem>
+      </ToggleGroup>
+    </div>
+  );
 
   // Helper to map type string to "number" | "toggle" | "text" | "select"
   const mapType = (type: string): "number" | "toggle" | "text" | "select" | "header" => {
@@ -161,10 +238,15 @@ export function GeneralCategories({
 
     switch (categoryId) {
       case "risk_management":
+        const riskScoped = getScopedValue(
+          generalConfig.risk_management,
+          generalConfig.risk_management_b,
+          generalConfig.risk_management_s,
+        );
         return generalInputs.risk_management.fields.map(field => ({
           id: field.id,
           label: field.mt4_variable.replace("gInput_", "").replace(/([A-Z])/g, ' $1').trim(),
-          value: generalConfig.risk_management?.[field.id as keyof typeof generalConfig.risk_management] ?? field.default,
+          value: (riskScoped as any)?.[field.id] ?? field.default,
           type: mapType(field.type),
           unit: (field as any).unit,
           description: field.description,
@@ -173,6 +255,11 @@ export function GeneralCategories({
         }));
 
       case "time":
+        const timeScoped = getScopedValue(
+          generalConfig.time_filters,
+          generalConfig.time_filters_b,
+          generalConfig.time_filters_s,
+        );
         return generalInputs.time_filters.fields.map(field => {
           let value;
           const sessionIdMatch = field.id.match(/^session_(\d+)_(.+)$/);
@@ -184,14 +271,11 @@ export function GeneralCategories({
              if (propName === "header") {
                value = ""; 
              } else {
-               // Access session property dynamically
-               // @ts-ignore
-               value = generalConfig.time_filters?.sessions?.[sessionIndex]?.[propName] ?? field.default;
+              value = (timeScoped as any)?.sessions?.[sessionIndex]?.[propName] ?? field.default;
              }
           } else {
              // Priority settings
-             // @ts-ignore
-             value = generalConfig.time_filters?.priority_settings?.[field.id] ?? field.default;
+             value = (timeScoped as any)?.priority_settings?.[field.id] ?? field.default;
           }
 
           return {
@@ -207,10 +291,15 @@ export function GeneralCategories({
         });
 
       case "news":
+        const newsScoped = getScopedValue(
+          generalConfig.news_filter,
+          generalConfig.news_filter_b,
+          generalConfig.news_filter_s,
+        );
         return generalInputs.news_filter.fields.map(field => ({
           id: field.id,
           label: field.mt4_variable.replace("gInput_", "").replace(/([A-Z])/g, ' $1').trim(),
-          value: generalConfig.news_filter?.[field.id as keyof typeof generalConfig.news_filter] ?? field.default,
+          value: (newsScoped as any)?.[field.id] ?? field.default,
           type: mapType(field.type),
           unit: (field as any).unit,
           description: field.description,
@@ -243,36 +332,34 @@ export function GeneralCategories({
               onChange: createHandler(field.id)
             }));
             
-        const magicLabel =
-          generalEditScope === "Buy"
-            ? "Magic Number (Buy)"
-            : generalEditScope === "Sell"
-              ? "Magic Number (Sell)"
-              : "Magic Number (Both Sides)";
-
-        const magicValue =
-          generalEditScope === "Sell"
-            ? generalConfig.magic_number_sell
-            : generalConfig.magic_number_buy;
-
-        fields.unshift({
-          id: generalEditScope === "Both Sides"
-            ? "magic_number_both"
-            : generalEditScope === "Sell"
-              ? "magic_number_sell"
-              : "magic_number_buy",
-          label: magicLabel,
-          value: magicValue,
-          type: "number" as const,
-          description: "Terminal-facing magic number for Buy/Sell cycles",
-          onChange: createHandler(
-            generalEditScope === "Both Sides"
-              ? "magic_number_both"
-              : generalEditScope === "Sell"
-                ? "magic_number_sell"
-                : "magic_number_buy",
-          ),
-        });
+        if (generalEditScope === "Both Sides") {
+          fields.unshift({
+            id: "magic_number_both",
+            label: "Magic Number (Both Sides)",
+            value: generalConfig.magic_number_buy,
+            type: "number" as const,
+            description: "Terminal-facing magic number for Buy/Sell cycles",
+            onChange: createHandler("magic_number_both"),
+          });
+        } else if (generalEditScope === "Sell") {
+          fields.unshift({
+            id: "magic_number_sell",
+            label: "Magic Number (Sell)",
+            value: generalConfig.magic_number_sell,
+            type: "number" as const,
+            description: "Terminal-facing magic number for Buy/Sell cycles",
+            onChange: createHandler("magic_number_sell"),
+          });
+        } else {
+          fields.unshift({
+            id: "magic_number_buy",
+            label: "Magic Number (Buy)",
+            value: generalConfig.magic_number_buy,
+            type: "number" as const,
+            description: "Terminal-facing magic number for Buy/Sell cycles",
+            onChange: createHandler("magic_number_buy"),
+          });
+        }
 
         // Compute direction
         let direction = "Disabled";
@@ -280,16 +367,6 @@ export function GeneralCategories({
         else if (generalConfig.allow_buy) direction = "Buy Only";
         else if (generalConfig.allow_sell) direction = "Sell Only";
         
-        fields.unshift({
-          id: "edit_scope",
-          label: "Edit Mode",
-          value: generalEditScope,
-          type: "segmented" as any,
-          description: "Choose whether edits target Buy, Sell, or both sides",
-          options: ["Buy", "Sell", "Both Sides"],
-          onChange: createHandler("edit_scope"),
-        } as any);
-
         fields.unshift({
             id: "trading_direction",
             label: "Trading Direction",
@@ -772,42 +849,50 @@ export function GeneralCategories({
   // Single Category View Mode Logic
   if (selectedCategory) {
     const fields = getRealCategoryFields(selectedCategory);
-    
-    switch (selectedCategory) {
-      case "time": return renderTimeFilter(fields);
-      case "risk_management": return renderRiskManagement(fields);
-      case "compounding": return renderCompounding(fields);
-      case "restart_policy": return renderRestartPolicy(fields);
-      case "news": return renderNewsFilter(fields);
-      case "license": return renderLicense(fields);
-      case "general": return renderGeneralGlobal(fields);
-      case "ui": return renderUISettings(fields);
-      case "logs": return renderLogs(fields);
-      default:
-        // Fallback Grid Renderer
-        return (
-          <div className="grid grid-cols-2 gap-4">
-            {fields.map((field) => (
-              field.type === "header" ? (
-                 <div key={field.id} className="col-span-2 mt-6 mb-2 pb-1 border-b border-white/10 flex items-center gap-2">
-                    <div className="w-1 h-4 bg-primary/50 rounded-full" />
-                    <h3 className="text-sm font-semibold text-primary/90 tracking-wide uppercase">{field.label}</h3>
-                 </div>
-              ) : (
-              <ConfigField
-                key={field.id}
-                label={field.label}
-                value={field.value}
-                type={field.type as any}
-                unit={(field as any).unit}
-                description={field.description}
-                options={(field as any).options}
-              />
-              )
-            ))}
-          </div>
-        );
-    }
+
+    const content = (() => {
+      switch (selectedCategory) {
+        case "time": return renderTimeFilter(fields);
+        case "risk_management": return renderRiskManagement(fields);
+        case "compounding": return renderCompounding(fields);
+        case "restart_policy": return renderRestartPolicy(fields);
+        case "news": return renderNewsFilter(fields);
+        case "license": return renderLicense(fields);
+        case "general": return renderGeneralGlobal(fields);
+        case "ui": return renderUISettings(fields);
+        case "logs": return renderLogs(fields);
+        default:
+          return (
+            <div className="grid grid-cols-2 gap-4">
+              {fields.map((field) => (
+                field.type === "header" ? (
+                   <div key={field.id} className="col-span-2 mt-6 mb-2 pb-1 border-b border-white/10 flex items-center gap-2">
+                      <div className="w-1 h-4 bg-primary/50 rounded-full" />
+                      <h3 className="text-sm font-semibold text-primary/90 tracking-wide uppercase">{field.label}</h3>
+                   </div>
+                ) : (
+                <ConfigField
+                  key={field.id}
+                  label={field.label}
+                  value={field.value}
+                  type={field.type as any}
+                  unit={(field as any).unit}
+                  description={field.description}
+                  options={(field as any).options}
+                />
+                )
+              ))}
+            </div>
+          );
+      }
+    })();
+
+    return (
+      <div className="space-y-3">
+        {renderModeSelectors()}
+        {content}
+      </div>
+    );
   }
 
   // Accordion View Mode (Sidebar/Default)
@@ -830,6 +915,8 @@ export function GeneralCategories({
           </button>
         </div>
       </div>
+
+      {renderModeSelectors()}
 
       {generalCategoriesList.map((category) => {
         const Icon = category.icon;

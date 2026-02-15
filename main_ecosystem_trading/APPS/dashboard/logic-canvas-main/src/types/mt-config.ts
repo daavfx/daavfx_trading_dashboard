@@ -151,12 +151,18 @@ export interface GeneralConfig {
   
   // Risk Management (NEW!)
   risk_management: RiskManagementConfig;
+  risk_management_b?: RiskManagementConfig;
+  risk_management_s?: RiskManagementConfig;
   
   // Time Filters (NEW!)
   time_filters: TimeFiltersConfig;
+  time_filters_b?: TimeFiltersConfig;
+  time_filters_s?: TimeFiltersConfig;
   
   // News Filter (NEW!)
   news_filter: NewsFilterConfig;
+  news_filter_b?: NewsFilterConfig;
+  news_filter_s?: NewsFilterConfig;
 }
 
 export interface RiskManagementConfig {
