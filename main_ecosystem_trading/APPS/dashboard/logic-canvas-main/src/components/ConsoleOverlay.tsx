@@ -12,6 +12,9 @@ interface LogEntry {
   data?: any[];
 }
 
+// DISABLED in production to prevent performance issues
+const IS_DEV = import.meta.env.DEV;
+
 export function ConsoleOverlay() {
   const [isOpen, setIsOpen] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -20,8 +23,10 @@ export function ConsoleOverlay() {
   const flushTimeoutRef = useRef<number | null>(null);
   const isRenderingRef = useRef(false);
   
-  // Toggle with Ctrl+I
+  // Toggle with Ctrl+I (only in dev)
   useEffect(() => {
+    if (!IS_DEV) return;
+    
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.key.toLowerCase() === "i") {
         e.preventDefault();
@@ -33,12 +38,11 @@ export function ConsoleOverlay() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  // Capture console logs - defer updates to avoid setState during render
+  // Capture console logs - ONLY in dev mode and ONLY errors
   useEffect(() => {
-    const originalLog = console.log;
-    const originalWarn = console.warn;
+    if (!IS_DEV) return;
+    
     const originalError = console.error;
-    const originalDebug = console.debug;
 
     const addLog = (level: LogEntry["level"], args: any[]) => {
       const message = args.map(arg => 
@@ -58,39 +62,22 @@ export function ConsoleOverlay() {
       if (flushTimeoutRef.current === null) {
         flushTimeoutRef.current = window.setTimeout(() => {
           if (pendingLogsRef.current.length > 0) {
-            setLogs((prev) => [...prev.slice(-99), ...pendingLogsRef.current]);
+            setLogs((prev) => [...prev.slice(-49), ...pendingLogsRef.current]);
             pendingLogsRef.current = [];
           }
           flushTimeoutRef.current = null;
-        }, 100);
+        }, 250); // Slower flush rate
       }
     };
 
-    console.log = (...args) => {
-      originalLog(...args);
-      addLog("info", args);
-    };
-
-    console.warn = (...args) => {
-      originalWarn(...args);
-      addLog("warn", args);
-    };
-
+    // Only capture errors, not all logs
     console.error = (...args) => {
       originalError(...args);
       addLog("error", args);
     };
-    
-    console.debug = (...args) => {
-      originalDebug(...args);
-      addLog("debug", args);
-    };
 
     return () => {
-      console.log = originalLog;
-      console.warn = originalWarn;
       console.error = originalError;
-      console.debug = originalDebug;
 
       if (flushTimeoutRef.current !== null) {
         clearTimeout(flushTimeoutRef.current);
@@ -106,7 +93,8 @@ export function ConsoleOverlay() {
     }
   }, [logs, isOpen]);
 
-  if (!isOpen) return null;
+  // Don't render anything in production
+  if (!IS_DEV || !isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-8">

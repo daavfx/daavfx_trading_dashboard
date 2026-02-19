@@ -1,3 +1,11 @@
+/**
+ * @deprecated ARCHIVED 2025-02-18
+ * This file contains old unified-format conversion logic.
+ * It is kept for reference but should NOT be used in production.
+ * Use export_massive_v19_setfile() instead for the current Buy/Sell split format.
+ * Archived in: _archive/deprecated_2025-02-18/
+ */
+
 import { MTConfig, EngineConfig, GroupConfig, LogicConfig, DirectionConfig, TradeDirection, createDirectionConfig, getDirectionValue } from "@/types/mt-config";
 
 export interface BuySellSeparatedConfig {

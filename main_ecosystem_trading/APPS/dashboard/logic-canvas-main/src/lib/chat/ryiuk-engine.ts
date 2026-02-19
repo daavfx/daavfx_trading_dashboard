@@ -1,4 +1,12 @@
-// Ryiuk 2.0 - Quick Actions, Stress Tests, Variations Generator
+/**
+ * @deprecated ARCHIVED 2025-02-18
+ * This was an experimental engine for quick actions and stress tests.
+ * It is not currently imported or used in the production codebase.
+ * Kept for reference only.
+ * Archived in: _archive/deprecated_2025-02-18/
+ */
+
+// Ryiuk 2.0 - Quick Actions, Stress Tests, Variations Generator (EXPERIMENTAL - NOT USED)
 // Efficient, deterministic, visual - no LLM required
 
 import type { MTConfig, LogicConfig, GroupConfig } from "@/types/mt-config";

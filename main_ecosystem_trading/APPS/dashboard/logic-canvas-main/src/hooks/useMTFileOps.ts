@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import type { MTConfig } from "@/types/mt-config";
 import { useMTConfig } from "./useMTConfig";
 import { useSettings } from "@/contexts/SettingsContext";
-import { withUseDirectPriceGrid } from "@/utils/unit-mode";
+import { withUseDirectPriceGrid, normalizeConfigForExport } from "@/utils/unit-mode";
 import { generateCompleteSetfile } from "@/lib/export/complete-setfile-generator";
 import {
   generateMassiveCompleteConfig,
@@ -61,20 +61,6 @@ export function useMTFileOps(
 
   const loadConfigOnly = useCallback(
     async (newConfig: MTConfig) => {
-      console.log(
-        "[SETFILE] Processing config with",
-        newConfig?.engines?.length,
-        "engines",
-      );
-
-      let totalLogics = 0;
-      newConfig?.engines?.forEach((e) => {
-        e.groups?.forEach((g) => {
-          totalLogics += g.logics?.length || 0;
-        });
-      });
-      console.log("[SETFILE] Total logic-directions:", totalLogics);
-
       const nowIso = new Date().toISOString();
       const enrichedConfig: MTConfig = {
         ...newConfig,
@@ -85,10 +71,7 @@ export function useMTFileOps(
 
       if (onLoadConfig) {
         onLoadConfig(enrichedConfig);
-        console.log("[SETFILE] Notified parent component of config load");
       }
-
-      console.log("[SETFILE] Config applied to state");
     },
     [mtPlatform, setConfigOnly, onLoadConfig],
   );
@@ -114,27 +97,12 @@ export function useMTFileOps(
 
         if (!filePath) return;
 
-        console.log("DEBUG: About to call export_set_file with params:", {
-          config: configToExport ? "present" : "null",
+        await invoke("export_massive_v19_setfile", {
+          config: normalizeConfigForExport(configToExport),
           filePath: filePath,
           platform: mtPlatform,
-          includeOptimizationHints: true,
-          tradeDirection: "BOTH",
-          tags: null,
-          comments: null,
         });
 
-        await invoke("export_set_file", {
-          config: configToExport,
-          filePath: filePath,
-          platform: mtPlatform,
-          includeOptimizationHints: true,
-          tradeDirection: "BOTH",
-          tags: null,
-          comments: null,
-        });
-
-        console.log("DEBUG: export_set_file completed successfully");
         toast.success("Successfully exported .set file");
       } else {
         const content = generateCompleteSetfile(configToExport);
@@ -142,7 +110,6 @@ export function useMTFileOps(
         toast.success("Downloaded .set file in browser");
       }
     } catch (err) {
-      console.error("Export error:", err);
       toast.error(`Failed to export .set file: ${err}`);
     }
   }, [config, mtPlatform, settings, tauriAvailable]);
@@ -180,7 +147,6 @@ export function useMTFileOps(
         toast.error("Importing .set requires the app backend. Use JSON import in browser mode.");
       }
     } catch (err) {
-      console.error("Import error:", err);
       toast.error(`Failed to import .set file: ${err}`);
     }
   }, [loadConfigOnly, tauriAvailable]);
@@ -188,10 +154,6 @@ export function useMTFileOps(
   
 
   const generateMassiveSetfile = useCallback(async () => {
-    console.log(
-      "[GENERATE] Creating massive setfile with 630 logic-directions",
-    );
-
     const { config: massiveConfig, stats } =
       generateMassiveCompleteConfig(mtPlatform);
 

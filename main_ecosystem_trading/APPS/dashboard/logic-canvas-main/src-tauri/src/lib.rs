@@ -58,6 +58,7 @@ pub fn run() {
       mt_bridge::_export_vault_file,
       mt_bridge::_delete_from_vault,
       mt_bridge::get_vault_size,
+      mt_bridge::export_massive_v19_setfile,
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

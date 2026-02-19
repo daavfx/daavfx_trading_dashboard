@@ -1,57 +1,48 @@
 // Defensive Component Wrapper - Prevents render cascades and state corruption
-// Makes UI failures structurally impossible
+// DISABLED in production for performance
 
 import React, { useRef, useEffect } from 'react';
 
-const originalConsoleWarn = console.warn;
-const originalConsoleError = console.error;
+const IS_DEV = import.meta.env.DEV;
 
 interface DefensiveWrapperProps {
   children: React.ReactNode;
   componentName: string;
   maxRenders?: number;
   onRenderThreshold?: () => void;
+  renderThreshold?: number;
+  identicalPropsThreshold?: number;
 }
 
-// INVARIANT: Components cannot render more than maxRenders times
-// INVARIANT: State updates are batched and deduplicated
+// In production: just pass through children with no overhead
+// In dev: track renders but only warn on extreme cases
 export function DefensiveWrapper({
   children,
   componentName,
   maxRenders = 100,
   onRenderThreshold,
+  renderThreshold,
+  identicalPropsThreshold,
 }: DefensiveWrapperProps) {
+  // Production: no tracking at all
+  if (!IS_DEV) {
+    return <>{children}</>;
+  }
+
+  // Dev: minimal tracking
   const renderCount = useRef(0);
-  const lastProps = useRef<string>('');
-  const consecutiveIdenticalRenders = useRef(0);
   const hasWarnedRef = useRef(false);
 
   renderCount.current++;
 
-  // GUARD: Detect render loops
+  // Only warn once per component per session at 100+ renders
   useEffect(() => {
-    if (renderCount.current > maxRenders) {
-      originalConsoleError(`[DefensiveWrapper] ${componentName} exceeded render threshold: ${renderCount.current}`);
+    if (renderCount.current > 100 && !hasWarnedRef.current) {
+      console.warn(`[DefensiveWrapper] ${componentName} high render count: ${renderCount.current}`);
+      hasWarnedRef.current = true;
       onRenderThreshold?.();
-      
-      // Reset counter to prevent log spam
-      renderCount.current = 0;
     }
   });
-
-  // GUARD: Detect unnecessary re-renders with identical props
-  const currentProps = typeof children === 'string' ? children : String(children);
-  if (currentProps === lastProps.current) {
-    consecutiveIdenticalRenders.current++;
-    if (consecutiveIdenticalRenders.current > 10 && !hasWarnedRef.current) {
-      originalConsoleWarn(`[DefensiveWrapper] ${componentName} rendering with identical props ${consecutiveIdenticalRenders.current} times`);
-      hasWarnedRef.current = true;
-    }
-  } else {
-    consecutiveIdenticalRenders.current = 0;
-    lastProps.current = currentProps;
-    hasWarnedRef.current = false;
-  }
 
   return <>{children}</>;
 }

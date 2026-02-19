@@ -33,7 +33,7 @@ import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
 import type { MTConfig } from "@/types/mt-config";
 import { useSettings } from "@/contexts/SettingsContext";
-import { withUseDirectPriceGrid } from "@/utils/unit-mode";
+import { withUseDirectPriceGrid, normalizeConfigForExport } from "@/utils/unit-mode";
 import type { Platform } from "@/components/layout/TopBar";
 
 interface ExportOptionsModalProps {
@@ -139,18 +139,14 @@ export function ExportOptionsModal({
 
       // 1. Export File
       if (format === ".set") {
-        await invoke("export_set_file", {
-          config: configToExport,
+        await invoke("export_massive_v19_setfile", {
+          config: normalizeConfigForExport(configToExport),
           filePath: fullPath,
           platform: platform === "mt5" ? "MT5" : "MT4",
-          includeOptimizationHints: includeOptimization,
-          tradeDirection: tradeDirection,
-          tags: tagList.length > 0 ? tagList : null,
-          comments: comments || null,
         });
       } else {
         await invoke("export_json_file", {
-          config: configToExport,
+          config: normalizeConfigForExport(configToExport),
           filePath: fullPath,
           tags: tagList.length > 0 ? tagList : null,
           comments: comments || null,
@@ -162,7 +158,7 @@ export function ExportOptionsModal({
       // 2. Save to Vault if requested
       if (saveToVault) {
         await invoke("save_to_vault", {
-          config: configToExport,
+          config: normalizeConfigForExport(configToExport),
           name: fileName.replace(/\.(set|json)$/i, ""),
           category: vaultCategory,
           tags: tagList.length > 0 ? tagList : null,

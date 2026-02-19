@@ -1,7 +1,15 @@
-// Complete Massive Setfile Generator - 55,500+ inputs
+/**
+ * @deprecated ARCHIVED 2025-02-18
+ * This is an OLD duplicate of src/lib/config/generateMassiveConfig.ts
+ * It generates 55,500 inputs (88 fields) but current standard is 69,930 (111 fields)
+ * Use src/lib/config/generateMassiveConfig.ts instead
+ * Archived in: _archive/deprecated_2025-02-18/
+ */
+
+// Complete Massive Setfile Generator - 55,500+ inputs (DEPRECATED - use generateMassiveConfig.ts instead)
 // Matches MQL4 Loader.mqh format exactly
 
-import type { 
+import type {
   MTConfig, 
   LogicConfig, 
   TrailStepConfig, 

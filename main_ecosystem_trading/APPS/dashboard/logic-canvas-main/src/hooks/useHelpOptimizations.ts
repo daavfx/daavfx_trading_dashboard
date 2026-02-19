@@ -134,11 +134,12 @@ export const usePreloadContent = () => {
 export const useIntersectionObserver = (enabled: boolean = true) => {
   const [isVisible, setIsVisible] = useState(false);
   const elementRef = useRef<HTMLElement>(null);
+  const observerRef = useRef<IntersectionObserver | null>(null);
   
-  useMemo(() => {
+  useEffect(() => {
     if (!enabled) return;
     
-    const observer = new IntersectionObserver(
+    observerRef.current = new IntersectionObserver(
       ([entry]) => {
         setIsVisible(entry.isIntersecting);
       },
@@ -146,10 +147,15 @@ export const useIntersectionObserver = (enabled: boolean = true) => {
     );
     
     if (elementRef.current) {
-      observer.observe(elementRef.current);
+      observerRef.current.observe(elementRef.current);
     }
     
-    return () => observer.disconnect();
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+        observerRef.current = null;
+      }
+    };
   }, [enabled]);
   
   return {

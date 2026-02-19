@@ -156,7 +156,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         // Merge with defaults to handle new fields
         setSettings({ ...defaultSettings, ...parsed });
       } catch (e) {
-        console.error("Failed to parse settings", e);
+        // Silent fail - use defaults
       }
     }
   }, []);

@@ -1,4 +1,12 @@
-// Bounded Resource Manager - Enforces memory invariants
+/**
+ * @deprecated ARCHIVED 2025-02-18
+ * This file is not currently imported or used anywhere in the codebase.
+ * It was intended for resource management but is not active.
+ * Kept for reference only.
+ * Archived in: _archive/deprecated_2025-02-18/
+ */
+
+// Bounded Resource Manager - Enforces memory invariants (NOT CURRENTLY USED)
 // Makes resource exhaustion mathematically impossible
 
 interface ResourceBounds {

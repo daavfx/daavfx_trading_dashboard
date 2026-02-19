@@ -1,3 +1,9 @@
+//! ARCHIVED 2025-02-18
+//! This module is not registered in lib.rs and is not used in the application.
+//! It was intended for setfile optimization but is not active.
+//! Kept for reference only.
+//! Archived in: _archive/deprecated_2025-02-18/
+
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::process::Command;

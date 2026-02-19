@@ -1,4 +1,12 @@
-// Automated Test Harness - Run thousands of command combinations
+/**
+ * @deprecated ARCHIVED 2025-02-18
+ * This is a test utility file that is not imported in production code.
+ * It was used for testing parser/executor directly without UI.
+ * Kept for reference but not part of the production build.
+ * Archived in: _archive/deprecated_2025-02-18/
+ */
+
+// Automated Test Harness - Run thousands of command combinations (TEST UTILITY - NOT USED IN PROD)
 // This runs directly against parser/executor without UI
 
 import { parseCommand } from "./parser";

@@ -39,7 +39,7 @@ import {
 } from "@/utils/config-validation";
 import { hydrateMTConfigDefaults } from "@/utils/hydrate-mt-config-defaults";
 import { useSettings } from "@/contexts/SettingsContext";
-import { withUseDirectPriceGrid } from "@/utils/unit-mode";
+import { withUseDirectPriceGrid, normalizeConfigForExport } from "@/utils/unit-mode";
 import type { TransactionPlan, ChangePreview } from "@/lib/chat/types";
 import { VersionControlPanel } from "@/components/version-control/VersionControlPanel";
 import { AnalyticsPanel } from "@/components/visual-enhancements/AnalyticsPanel";
@@ -280,47 +280,43 @@ export default function Index() {
       });
   }, [loadConfig, setConfigOnly]);
 
-  // Validate config on changes and show warnings
+  // Validate config on changes (debounced) - only update warnings state, no toasts
   useEffect(() => {
-    if (config) {
+    if (!config) return;
+    
+    // Use a timeout to debounce validation
+    const timeout = setTimeout(() => {
       const warnings = validateConfig(config);
       setConfigWarnings(warnings);
-
-      const summary = getWarningSummary(warnings);
-      if (summary.warnings > 0 || summary.errors > 0) {
-        // Show a one-time toast summarizing issues
-        const totalIssues = summary.warnings + summary.errors;
-        toast.warning(`Configuration has ${totalIssues} issue(s)`, {
-          description: warnings[0]?.message,
-          duration: 5000,
-        });
-      }
-    }
+    }, 500);
+    
+    return () => clearTimeout(timeout);
   }, [config]);
 
-  // Auto-save config on app close (like MT4 terminal)
+  // Auto-save config on app close - only save minimal metadata, not full config
   useEffect(() => {
     const handleBeforeUnload = () => {
-      // Save current config to localStorage for persistence
       if (config) {
         try {
-          localStorage.setItem("daavfx-last-config", JSON.stringify(config));
+          // Only save magic numbers and basic settings, not full config
+          const minimalSave = {
+            magic: config.general?.magic_number,
+            magicBuy: config.general?.magic_number_buy,
+            magicSell: config.general?.magic_number_sell,
+            timestamp: Date.now()
+          };
+          localStorage.setItem("daavfx-last-config-meta", JSON.stringify(minimalSave));
         } catch (e) {
-          console.warn("[AutoSave] Failed to save config on close:", e);
+          // Silent fail
         }
       }
     };
 
     window.addEventListener("beforeunload", handleBeforeUnload);
 
-    // Also save on visibility change (app switching)
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "hidden" && config) {
-        try {
-          localStorage.setItem("daavfx-last-config", JSON.stringify(config));
-        } catch (e) {
-          console.warn("[AutoSave] Failed to save config on hide:", e);
-        }
+      if (document.visibilityState === "hidden") {
+        handleBeforeUnload();
       }
     };
 
@@ -524,19 +520,16 @@ export default function Index() {
 
         if (data.format === "json") {
           await invoke("export_json_file", {
-            config: configToExport,
+            config: normalizeConfigForExport(configToExport),
             filePath: fullPath,
             tags: data.tags,
             comments: data.comments,
           });
         } else {
-          await invoke("export_set_file", {
-            config: configToExport,
+          await invoke("export_massive_v19_setfile", {
+            config: normalizeConfigForExport(configToExport),
             filePath: fullPath,
             platform: platform === "mt5" ? "MT5" : "MT4",
-            includeOptimizationHints: true,
-            tags: data.tags,
-            comments: data.comments,
           });
         }
         toast.success(`Exported to ${fileName}`);
@@ -546,7 +539,7 @@ export default function Index() {
       if (data.saveToVault) {
         const configToVault = withUseDirectPriceGrid(configToSave, settings);
         await invoke("save_to_vault", {
-          config: configToVault,
+          config: normalizeConfigForExport(configToVault),
           name: data.name,
           category: data.category,
           tags: data.tags.length > 0 ? data.tags : null,

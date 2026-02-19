@@ -12,7 +12,8 @@ permissions = [
   "delete-from-vault",
   "export-vault-file",
   "open-vault-folder",
-  "get-vault-size"
+  "get-vault-size",
+  "export-massive-v19-setfile"
 ]
 
 # MT4/MT5 path and watcher permissions removed
@@ -73,5 +74,10 @@ commands.allow = ["open_vault_folder"]
 identifier = "get-vault-size"
 description = "Get vault size"
 commands.allow = ["get_vault_size"]
+
+[[permission]]
+identifier = "export-massive-v19-setfile"
+description = "Export massive v19 setfile with Buy/Sell splits (69,348 inputs)"
+commands.allow = ["export_massive_v19_setfile"]
 
 # AI-related permissions removed

@@ -1,3 +1,10 @@
+/**
+ * @deprecated ARCHIVED 2025-02-18
+ * This is a CLI testing utility for chat commands.
+ * It is not imported or used in the production application.
+ * Kept for reference only.
+ * Archived in: _archive/deprecated_2025-02-18/
+ */
 
 import { createInterface } from 'readline';
 import { parseCommand } from './parser';

@@ -1999,6 +1999,8 @@ pub fn export_massive_v19_setfile(
 
     // General settings
     lines.push("; === GENERAL SETTINGS ===".to_string());
+    
+    // Magic Numbers
     lines.push(format!("gInput_MagicNumber={}", config.general.magic_number));
     lines.push(format!("gInput_MagicNumberBuy={}", config.general.magic_number_buy));
     lines.push(format!("gInput_MagicNumberSell={}", config.general.magic_number_sell));
@@ -2010,13 +2012,118 @@ pub fn export_massive_v19_setfile(
         "gInput_HedgeMagicIndependent={}",
         if config.general.hedge_magic_independent { 1 } else { 0 }
     ));
+    
+    // Trading Permissions
+    lines.push(format!("gInput_allowBuy={}", if config.general.allow_buy { 1 } else { 0 }));
+    lines.push(format!("gInput_allowSell={}", if config.general.allow_sell { 1 } else { 0 }));
+    
+    // Logging
+    lines.push(format!("gInput_EnableLogs={}", if config.general.enable_logs { 1 } else { 0 }));
+    
+    // Slippage
     lines.push(format!(
         "gInput_MaxSlippage={}",
         (config.general.max_slippage_points.round() as i32)
     ));
-    lines.push(format!("gInput_allowBuy={}", if config.general.allow_buy { 1 } else { 0 }));
-    lines.push(format!("gInput_allowSell={}", if config.general.allow_sell { 1 } else { 0 }));
-    lines.push(format!("gInput_EnableLogs={}", if config.general.enable_logs { 1 } else { 0 }));
+    lines.push(format!("gInput_MaxSlippagePoints={:.1}", config.general.max_slippage_points));
+    
+    // Config File
+    lines.push(format!("gInput_ConfigFileName={}", config.general.config_file_name));
+    lines.push(format!(
+        "gInput_ConfigFileIsCommon={}",
+        if config.general.config_file_is_common { 1 } else { 0 }
+    ));
+    
+    // Direct Price Grid
+    lines.push(format!(
+        "gInput_UseDirectPriceGrid={}",
+        if config.general.use_direct_price_grid { 1 } else { 0 }
+    ));
+    
+    // ===== LICENSE =====
+    lines.push(String::new());
+    lines.push("; === LICENSE ===".to_string());
+    lines.push(format!("gInput_LicenseKey={}", config.general.license_key));
+    lines.push(format!("gInput_LicenseServerURL={}", config.general.license_server_url));
+    lines.push(format!(
+        "gInput_RequireLicense={}",
+        if config.general.require_license { 1 } else { 0 }
+    ));
+    lines.push(format!("gInput_LicenseCheckInterval={}", config.general.license_check_interval));
+    
+    // ===== COMPOUNDING =====
+    lines.push(String::new());
+    lines.push("; === COMPOUNDING ===".to_string());
+    lines.push(format!(
+        "gInput_Input_Compounding={}",
+        if config.general.compounding_enabled { 1 } else { 0 }
+    ));
+    lines.push(format!("gInput_Input_CompoundingType={}", config.general.compounding_type));
+    lines.push(format!("gInput_Input_CompoundingTarget={:.1}", config.general.compounding_target));
+    lines.push(format!("gInput_Input_CompoundIncrease={:.1}", config.general.compounding_increase));
+    
+    // ===== CLEAN MATH =====
+    lines.push(String::new());
+    lines.push("; === CLEAN MATH ===".to_string());
+    lines.push(format!("gInput_GroupMode={}", config.general.group_mode.unwrap_or(1)));
+    lines.push(format!("gInput_GridUnit={}", config.general.grid_unit.unwrap_or(0)));
+    lines.push(format!("gInput_PipFactor={}", config.general.pip_factor.unwrap_or(0)));
+    
+    // ===== RISK MANAGEMENT =====
+    lines.push(String::new());
+    lines.push("; === RISK MANAGEMENT ===".to_string());
+    let rm = &config.general.risk_management;
+    lines.push(format!("gInput_UseSpreadFilter={}", if rm.spread_filter_enabled { 1 } else { 0 }));
+    lines.push(format!("gInput_MaxSpreadPoints={:.1}", rm.max_spread_points));
+    lines.push(format!("gInput_UseEquityStop={}", if rm.equity_stop_enabled { 1 } else { 0 }));
+    lines.push(format!("gInput_EquityStopValue={:.1}", rm.equity_stop_value));
+    lines.push(format!("gInput_UseDrawdownStop={}", if rm.drawdown_stop_enabled { 1 } else { 0 }));
+    lines.push(format!("gInput_MaxDrawdownPercent={:.1}", rm.max_drawdown_percent));
+    lines.push(format!("gInput_RiskAction={}", rm.risk_action.as_ref().unwrap_or(&"2".to_string())));
+    
+    // ===== NEWS FILTER =====
+    lines.push(String::new());
+    lines.push("; === NEWS FILTER ===".to_string());
+    let nf = &config.general.news_filter;
+    lines.push(format!("gInput_EnableNewsFilter={}", if nf.enabled { 1 } else { 0 }));
+    lines.push(format!("gInput_NewsFilterEnabled={}", if nf.enabled { 1 } else { 0 }));
+    lines.push(format!("gInput_NewsAPIKey={}", nf.api_key));
+    lines.push(format!("gInput_NewsAPIURL={}", nf.api_url));
+    lines.push(format!("gInput_NewsFilterCountries={}", nf.countries));
+    lines.push(format!("gInput_NewsImpactLevel={}", nf.impact_level));
+    lines.push(format!("gInput_MinutesBeforeNews={}", nf.minutes_before));
+    lines.push(format!("gInput_MinutesAfterNews={}", nf.minutes_after));
+    lines.push(format!("gInput_NewsAction={}", nf.action));
+    lines.push(format!("gInput_NewsCalendarFile={}", nf.calendar_file.as_ref().unwrap_or(&"".to_string())));
+    
+    // ===== TIME FILTERS =====
+    lines.push(String::new());
+    lines.push("; === TIME FILTERS ===".to_string());
+    let tf = &config.general.time_filters;
+    lines.push(format!(
+        "gInput_NewsFilterOverridesSession={}",
+        if tf.priority_settings.news_filter_overrides_session { 1 } else { 0 }
+    ));
+    lines.push(format!(
+        "gInput_SessionFilterOverridesNews={}",
+        if tf.priority_settings.session_filter_overrides_news { 1 } else { 0 }
+    ));
+    lines.push(format!("gInput_NewsOverridesSession={}", if tf.priority_settings.news_filter_overrides_session { 1 } else { 0 }));
+    lines.push(format!("gInput_SessionOverridesNews={}", if tf.priority_settings.session_filter_overrides_news { 1 } else { 0 }));
+    lines.push(format!("gInput_SessionFilterEnabled={}", if !tf.sessions.is_empty() { 1 } else { 0 }));
+    
+    // Sessions 1-7
+    for session in &tf.sessions {
+        let s = session;
+        lines.push(format!("gInput_Session{}Enabled={}", s.session_number, if s.enabled { 1 } else { 0 }));
+        lines.push(format!("gInput_Session{}Day={}", s.session_number, s.day));
+        lines.push(format!("gInput_Session{}StartHour={}", s.session_number, s.start_hour));
+        lines.push(format!("gInput_Session{}StartMinute={}", s.session_number, s.start_minute));
+        lines.push(format!("gInput_Session{}EndHour={}", s.session_number, s.end_hour));
+        lines.push(format!("gInput_Session{}EndMinute={}", s.session_number, s.end_minute));
+        lines.push(format!("gInput_Session{}Action={}", s.session_number, s.action));
+    }
+    
     lines.push(String::new());
 
     let encode_trail_method = |raw: &str| -> i32 {

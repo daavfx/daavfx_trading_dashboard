@@ -1,5 +1,12 @@
-// Setfile Parser Module - Properly parses V4 setfiles into MTConfig structure
+// ARCHIVED 2025-02-18
+// This module contains build_complete_config() which is not used.
+// The active parsing logic is in mt_bridge.rs (parse_ginput_key, etc.)
+// Kept for reference only.
+// Archived in: _archive/deprecated_2025-02-18/
+
+// Setfile Parser Module - Properly parses V4 setfiles into MTConfig structure (DEPRECATED)
 // Handles 15 groups × 3 engines × 7 logics × 2 directions = 630 logic-directions
+// NOTE: This is an older implementation. Current parsing is in mt_bridge.rs
 
 use std::collections::HashMap;
 

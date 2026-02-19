@@ -9,7 +9,7 @@ import { parseCommand, getSuggestions, commandExecutor } from "@/lib/chat";
 import type { ChatMessage, CommandResult } from "@/lib/chat/types";
 import type { MTConfig } from "@/types/mt-config";
 import { useSettings } from "@/contexts/SettingsContext";
-import { withUseDirectPriceGrid } from "@/utils/unit-mode";
+import { withUseDirectPriceGrid, normalizeConfigForExport } from "@/utils/unit-mode";
 import { invoke } from "@tauri-apps/api/core";
 import { save, open } from "@tauri-apps/plugin-dialog";
 import { toast } from "sonner";
@@ -206,18 +206,14 @@ export function useChatCommands({
             : config;
           if (isJson) {
             await invoke("export_json_file", {
-              config: configToExport,
+              config: normalizeConfigForExport(configToExport),
               filePath: filePath,
             });
           } else {
-            await invoke("export_set_file", {
-              config: configToExport,
+            await invoke("export_massive_v19_setfile", {
+              config: normalizeConfigForExport(configToExport),
               filePath: filePath,
               platform: "MT4",
-              includeOptimizationHints: false,
-              tradeDirection: "BOTH",
-              tags: null,
-              comments: null,
             });
           }
 
@@ -341,7 +337,6 @@ export function useChatCommands({
       }
 
       // Parse and Execute
-      console.log(`[ChatCommand] Processing: "${trimmed}"`);
       const parsed = parseCommand(trimmed);
 
       const normalizeLogicToken = (token: string): { engine: string | null; name: string } => {
