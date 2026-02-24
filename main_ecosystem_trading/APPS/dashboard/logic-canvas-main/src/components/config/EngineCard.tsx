@@ -16,7 +16,7 @@ interface EngineCardProps {
   mtConfig?: any;
   selectedLogics: string[];
   selectedFields?: string[];
-  onUpdateLogic?: (logic: string, field: string, value: any) => void;
+  onUpdateLogic?: (logic: string, field: string, value: any, groupNumber: number) => void;
   mode?: 1 | 2;
   platform?: Platform;
 }
@@ -143,44 +143,42 @@ export function EngineCard({
                   </div>
                 </div>
 
-                {logics.map((logic) => {
-                  // Find real logic config from first selected group
-                  const groupNum =
-                    groups.length > 0
-                      ? parseInt(groups[0].replace("Group ", ""))
-                      : 1;
-                  const foundLogicConfig = engineData?.groups
-                    .find((g: any) => g.group_number === groupNum)
-                    ?.logics.find(
-                      (l: any) => l.logic_name?.toUpperCase() === logic,
+                {groups.map((group) => {
+                  const groupNum = parseInt(group.replace("Group ", ""));
+                  
+                  return logics.map((logic) => {
+                    const foundLogicConfig = engineData?.groups
+                      .find((g: any) => g.group_number === groupNum)
+                      ?.logics.find(
+                        (l: any) => l.logic_name?.toUpperCase() === logic,
+                      );
+
+                    return (
+                      <LogicModule
+                        key={`${group}-${logic}`}
+                        name={logic}
+                        engine={engine}
+                        expanded={true}
+                        onToggle={() => {}}
+                        logicConfig={foundLogicConfig}
+                        group={group}
+                        groups={[group]}
+                        engineData={engineData}
+                        selectedFields={selectedFields || []}
+                        mode={mode}
+                        onUpdate={(field, value) => {
+                          let processedValue = value;
+                          if (
+                            typeof value === "string" &&
+                            (value === "ON" || value === "OFF")
+                          ) {
+                            processedValue = value === "ON";
+                          }
+                          onUpdateLogic?.(logic, field, processedValue, groupNum);
+                        }}
+                      />
                     );
-
-                  return (
-                    <LogicModule
-                      key={logic}
-                      name={logic}
-                      engine={engine}
-                      expanded={expandedLogics.includes(logic)}
-                      onToggle={() => toggleLogic(logic)}
-                      logicConfig={foundLogicConfig}
-                      groups={groups}
-                      engineData={engineData}
-                      selectedFields={selectedFields || []}
-                      mode={mode}
-                      onUpdate={(field, value) => {
-                        // Convert "ON"/"OFF" strings back to booleans for certain fields
-                        let processedValue = value;
-                        if (
-                          typeof value === "string" &&
-                          (value === "ON" || value === "OFF")
-                        ) {
-                          processedValue = value === "ON";
-                        }
-
-                        onUpdateLogic?.(logic, field, processedValue);
-                      }}
-                    />
-                  );
+                  });
                 })}
 
                 <div className="flex items-center gap-2 pt-3 border-t border-border/40">

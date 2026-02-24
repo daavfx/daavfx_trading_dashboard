@@ -39,6 +39,7 @@ interface LogicModuleProps {
   expanded: boolean;
   onToggle: () => void;
   logicConfig?: LogicConfig;
+  group?: string;
   groups?: string[];
   engineData?: EngineConfig | null;
   selectedFields?: string[];
@@ -275,6 +276,7 @@ export function LogicModule({
   expanded,
   onToggle,
   logicConfig,
+  group,
   groups,
   engineData,
   selectedFields = [],
@@ -333,6 +335,7 @@ export function LogicModule({
   
   useEffect(() => {
     const isGroup1 =
+      group === "Group 1" ||
       (groups && groups.length > 0 && groups.some((g) => g === "Group 1")) ||
       logicConfig?.logic_id?.includes("_G1");
     const config = logicConfig || ({} as Partial<LogicConfig>);
@@ -550,6 +553,11 @@ export function LogicModule({
           <span className="text-xs font-mono text-foreground flex items-center gap-2">
             <span className="text-muted-foreground">{prefix}/</span>
             <span className="font-semibold">{name}</span>
+            {group && (
+              <span className="text-[9px] text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded">
+                {group.replace("Group ", "G")}
+              </span>
+            )}
             {isPowerLogic && (
               <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[9px] font-medium">
                 <Star className="w-2.5 h-2.5" />
