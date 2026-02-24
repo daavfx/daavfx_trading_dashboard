@@ -203,7 +203,7 @@ export function Sidebar({
           </button>
           <button
             onClick={() => onViewModeChange("batch")}
-            title="Batch"
+            title="Chat"
             className={cn(
               "min-w-0 w-full flex flex-col items-center justify-center gap-0.5 py-1.5 px-1 rounded-md transition-all",
               viewMode === "batch"
@@ -212,7 +212,7 @@ export function Sidebar({
             )}
           >
             <TableProperties className="w-4 h-4" />
-            {!isCompact && <span className="w-full truncate text-[9px] font-medium leading-none text-center">Batch</span>}
+            {!isCompact && <span className="w-full truncate text-[9px] font-medium leading-none text-center">Chat</span>}
           </button>
           <button
             onClick={() => onViewModeChange("vault")}

@@ -5,6 +5,7 @@ import { type ImperativePanelHandle } from "react-resizable-panels";
 import { TopBar, Platform } from "@/components/layout/TopBar";
 import { Sidebar, ViewMode } from "@/components/layout/Sidebar";
 import { ChatPanel } from "@/components/layout/ChatPanel";
+import { QuickActionsPanel } from "@/components/layout/QuickActionsPanel";
 import { BatchEditPanel } from "@/components/config/BatchEditPanel";
 import { EngineCard } from "@/components/config/EngineCard";
 import { GeneralCategories } from "@/components/config/GeneralCategories";
@@ -1140,32 +1141,18 @@ export default function Index() {
                 <ResizableHandle withHandle />
 
                 <ResizablePanel
-                  id="chat-panel"
+                  id="quick-actions-panel"
                   order={3}
-                  defaultSize={20}
-                  minSize={15}
-                  maxSize={40}
-                  ref={chatPanelRef}
+                  defaultSize={18}
+                  minSize={12}
+                  maxSize={30}
                   collapsible={true}
                   collapsedSize={4}
-                  onCollapse={() => setIsChatCollapsed(true)}
-                  onExpand={() => setIsChatCollapsed(false)}
                 >
-                  <ChatPanel
+                  <QuickActionsPanel
                     config={config}
                     onConfigChange={handleSaveConfig}
-                    onNavigate={handleChatNavigation}
-                    onPlanSnapshot={({ pendingPlan, lastAppliedPreview }) => {
-                      setChatPendingPlan(pendingPlan);
-                      setChatLastAppliedPreview(lastAppliedPreview);
-                    }}
-                    externalCommand={externalCommand}
-                    selectedEngines={selectedEngines}
-                    selectedGroups={selectedGroups}
-                    selectedLogics={selectedLogics}
-                    isCollapsed={isChatCollapsed}
-                    onToggleCollapse={toggleChat}
-                    onClearSelection={clearSelection}
+                    onViewModeChange={handleViewModeChange}
                   />
                 </ResizablePanel>
               </>
