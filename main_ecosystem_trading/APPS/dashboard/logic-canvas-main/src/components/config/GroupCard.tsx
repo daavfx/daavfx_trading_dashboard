@@ -31,14 +31,14 @@ export function GroupCard({
   onUpdateLogic,
   config,
 }: GroupCardProps) {
-  const [expanded, setExpanded] = useState(false);
-  const [expandedLogics, setExpandedLogics] = useState<string[]>([]);
-  const groupNum = parseInt(group.replace("Group ", ""));
-  const isGroup1 = group === "Group 1";
-
   const logics = selectedLogics.length > 0
     ? allLogics.filter((l) => selectedLogics.includes(l))
     : allLogics;
+
+  const [expanded, setExpanded] = useState(true);
+  const [expandedLogics, setExpandedLogics] = useState<string[]>([...logics]);
+  const groupNum = parseInt(group.replace("Group ", ""));
+  const isGroup1 = group === "Group 1";
 
   const toggleLogic = (logic: string) => {
     setExpandedLogics((prev) =>

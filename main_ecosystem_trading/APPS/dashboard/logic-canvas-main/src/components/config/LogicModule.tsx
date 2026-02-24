@@ -331,9 +331,16 @@ export function LogicModule({
   // Initialize field values only once using useRef to store initial values
   const initialFieldsRef = useRef<any[]>([]);
 
-  const logicConfigKey = logicConfig ? `${logicConfig.logic_id}-${JSON.stringify(logicConfig)}` : 'no-config';
+const logicConfigKey = logicConfig?.logic_id || 'no-config';
+  const initializedRef = useRef<string | null>(null);
   
   useEffect(() => {
+    // Only initialize once per logic (not on every config change)
+    if (initializedRef.current === logicConfigKey && Object.keys(fieldValues).length > 0) {
+      return;
+    }
+    initializedRef.current = logicConfigKey;
+    
     const isGroup1 =
       group === "Group 1" ||
       (groups && groups.length > 0 && groups.some((g) => g === "Group 1")) ||
@@ -383,7 +390,7 @@ export function LogicModule({
 
     setFieldValues(initialValues);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [logicConfigKey, groups, nameSafe, mode]);
+  }, [logicConfigKey, groups, nameSafe]);
 
   const prevModeRef = useRef(mode);
   
@@ -916,10 +923,10 @@ export function LogicModule({
                         )}
                       </div>
 
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-4 gap-y-3 relative z-10">
+                      <div className="grid grid-cols-3 gap-x-4 gap-y-3 relative z-10">
                         {/* Custom Trading Direction Control for Mode Selectors */}
-                        {category === "Mode Selectors" && (
-                          <div className="col-span-2 mb-2 p-3 bg-muted/30 rounded-lg border border-border/50">
+{category === "Mode Selectors" && (
+                          <div className="col-span-3 mb-2 p-3 bg-muted/30 rounded-lg border border-border/50">
                             <div className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-2">
                               <ArrowLeftRight className="w-3 h-3" />
                               Trading Direction
