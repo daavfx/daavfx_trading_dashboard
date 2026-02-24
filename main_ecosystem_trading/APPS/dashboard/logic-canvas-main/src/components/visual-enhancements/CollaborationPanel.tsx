@@ -1,6 +1,6 @@
 // Collaboration Panel Component
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -22,6 +22,7 @@ export function CollaborationPanel({ config, userId }: CollaborationPanelProps) 
   const {
     state,
     connect,
+    disconnect,
     createLibrary,
     createSession,
     sendNotification,
@@ -37,10 +38,10 @@ export function CollaborationPanel({ config, userId }: CollaborationPanelProps) 
   const [newSessionDesc, setNewSessionDesc] = useState('');
   const [notificationText, setNotificationText] = useState('');
 
-  // Connect on initial load
-  useState(() => {
+  useEffect(() => {
     connect(userId);
-  });
+    return () => disconnect();
+  }, [connect, disconnect, userId]);
 
   const handleCreateLibrary = () => {
     if (!newLibraryName.trim()) return;

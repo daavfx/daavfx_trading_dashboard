@@ -58,7 +58,7 @@ const defaultNewsFilter: NewsFilterConfig = {
 const defaultGeneral: GeneralConfig = {
   license_key: "",
   license_server_url: "https://license.daavfx.com",
-  require_license: true,
+  require_license: false,
   license_check_interval: 3600,
   config_file_name: "DAAVFX_Config.json",
   config_file_is_common: true,
@@ -119,7 +119,44 @@ function normalizeEngines(engines: EngineConfig[] | undefined): EngineConfig[] {
   if (!Array.isArray(engines)) return [];
   return engines.map((e) => ({
     ...e,
-    groups: Array.isArray(e.groups) ? e.groups : [],
+    groups: Array.isArray(e.groups)
+      ? e.groups.map((g: any) => {
+        const baseGroup: any = {
+          ...g,
+          logics: Array.isArray(g?.logics) ? g.logics : [],
+        };
+
+        if (
+          e.engine_id === "A" &&
+          baseGroup?.group_number > 1 &&
+          typeof baseGroup.group_power_start !== "number"
+        ) {
+          baseGroup.group_power_start = baseGroup.group_number;
+        }
+
+        baseGroup.logics = baseGroup.logics.map((l: any) => {
+          const isPower =
+            String(l?.logic_name || "")
+              .trim()
+              .toLowerCase() === "power";
+
+          const normalizedStartLevel = isPower ? 0 : 1;
+
+          return {
+            ...l,
+            enabled: true,
+              trigger_type: "Trigger_Immediate",
+            trigger_bars: 0,
+            trigger_minutes: 0,
+            trigger_pips: 0,
+            order_count_reference: "Logic_Power",
+            start_level: normalizedStartLevel,
+          };
+        });
+
+        return baseGroup;
+      })
+      : [],
   }));
 }
 

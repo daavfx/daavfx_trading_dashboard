@@ -49,7 +49,6 @@ export const generalCategoriesList = [
   { id: "restart_policy", label: "Restart Policy", icon: RotateCw, color: "text-orange-400" },
   { id: "news", label: "News Filter", icon: Newspaper, color: "text-amber-400" },
   { id: "time", label: "Time Filter", icon: Clock, color: "text-blue-400" },
-  { id: "license", label: "License", icon: Key, color: "text-purple-400" },
   { id: "general", label: "General", icon: Settings2, color: "text-slate-400" },
   { id: "ui", label: "UI Settings", icon: Palette, color: "text-teal-400" },
   { id: "logs", label: "Logs", icon: Terminal, color: "text-green-400" },

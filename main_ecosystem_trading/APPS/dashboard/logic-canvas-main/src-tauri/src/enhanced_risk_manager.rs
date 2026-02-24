@@ -1,6 +1,9 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc, Mutex, RwLock,
+};
 use tokio::time::{interval, Duration};
 use uuid::Uuid;
 use ndarray::{Array2, ArrayView2};
@@ -157,6 +160,8 @@ pub struct EnhancedRiskManager {
     active_alerts: Arc<RwLock<Vec<RiskAlert>>>,
     correlation_cache: Arc<RwLock<HashMap<String, CorrelationMatrix>>>,
     risk_config: RiskConfig,
+    monitoring_handle: Mutex<Option<tokio::task::JoinHandle<()>>>,
+    monitoring_stop: Arc<AtomicBool>,
 }
 
 #[derive(Debug, Clone)]
@@ -218,6 +223,8 @@ impl EnhancedRiskManager {
             active_alerts: Arc::new(RwLock::new(Vec::new())),
             correlation_cache: Arc::new(RwLock::new(HashMap::new())),
             risk_config: config,
+            monitoring_handle: Mutex::new(None),
+            monitoring_stop: Arc::new(AtomicBool::new(false)),
         })
     }
 
@@ -813,20 +820,53 @@ impl EnhancedRiskManager {
 
     pub fn start_real_time_monitoring(&self, update_interval_ms: u64) -> Result<(), String> {
         let active_alerts = Arc::clone(&self.active_alerts);
+        let stop_flag = Arc::clone(&self.monitoring_stop);
         
-        tokio::spawn(async move {
-            let mut interval = interval(Duration::from_millis(update_interval_ms));
-            
-            loop {
-                interval.tick().await;
-                
-                // Clean up old alerts (older than 24 hours)
-                let mut alerts = active_alerts.write().unwrap();
-                let cutoff_time = chrono::Utc::now().timestamp() - 86400;
-                alerts.retain(|alert| alert.timestamp > cutoff_time);
+        {
+            let mut handle_guard = self
+                .monitoring_handle
+                .lock()
+                .map_err(|_| "Risk monitoring handle poisoned".to_string())?;
+            if let Some(handle) = handle_guard.as_ref() {
+                if !handle.is_finished() {
+                    return Ok(());
+                }
             }
-        });
+            stop_flag.store(false, Ordering::Relaxed);
 
+            let handle = tokio::spawn(async move {
+                let mut tick = interval(Duration::from_millis(update_interval_ms));
+
+                loop {
+                    tick.tick().await;
+                    if stop_flag.load(Ordering::Relaxed) {
+                        break;
+                    }
+
+                    let mut alerts = match active_alerts.write() {
+                        Ok(a) => a,
+                        Err(_) => break,
+                    };
+                    let cutoff_time = chrono::Utc::now().timestamp() - 86400;
+                    alerts.retain(|alert| alert.timestamp > cutoff_time);
+                }
+            });
+
+            *handle_guard = Some(handle);
+        }
+
+        Ok(())
+    }
+
+    pub fn stop_real_time_monitoring(&self) -> Result<(), String> {
+        self.monitoring_stop.store(true, Ordering::Relaxed);
+        let mut handle_guard = self
+            .monitoring_handle
+            .lock()
+            .map_err(|_| "Risk monitoring handle poisoned".to_string())?;
+        if let Some(handle) = handle_guard.take() {
+            handle.abort();
+        }
         Ok(())
     }
 

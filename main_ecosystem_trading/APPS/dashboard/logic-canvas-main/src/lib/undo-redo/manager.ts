@@ -164,6 +164,11 @@ export class UndoRedoManager {
       existing.timestamp = newOp.timestamp;
       existing.description = `${existing.description}; then ${newOp.description}`;
     }
+    if (existing.type === 'GROUP_UPDATE' && newOp.type === 'GROUP_UPDATE') {
+      existing.after = newOp.after;
+      existing.timestamp = newOp.timestamp;
+      existing.description = `${existing.description}; then ${newOp.description}`;
+    }
   }
 
   // Perform undo operation
@@ -186,12 +191,9 @@ export class UndoRedoManager {
       // Move to redo stack
       stack.redo.push(operation);
 
-      // Apply inverse operation to config
-      // In a real implementation, this would modify the actual config
-      // For now, we'll just return the operation
-
+      const inverse = this.getInverseOperation(operation);
       this.notifyChange();
-      return operation;
+      return inverse;
     } finally {
       this.state.isProcessing = false;
       this.notifyChange();
@@ -249,7 +251,7 @@ export class UndoRedoManager {
         if (operationIds.includes(op.id)) {
           // Move to redo stack
           stack.redo.push(op);
-          undone.push(op);
+          undone.push(this.getInverseOperation(op));
         } else {
           remainingUndo.push(op);
         }
@@ -258,7 +260,7 @@ export class UndoRedoManager {
       stack.undo = remainingUndo;
 
       this.notifyChange();
-      return undone;
+      return undone.sort((a, b) => b.timestamp - a.timestamp);
     } finally {
       this.state.isProcessing = false;
       this.notifyChange();
@@ -299,6 +301,10 @@ export class UndoRedoManager {
 
   // Apply an operation to a config (helper method)
   applyOperationToConfig(config: MTConfig, operation: ChangeOperation): MTConfig {
+    if (operation.target.engineId === 'CONFIG' && operation.target.parameter === '__CONFIG__') {
+      return operation.after as MTConfig;
+    }
+
     const newConfig = JSON.parse(JSON.stringify(config)); // Deep clone
 
     try {
@@ -328,7 +334,6 @@ export class UndoRedoManager {
         }
       }
     } catch (e) {
-      console.error('Error applying operation to config:', e);
       return config; // Return original config if operation fails
     }
 

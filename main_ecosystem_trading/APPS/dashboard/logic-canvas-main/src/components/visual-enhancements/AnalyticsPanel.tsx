@@ -29,8 +29,6 @@ export function AnalyticsPanel({ config }: AnalyticsPanelProps) {
   const {
     state,
     performAnalysis,
-    startAnalysis,
-    stopAnalysis,
     getHighRiskItems,
     getRecommendationsByImpact,
     getStrongCorrelations
@@ -80,8 +78,8 @@ export function AnalyticsPanel({ config }: AnalyticsPanelProps) {
             <Button
               variant={state.isAnalyzing ? "secondary" : "outline"}
               size="sm"
-              onClick={state.isAnalyzing ? stopAnalysis : startAnalysis}
-              disabled={state.isAnalyzing}
+              onClick={handleRunAnalysis}
+              disabled={!config || state.isAnalyzing}
             >
               {state.isAnalyzing ? <Square className="h-4 w-4 mr-1" /> : <Play className="h-4 w-4 mr-1" />}
               {state.isAnalyzing ? 'Analyzing...' : 'Run Analysis'}

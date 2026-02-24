@@ -23,8 +23,6 @@ identifier = "export-set-file"
 description = "Export set file"
 commands.allow = ["export_set_file"]
 
-# Removed export to MT common files
-
 [[permission]]
 identifier = "import-set-file"
 description = "Import set file"

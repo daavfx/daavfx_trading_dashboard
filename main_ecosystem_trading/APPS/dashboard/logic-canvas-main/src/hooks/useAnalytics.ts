@@ -5,12 +5,8 @@ import { MTConfig } from '@/types/mt-config';
 import { getAnalyticsManager, AnalyticsManager } from '@/lib/analytics/manager';
 import {
   AnalyticsState,
-  ParameterCorrelation,
-  PerformanceMetric,
-  OptimizationRecommendation,
-  RiskAnalysis,
   BacktestResult
-} from './types';
+} from '@/lib/analytics/types';
 
 export function useAnalytics(initialConfig?: MTConfig) {
   const [anManager] = useState<AnalyticsManager>(() => getAnalyticsManager());
@@ -23,11 +19,11 @@ export function useAnalytics(initialConfig?: MTConfig) {
   }, [anManager]);
 
   const performAnalysis = async (config?: MTConfig) => {
-    await anManager.performAnalysis(config);
+    await anManager.performAnalysis(config ?? initialConfig);
   };
 
   const startAnalysis = () => {
-    anManager.startAnalysis();
+    anManager.startAnalysis(initialConfig);
   };
 
   const stopAnalysis = () => {

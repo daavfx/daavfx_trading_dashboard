@@ -6,11 +6,13 @@ import type { ParsedCommand } from "./types";
 
 interface TestCase {
   input: string;
+  expectedType?: ParsedCommand["type"];
   expectedGroups?: number[];
   expectedEngines?: string[];
   expectedLogics?: string[];
   expectedField?: string;
   expectedValue?: number;
+  expectedCustomSequence?: number[];
   description: string;
 }
 
@@ -256,13 +258,13 @@ const testCases: TestCase[] = [
   },
   {
     input: "group 0",
-    expectedGroups: [0],
-    description: "Edge: group 0 (invalid but parser accepts)"
+    expectedGroups: undefined,
+    description: "Edge: group 0 (invalid - parser ignores)"
   },
   {
     input: "group 99",
-    expectedGroups: [99],
-    description: "Edge: group 99 (out of range but parser accepts)"
+    expectedGroups: undefined,
+    description: "Edge: group 99 (out of range - parser ignores)"
   },
 
   // ========== STRESS TEST: DUPLICATES ==========
@@ -275,6 +277,14 @@ const testCases: TestCase[] = [
     input: "groups 1-5 group 3 group 7",
     expectedGroups: [1, 2, 3, 4, 5, 7],
     description: "Stress: range + individual (3 appears twice, should dedupe)"
+  },
+  {
+    input: "set start level equal group number for groups 1-15",
+    expectedType: "progression",
+    expectedGroups: Array.from({ length: 15 }, (_, i) => i + 1),
+    expectedField: "start_level",
+    expectedCustomSequence: Array.from({ length: 15 }, (_, i) => i + 1),
+    description: "NL: start_level matches group index"
   },
 ];
 
@@ -297,6 +307,14 @@ export function runParserTests(debug = false): { passed: number; failed: number;
       if (JSON.stringify(actualGroups) !== JSON.stringify(test.expectedGroups)) {
         testPassed = false;
         errors.push(`Groups: expected ${JSON.stringify(test.expectedGroups)}, got ${JSON.stringify(actualGroups)}`);
+      }
+    }
+
+    // Validate type
+    if (test.expectedType !== undefined) {
+      if (result.type !== test.expectedType) {
+        testPassed = false;
+        errors.push(`Type: expected '${test.expectedType}', got '${result.type}'`);
       }
     }
 
@@ -331,6 +349,15 @@ export function runParserTests(debug = false): { passed: number; failed: number;
       if (result.params.value !== test.expectedValue) {
         testPassed = false;
         errors.push(`Value: expected ${test.expectedValue}, got ${result.params.value}`);
+      }
+    }
+
+    // Validate custom sequence
+    if (test.expectedCustomSequence !== undefined) {
+      const actual = result.params.customSequence;
+      if (JSON.stringify(actual) !== JSON.stringify(test.expectedCustomSequence)) {
+        testPassed = false;
+        errors.push(`CustomSequence: expected ${JSON.stringify(test.expectedCustomSequence)}, got ${JSON.stringify(actual)}`);
       }
     }
 

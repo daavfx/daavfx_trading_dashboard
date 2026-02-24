@@ -491,7 +491,7 @@ const CounterTrendAndReverseUI = ({
       {/* Logic Category */}
       <CategoryCard title="Logic" icon={Zap} color="emerald">
         <div className="grid grid-cols-2 gap-4">
-          <LabeledField label="Order Count Ref">
+          <LabeledField label="Order Count Ref" hint="Reference logic used by Start Level">
             <Select
               value={localConfig.order_count_reference || "Logic_Self"}
               onValueChange={(val) =>
@@ -990,15 +990,6 @@ export const LogicConfigPanel = ({
             </div>
           </LabeledField>
 
-          <div className="flex items-center justify-between pt-2">
-            <Label className="text-[11px] font-medium text-muted-foreground">
-              Enabled
-            </Label>
-            <Switch
-              checked={localConfig.enabled}
-              onCheckedChange={(checked) => handleChange("enabled", checked)}
-            />
-          </div>
         </div>
       </div>
     );

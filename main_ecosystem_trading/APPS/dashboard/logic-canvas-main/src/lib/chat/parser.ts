@@ -20,21 +20,68 @@ const FIELD_ALIASES: Record<string, string> = {
   "trail_value": "trail_value",
   "trail_start": "trail_start",
   "trail_step": "trail_step",
+  "trail_method": "trail_method",
+  "trail method": "trail_method",
+  "trail_step_method": "trail_step_method",
+  "trail step method": "trail_step_method",
   // Trail Step Advanced (V17.04+)
   "trail_step_mode": "trail_step_mode",
   "trail_step_cycle": "trail_step_cycle",
   "trail_cycle": "trail_step_cycle",
   "trail_step_balance": "trail_step_balance",
   "trail_balance": "trail_step_balance",
+  "trail mode": "trail_step_mode",
+  "trail cycle": "trail_step_cycle",
+  "trail balance": "trail_step_balance",
+  // Trail Step Extended Levels (2-7)
+  "trail_step_2": "trail_step_2",
+  "trail step 2": "trail_step_2",
+  "trail_step_3": "trail_step_3",
+  "trail step 3": "trail_step_3",
+  "trail_step_4": "trail_step_4",
+  "trail step 4": "trail_step_4",
+  "trail_step_5": "trail_step_5",
+  "trail step 5": "trail_step_5",
+  "trail_step_6": "trail_step_6",
+  "trail step 6": "trail_step_6",
+  "trail_step_7": "trail_step_7",
+  "trail step 7": "trail_step_7",
   // TPSL
   "tp": "tp_value",
   "takeprofit": "tp_value",
+  "take profit": "tp_value",
+  "tp_value": "tp_value",
+  "tp_mode": "tp_mode",
+  "tp mode": "tp_mode",
   "sl": "sl_value",
   "stoploss": "sl_value",
+  "stop loss": "sl_value",
+  "sl_value": "sl_value",
+  "sl_mode": "sl_mode",
+  "sl mode": "sl_mode",
+  "use_tp": "use_tp",
+  "use tp": "use_tp",
+  "use_sl": "use_sl",
+  "use sl": "use_sl",
   // Logic-specific
   "start_level": "start_level",
   "start level": "start_level",
+  "startlevel": "start_level",
+  "start": "start_level",
   "level": "start_level",
+  "last_lot": "last_lot",
+  "last lot": "last_lot",
+  "lastlot": "last_lot",
+  "max_lot": "last_lot",
+  "max lot": "last_lot",
+  "order_count_reference": "order_count_reference",
+  "order count ref": "order_count_reference",
+  "order ref": "order_count_reference",
+  "close_targets": "close_targets",
+  "close targets": "close_targets",
+  "reset_lot_on_restart": "reset_lot_on_restart",
+  "reset lot": "reset_lot_on_restart",
+  "reset lot on restart": "reset_lot_on_restart",
   // Reverse/Hedge (V17.04+)
   "reverse": "reverse_enabled",
   "reverse_enabled": "reverse_enabled",
@@ -44,17 +91,109 @@ const FIELD_ALIASES: Record<string, string> = {
   "hedge enabled": "hedge_enabled",
   "reverse_scale": "reverse_scale",
   "reverse scale": "reverse_scale",
+  "reverse percent": "reverse_scale",
   "hedge_scale": "hedge_scale",
   "hedge scale": "hedge_scale",
+  "hedge percent": "hedge_scale",
   "reverse_reference": "reverse_reference",
+  "reverse reference": "reverse_reference",
   "hedge_reference": "hedge_reference",
+  "hedge reference": "hedge_reference",
+  "trading_mode": "trading_mode",
+  "trading mode": "trading_mode",
   // Close Partial
   "close_partial": "close_partial",
   "partial": "close_partial",
+  "close_partial_cycle": "close_partial_cycle",
+  "partial cycle": "close_partial_cycle",
+  "close_partial_mode": "close_partial_mode",
+  "partial mode": "close_partial_mode",
+  "close_partial_balance": "close_partial_balance",
+  "partial balance": "close_partial_balance",
+  "close_partial_trail_step_mode": "close_partial_trail_step_mode",
+  // Close Partial Extended Levels (2-4)
+  "close_partial_2": "close_partial_2",
+  "partial 2": "close_partial_2",
+  "close_partial_3": "close_partial_3",
+  "partial 3": "close_partial_3",
+  "close_partial_4": "close_partial_4",
+  "partial 4": "close_partial_4",
+  // Group-level
+  "group_power_start": "group_power_start",
+  "group power start": "group_power_start",
+  "power start": "group_power_start",
+  "group_enabled": "enabled",
+  "group enabled": "enabled",
+  "reverse_mode": "reverse_mode",
+  "reverse mode": "reverse_mode",
+  "hedge_mode": "hedge_mode",
+  "hedge mode": "hedge_mode",
+  "entry_delay_bars": "entry_delay_bars",
+  "entry delay": "entry_delay_bars",
+  // Trigger fields (Group 1 only)
+  "trigger_type": "trigger_type",
+  "trigger type": "trigger_type",
+  "trigger_bars": "trigger_bars",
+  "trigger bars": "trigger_bars",
+  "trigger_minutes": "trigger_minutes",
+  "trigger minutes": "trigger_minutes",
+  "trigger_seconds": "trigger_minutes",
+  "trigger seconds": "trigger_minutes",
+  "trigger_pips": "trigger_pips",
+  "trigger pips": "trigger_pips",
+  // General config
+  "magic_number": "magic_number",
+  "magic number": "magic_number",
+  "magic": "magic_number",
+  "magic_buy": "magic_number_buy",
+  "magic buy": "magic_number_buy",
+  "magic_sell": "magic_number_sell",
+  "magic sell": "magic_number_sell",
+  "max_slippage": "max_slippage_points",
+  "slippage": "max_slippage_points",
+  "allow_buy": "allow_buy",
+  "allow buy": "allow_buy",
+  "allow_sell": "allow_sell",
+  "allow sell": "allow_sell",
+  // Risk Management
+  "equity_stop_enabled": "equity_stop_enabled",
+  "equity stop": "equity_stop_enabled",
+  "equity_stop_value": "equity_stop_value",
+  "equity stop value": "equity_stop_value",
+  "drawdown_stop_enabled": "drawdown_stop_enabled",
+  "drawdown stop": "drawdown_stop_enabled",
+  "max_drawdown_percent": "max_drawdown_percent",
+  "max drawdown": "max_drawdown_percent",
+  "drawdown": "max_drawdown_percent",
+  "spread_filter_enabled": "spread_filter_enabled",
+  "spread filter": "spread_filter_enabled",
+  "max_spread": "max_spread_points",
+  "max spread": "max_spread_points",
+  // Compounding
+  "compounding_enabled": "compounding_enabled",
+  "compounding": "compounding_enabled",
+  "compound": "compounding_enabled",
+  "compounding_type": "compounding_type",
+  "compound type": "compounding_type",
+  "compounding_target": "compounding_target",
+  "compound target": "compounding_target",
+  "compounding_increase": "compounding_increase",
+  "compound increase": "compounding_increase",
+  // News Filter
+  "news_filter_enabled": "news_filter_enabled",
+  "news filter": "news_filter_enabled",
+  "news_filter_countries": "news_filter_countries",
+  "news countries": "news_filter_countries",
+  "news_filter_impact": "impact_level",
+  "news impact": "impact_level",
+  // Session
+  "session_enabled": "session_enabled",
+  "session": "session_enabled",
 };
 
-// Logic name aliases
+// Logic name aliases - includes engine-specific logics
 const LOGIC_ALIASES: Record<string, string> = {
+  // Engine A
   "power": "POWER",
   "repower": "REPOWER",
   "scalp": "SCALPER",
@@ -64,7 +203,54 @@ const LOGIC_ALIASES: Record<string, string> = {
   "sca": "SCA",
   "rpo": "RPO",
   "powe": "POWER",
-  "all": "ALL",  // Special: means all logics
+  // Engine B
+  "bpower": "BPOWER",
+  "b-power": "BPOWER",
+  "b power": "BPOWER",
+  "brepower": "BREPOWER",
+  "b-repower": "BREPOWER",
+  "b repower": "BREPOWER",
+  "bscalp": "BSCALPER",
+  "bscalper": "BSCALPER",
+  "b-scalper": "BSCALPER",
+  "b scalper": "BSCALPER",
+  "bstopper": "BSTOPPER",
+  "b-stopper": "BSTOPPER",
+  "b stopper": "BSTOPPER",
+  "bsto": "BSTO",
+  "b-sto": "BSTO",
+  "b sto": "BSTO",
+  "bsca": "BSCA",
+  "b-sca": "BSCA",
+  "b sca": "BSCA",
+  "brpo": "BRPO",
+  "b-rpo": "BRPO",
+  "b rpo": "BRPO",
+  // Engine C
+  "cpower": "CPOWER",
+  "c-power": "CPOWER",
+  "c power": "CPOWER",
+  "crepower": "CREPOWER",
+  "c-repower": "CREPOWER",
+  "c repower": "CREPOWER",
+  "cscalp": "CSCALPER",
+  "cscalper": "CSCALPER",
+  "c-scalper": "CSCALPER",
+  "c scalper": "CSCALPER",
+  "cstopper": "CSTOPPER",
+  "c-stopper": "CSTOPPER",
+  "c stopper": "CSTOPPER",
+  "csto": "CSTO",
+  "c-sto": "CSTO",
+  "c sto": "CSTO",
+  "csca": "CSCA",
+  "c-sca": "CSCA",
+  "c sca": "CSCA",
+  "crpo": "CRPO",
+  "c-rpo": "CRPO",
+  "c rpo": "CRPO",
+  // Special
+  "all": "ALL",
 };
 
 // Progression type detection
@@ -92,6 +278,26 @@ export function parseCommand(input: string): ParsedCommand {
   
   // Extract parameters based on command type
   const params = extractParams(raw, type);
+
+  if (
+    (type === "set" || type === "unknown" || type === "progression") &&
+    /(start[_ ]?level|\bstart\b)/i.test(raw) &&
+    /(group|groups)/i.test(raw) &&
+    /(same|match|equal|equals|as)/i.test(raw) &&
+    /(number|index|id|#)/i.test(raw)
+  ) {
+    const groups = target.groups && target.groups.length > 0
+      ? target.groups
+      : Array.from({ length: 15 }, (_, i) => i + 1);
+
+    type = "progression";
+    target.field = "start_level";
+    target.groups = groups;
+    params.progressionType = "custom";
+    params.customSequence = groups.slice();
+    params.startValue = groups[0];
+    params.endValue = groups[groups.length - 1];
+  }
   
   // SEMANTIC ENGINE INTEGRATION:
   // If command is "set" or "unknown" but missing field/value, try semantic parsing
@@ -404,47 +610,104 @@ export function getSuggestions(input: string): string[] {
       "show all groups with grid > 500",
       "show power settings for group 1",
       "find groups where start_level = 4",
-      "show reverse_enabled for all groups"
+      "show reverse_enabled for all groups",
+      "show lot for all groups",
+      "find groups where multiplier > 2"
     );
   } else if (lower.startsWith("set")) {
     suggestions.push(
       "set grid to 600 for groups 1-8",
       "set initial_lot to 0.02 for power",
-      "set multiplier to 1.5 for all logics"
+      "set multiplier to 1.5 for all logics",
+      "set start_level to 4 for repower",
+      "set tp to 500 for power groups 1-5",
+      "set sl to 1000 for all groups",
+      "set trading mode to hedge"
     );
   } else if (lower.includes("enable") || lower.includes("disable")) {
     suggestions.push(
       "enable reverse for power groups 1-5",
       "disable hedge for all groups",
-      "enable close_partial for scalper groups 1-10"
+      "enable close_partial for scalper groups 1-10",
+      "enable tp for all groups",
+      "enable sl for power groups 1-8"
     );
   } else if (lower.includes("reverse") || lower.includes("hedge")) {
     suggestions.push(
       "enable reverse for power groups 1-5",
       "set reverse_scale to 100 for groups 1-8",
       "disable hedge for all logics",
-      "show reverse_enabled for all groups"
+      "show reverse_enabled for all groups",
+      "set hedge scale to 50"
     );
   } else if (lower.startsWith("create") || lower.includes("progression")) {
     suggestions.push(
       "create progression for grid from 600 to 3000 fibonacci groups 1-8",
       "create linear progression for lot from 0.01 to 0.08 groups 1-8",
-      "create exponential progression factor 1.5 for grid groups 1-10"
+      "create exponential progression factor 1.5 for grid groups 1-10",
+      "fibonacci grid 600 to 3000 groups 1-8"
     );
   } else if (lower.startsWith("copy")) {
     suggestions.push(
       "copy power settings from group 1 to groups 2-8",
-      "copy all settings from engine A to engine B"
+      "copy all settings from engine A to engine B",
+      "copy grid from group 1 to all groups"
+    );
+  } else if (lower.startsWith("compare")) {
+    suggestions.push(
+      "compare grid between group 1 and group 5",
+      "compare lot between groups 1-3 and groups 4-6"
+    );
+  } else if (lower.includes("lot") || lower.includes("mult")) {
+    suggestions.push(
+      "double the lot",
+      "halve the lot",
+      "set lot to 0.02",
+      "increase lot by 0.01",
+      "set multiplier to 1.5"
+    );
+  } else if (lower.includes("grid")) {
+    suggestions.push(
+      "tighten grid by 100",
+      "widen grid by 200",
+      "set grid to 600",
+      "show grid for all groups"
+    );
+  } else if (lower.includes("trail")) {
+    suggestions.push(
+      "increase trail by 50%",
+      "decrease trail by 30%",
+      "set trail to 500",
+      "show trail for all groups"
+    );
+  } else if (lower.includes("risk") || lower.includes("safe") || lower.includes("aggressive")) {
+    suggestions.push(
+      "make it aggressive",
+      "make it conservative",
+      "30% more aggressive",
+      "low risk mode",
+      "high risk mode",
+      "make it 50% safer"
+    );
+  } else if (lower.includes("mode") || lower.includes("preset")) {
+    suggestions.push(
+      "scalping mode",
+      "swing mode",
+      "martingale mode",
+      "low risk mode",
+      "high risk mode",
+      "balanced mode"
     );
   } else {
-    // Default suggestions
     suggestions.push(
       "show grid for all groups",
       "set grid to 500 for group 1",
       "enable reverse for power groups 1-5",
-      "create progression for grid fibonacci groups 1-8"
+      "create progression for grid fibonacci groups 1-8",
+      "double the lot for all groups",
+      "make it aggressive"
     );
   }
   
-  return suggestions.slice(0, 5);
+  return suggestions.slice(0, 6);
 }

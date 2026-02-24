@@ -4,7 +4,7 @@
 
 import type { MTConfig, Platform } from "@/types/mt-config";
 import type {
-  MTConfig as MTConfigComplete,
+  MTConfigComplete,
   GlobalConfig,
 } from "@/types/mt-config-complete";
 

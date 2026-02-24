@@ -112,7 +112,7 @@ export interface LogicConfig {
   closeTargets: string;
   
   // === ENGINE-SPECIFIC SETTINGS (4 fields) ===
-  orderCountReference: number;
+  maxOrderCap: number;
   startLevel: number;
   resetLotOnRestart: boolean;
   restartPolicy: RestartPolicy;
@@ -219,8 +219,8 @@ export interface GlobalConfig {
   logProfile: number;
 }
 
-// Main MT Configuration
-export interface MTConfig {
+// Main MT Configuration (internal/complete schema used by setfile tooling)
+export interface MTConfigComplete {
   version: string;
   platform: Platform;
   timestamp: string;
@@ -262,27 +262,14 @@ export const LOGIC_SUFFIX_MAP: Record<string, { suffix: string; engine: number; 
   "CRPO": { suffix: "CX", engine: 2, logic: 6 },
 };
 
-// Field count verification
-// Per MQL4 LogicConfig struct:
-// - Base controls: 3 (enabled, allowBuy, allowSell)
-// - Order params: 5 (initialLot, lastLot, multiplier, grid, gridBehavior)
-// - Trail config: 4 (method, value, start, step)
-// - Trail steps: 7 × 5 = 35
-// - Partials: 4 × 8 = 32
-// - TP/SL: 6
-// - Break-even: 4
-// - Profit trail: 5
-// - Triggers: 4
-// - Cross-logic: 8
-// - Engine: 4
-// TOTAL: 88 fields per logic-direction
-
-export const FIELDS_PER_LOGIC = 88;
+// MASSIVE v19 setfile validator baseline:
+// - test_13.set verified: 110 fields per logic-direction across all 630 logic-directions
+export const FIELDS_PER_LOGIC = 110;
 export const LOGICS_PER_ENGINE = 7;
 export const ENGINES = 3;
 export const GROUPS = 15;
 export const DIRECTIONS = 2;
 export const TOTAL_LOGIC_DIRECTIONS = GROUPS * ENGINES * LOGICS_PER_ENGINE * DIRECTIONS; // 630
-export const TOTAL_LOGIC_INPUTS = TOTAL_LOGIC_DIRECTIONS * FIELDS_PER_LOGIC; // 55,440
-export const TOTAL_GENERAL_INPUTS = 50; // Approximate
-export const TOTAL_INPUTS = TOTAL_LOGIC_INPUTS + TOTAL_GENERAL_INPUTS; // ~55,500
+export const TOTAL_LOGIC_INPUTS = TOTAL_LOGIC_DIRECTIONS * FIELDS_PER_LOGIC; // 69,300
+export const TOTAL_GENERAL_INPUTS = 100; // Approximate; validate from exported .set
+export const TOTAL_INPUTS = TOTAL_LOGIC_INPUTS + TOTAL_GENERAL_INPUTS; // ~69,400

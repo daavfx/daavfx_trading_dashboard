@@ -1,5 +1,5 @@
 
-import { Search, Download, Upload, FileDown, Save, Undo, Redo, Settings, HelpCircle, Hash, FolderOpen, GitBranch, BarChart3, Users, RotateCcw, Brain, Tags, MoreHorizontal, Sparkles, Plus } from "lucide-react";
+import { Search, Download, Upload, FileDown, Save, Undo, Redo, Settings, HelpCircle, Hash, FolderOpen, GitBranch, BarChart3, Users, RotateCcw, Brain, Tags, MoreHorizontal, Sparkles, Plus, X, Settings2, Layers, Box, Circle, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -10,9 +10,20 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { useMTFileOps } from "@/hooks/useMTFileOps";
 import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { searchInputs, type SearchableItem } from "@/utils/input-search";
 import type { MTConfig } from "@/types/mt-config";
 
 export type Platform = "mt4" | "mt5" | "python" | "c" | "cpp" | "rust";
@@ -33,6 +44,9 @@ interface TopBarProps {
   platform?: Platform;
   onPlatformChange?: (p: Platform) => void;
   onLoadConfig?: (config: MTConfig) => void;
+  searchQuery?: string;
+  onSearchQueryChange?: (query: string) => void;
+  onSearchSelect?: (item: SearchableItem) => void;
 }
 
  
@@ -53,10 +67,66 @@ export function TopBar({
   platform,
   onPlatformChange,
   onLoadConfig,
+  searchQuery = "",
+  onSearchQueryChange,
+  onSearchSelect,
 }: TopBarProps) {
   const mtPlatform = platform === "mt5" ? "MT5" : "MT4";
   const { exportSetFile, importSetFile, exportJsonFile, importJsonFile } = useMTFileOps(mtPlatform, currentConfig, onLoadConfig);
   const navigate = useNavigate();
+
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchResults, setSearchResults] = useState<SearchableItem[]>([]);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+      if (e.key === "Escape" && searchQuery) {
+        handleSearchClear();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      const results = searchInputs(searchQuery);
+      setSearchResults(results);
+      setSearchOpen(results.length > 0);
+    } else {
+      setSearchResults([]);
+      setSearchOpen(false);
+    }
+  }, [searchQuery]);
+
+  const handleSearchSelect = (item: SearchableItem) => {
+    onSearchQueryChange?.(item.id);
+    onSearchSelect?.(item);
+    setSearchOpen(false);
+  };
+
+  const handleSearchClear = () => {
+    onSearchQueryChange?.("");
+    setSearchResults([]);
+    setSearchOpen(false);
+    searchInputRef.current?.focus();
+  };
+
+  const getTypeIcon = (type: SearchableItem["type"]) => {
+    switch (type) {
+      case "field": return <Settings2 className="w-3.5 h-3.5 text-blue-400" />;
+      case "logic": return <BarChart3 className="w-3.5 h-3.5 text-green-400" />;
+      case "category": return <Layers className="w-3.5 h-3.5 text-purple-400" />;
+      case "engine": return <Box className="w-3.5 h-3.5 text-orange-400" />;
+      case "group": return <Circle className="w-3.5 h-3.5 text-cyan-400" />;
+      default: return <Filter className="w-3.5 h-3.5 text-muted-foreground" />;
+    }
+  };
 
   return (
     <header className="h-14 border-b border-border bg-background-elevated flex items-center justify-between px-4 gap-4">
@@ -194,14 +264,67 @@ export function TopBar({
       </div>
 
       {/* Search */}
-      <div className="flex-1 max-w-xs">
+      <div className="flex-1 max-w-xs relative">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
           <Input
+            ref={searchInputRef}
             placeholder="Search inputs..."
-            className="pl-9 h-8 text-sm input-refined"
+            value={searchQuery}
+            onChange={(e) => onSearchQueryChange?.(e.target.value)}
+            onFocus={() => {
+              if (searchQuery.trim() && searchResults.length > 0) {
+                setSearchOpen(true);
+              }
+            }}
+            className="pl-9 pr-8 h-8 text-sm input-refined"
           />
+          {searchQuery && (
+            <button
+              onMouseDown={(e) => {
+                e.preventDefault();
+                handleSearchClear();
+              }}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
+        
+        {searchOpen && searchResults.length > 0 && (
+          <div 
+            className="absolute top-full left-0 right-0 mt-1 z-50 bg-background-elevated border border-border/60 rounded-md shadow-lg overflow-hidden"
+            onMouseDown={(e) => e.preventDefault()}
+          >
+            <div className="max-h-64 overflow-y-auto p-1">
+              {searchResults.slice(0, 12).map((item, idx) => (
+                <button
+                  key={`${item.type}-${item.id}-${idx}`}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    handleSearchSelect(item);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 cursor-pointer rounded hover:bg-muted/50 transition-colors text-left"
+                >
+                  {getTypeIcon(item.type)}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-medium truncate">{item.label}</div>
+                    <div className="text-[10px] text-muted-foreground flex items-center gap-1.5">
+                      <span className="uppercase tracking-wide">{item.type}</span>
+                      {item.category && (
+                        <>
+                          <span>·</span>
+                          <span>{item.category}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Actions */}

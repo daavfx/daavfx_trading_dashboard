@@ -30,7 +30,6 @@ const SPEED_FIELDS = ["grid", "trail_step", "trail_start"];
 const SEMANTIC_RULES: SemanticRule[] = [
   // === HEDGE / VOLATILITY MODES ===
   {
-    // "setup hedge mode for high volatility markets"
     pattern: /setup\s+hedge\s+(?:mode\s+)?for\s+(?:high\s+)?(?:volatilit(?:y|ies)|volatile)(?:\s+markets?)?/i,
     description: "Enable Hedge Mode with high-volatility safety settings",
     extract: () => ({
@@ -48,13 +47,12 @@ const SEMANTIC_RULES: SemanticRule[] = [
 
   // === PERCENTAGE SCALING ===
   {
-    // "30% more aggressive", "50% more aggressive"
     pattern: /(\d+)\s*%\s*more\s+(aggressive|stronger|faster)/i,
     description: "Scale aggressive parameters up by percentage",
     extract: (match) => {
       const percent = parseInt(match[1]);
       const factor = 1 + (percent / 100);
-      const gridFactor = 1 / factor; // Tighter grid = more aggressive
+      const gridFactor = 1 / factor;
       return {
         operations: [
           { field: "multiplier", op: "scale", factor },
@@ -66,16 +64,12 @@ const SEMANTIC_RULES: SemanticRule[] = [
     },
   },
   {
-    // "30% less aggressive", "50% less aggressive"
-    pattern: /(\d+)\s*%\s*(less|more)\s+(conservative|safer|safer)/i,
+    pattern: /(\d+)\s*%\s*(less|more)\s+(conservative|safer)/i,
     description: "Scale toward safety by percentage",
     extract: (match) => {
       const percent = parseInt(match[1]);
-      const isLess = match[2].toLowerCase() === "less";
-      // "less aggressive" = more conservative = scale down
-      // "more conservative" = scale down
-      const factor = isLess ? (1 - percent / 100) : (1 - percent / 100);
-      const gridFactor = 1 / factor; // Wider grid = safer
+      const factor = 1 - (percent / 100);
+      const gridFactor = 1 + (percent / 100);
       return {
         operations: [
           { field: "multiplier", op: "scale", factor },
@@ -87,13 +81,12 @@ const SEMANTIC_RULES: SemanticRule[] = [
     },
   },
   {
-    // "make it 50% safer"
     pattern: /(\d+)\s*%\s*safer/i,
     description: "Scale safety parameters by percentage",
     extract: (match) => {
       const percent = parseInt(match[1]);
-      const gridFactor = 1 + (percent / 100); // Wider grid = safer
-      const lotFactor = 1 - (percent / 100 * 0.5); // Reduce lot by half the percentage
+      const gridFactor = 1 + (percent / 100);
+      const lotFactor = 1 - (percent / 100 * 0.5);
       return {
         operations: [
           { field: "grid", op: "scale", factor: gridFactor },
@@ -107,7 +100,6 @@ const SEMANTIC_RULES: SemanticRule[] = [
 
   // === RELATIVE ADJUSTMENTS ===
   {
-    // "double the lot", "double the grid", "double the multiplier"
     pattern: /double\s*(?:the\s*)?(lot|grid|multiplier|trail)/i,
     description: "Double a specific field",
     extract: (match) => {
@@ -126,7 +118,24 @@ const SEMANTIC_RULES: SemanticRule[] = [
     },
   },
   {
-    // "half the lot", "halve the grid"
+    pattern: /triple\s*(?:the\s*)?(lot|grid|multiplier|trail)/i,
+    description: "Triple a specific field",
+    extract: (match) => {
+      const fieldAlias = match[1].toLowerCase();
+      const fieldMap: Record<string, string> = {
+        lot: "initial_lot",
+        grid: "grid",
+        multiplier: "multiplier",
+        trail: "trail_value",
+      };
+      const field = fieldMap[fieldAlias] || fieldAlias;
+      return {
+        operations: [{ field, op: "scale", factor: 3.0 }],
+        description: `Triple ${field}`,
+      };
+    },
+  },
+  {
     pattern: /(half|halve)\s*(?:the\s*)?(lot|grid|multiplier|trail)/i,
     description: "Halve a specific field",
     extract: (match) => {
@@ -144,22 +153,57 @@ const SEMANTIC_RULES: SemanticRule[] = [
       };
     },
   },
+  {
+    pattern: /increase\s+(?:the\s*)?(lot|grid|multiplier|trail)\s+by\s+(\d+(?:\.\d+)?)/i,
+    description: "Increase field by value",
+    extract: (match) => {
+      const fieldAlias = match[1].toLowerCase();
+      const value = parseFloat(match[2]);
+      const fieldMap: Record<string, string> = {
+        lot: "initial_lot",
+        grid: "grid",
+        multiplier: "multiplier",
+        trail: "trail_value",
+      };
+      const field = fieldMap[fieldAlias] || fieldAlias;
+      return {
+        operations: [{ field, op: "add", value }],
+        description: `Increase ${field} by ${value}`,
+      };
+    },
+  },
+  {
+    pattern: /decrease\s+(?:the\s*)?(lot|grid|multiplier|trail)\s+by\s+(\d+(?:\.\d+)?)/i,
+    description: "Decrease field by value",
+    extract: (match) => {
+      const fieldAlias = match[1].toLowerCase();
+      const value = parseFloat(match[2]);
+      const fieldMap: Record<string, string> = {
+        lot: "initial_lot",
+        grid: "grid",
+        multiplier: "multiplier",
+        trail: "trail_value",
+      };
+      const field = fieldMap[fieldAlias] || fieldAlias;
+      return {
+        operations: [{ field, op: "subtract", value }],
+        description: `Decrease ${field} by ${value}`,
+      };
+    },
+  },
 
   // === TIGHTEN/LOOSEN ===
   {
-    // "tighten the grid", "tighten grid by 200"
     pattern: /tighten\s*(?:the\s*)?grid(?:\s*(?:by\s*)?(\d+))?/i,
     description: "Reduce grid spacing",
     extract: (match) => {
       if (match[1]) {
-        // Absolute reduction: "tighten grid by 200"
         const reduction = parseInt(match[1]);
         return {
           operations: [{ field: "grid", op: "subtract", value: reduction }],
-          description: `Reduce grid by ${reduction} pips`,
+          description: `Reduce grid by ${reduction} points`,
         };
       }
-      // Percentage reduction: "tighten the grid" = 20% tighter
       return {
         operations: [{ field: "grid", op: "scale", factor: 0.8 }],
         description: "Tighten grid by 20%",
@@ -167,7 +211,6 @@ const SEMANTIC_RULES: SemanticRule[] = [
     },
   },
   {
-    // "loosen the grid", "widen grid by 200"
     pattern: /(loosen|widen)\s*(?:the\s*)?grid(?:\s*(?:by\s*)?(\d+))?/i,
     description: "Increase grid spacing",
     extract: (match) => {
@@ -175,7 +218,7 @@ const SEMANTIC_RULES: SemanticRule[] = [
         const increase = parseInt(match[2]);
         return {
           operations: [{ field: "grid", op: "add", value: increase }],
-          description: `Increase grid by ${increase} pips`,
+          description: `Increase grid by ${increase} points`,
         };
       }
       return {
@@ -187,7 +230,6 @@ const SEMANTIC_RULES: SemanticRule[] = [
 
   // === VIBES / PRESETS ===
   {
-    // "make it aggressive", "go aggressive"
     pattern: /(?:make\s*(?:it\s*)?|go\s*)(aggressive|risky)/i,
     description: "Apply aggressive preset",
     extract: () => ({
@@ -200,7 +242,6 @@ const SEMANTIC_RULES: SemanticRule[] = [
     }),
   },
   {
-    // "make it conservative", "go safe", "play it safe"
     pattern: /(?:make\s*(?:it\s*)?|go\s*|play\s*(?:it\s*)?)(conservative|safe|safer|defensive)/i,
     description: "Apply conservative preset",
     extract: () => ({
@@ -213,7 +254,6 @@ const SEMANTIC_RULES: SemanticRule[] = [
     }),
   },
   {
-    // "balanced mode", "make it balanced"
     pattern: /(?:make\s*(?:it\s*)?)?balanced/i,
     description: "Apply balanced preset",
     extract: () => ({
@@ -225,10 +265,72 @@ const SEMANTIC_RULES: SemanticRule[] = [
       description: "Apply balanced preset (mult=1.5, grid=600, lot=0.01)",
     }),
   },
+  {
+    pattern: /(?:scalping|scalper)\s*(?:mode|setup|preset)?/i,
+    description: "Apply scalping preset",
+    extract: () => ({
+      operations: [
+        { field: "grid", op: "set", value: 150 },
+        { field: "trail_value", op: "set", value: 100 },
+        { field: "trail_step", op: "set", value: 50 },
+        { field: "initial_lot", op: "set", value: 0.01 },
+      ],
+      description: "Apply scalping preset (tight grid=150, tight trail)",
+    }),
+  },
+  {
+    pattern: /swing\s*(?:mode|trading|preset)?/i,
+    description: "Apply swing trading preset",
+    extract: () => ({
+      operations: [
+        { field: "grid", op: "set", value: 800 },
+        { field: "trail_value", op: "set", value: 500 },
+        { field: "trail_step", op: "set", value: 250 },
+        { field: "multiplier", op: "set", value: 1.3 },
+      ],
+      description: "Apply swing preset (wide grid=800, wide trail)",
+    }),
+  },
+  {
+    pattern: /martingale\s*(?:mode|setup|preset)?/i,
+    description: "Apply martingale-style preset",
+    extract: () => ({
+      operations: [
+        { field: "multiplier", op: "set", value: 2.0 },
+        { field: "grid", op: "scale", factor: 0.8 },
+      ],
+      description: "Apply martingale preset (mult=2.0, tighter grid)",
+    }),
+  },
+  {
+    pattern: /low\s*risk\s*(?:mode|preset)?/i,
+    description: "Apply low risk preset",
+    extract: () => ({
+      operations: [
+        { field: "initial_lot", op: "set", value: 0.01 },
+        { field: "multiplier", op: "set", value: 1.2 },
+        { field: "grid", op: "scale", factor: 1.5 },
+        { field: "sl_value", op: "set", value: 500 },
+        { field: "use_sl", op: "set", value: true },
+      ],
+      description: "Apply low risk preset (min lot, low mult, wide grid, SL enabled)",
+    }),
+  },
+  {
+    pattern: /high\s*risk\s*(?:mode|preset)?/i,
+    description: "Apply high risk preset",
+    extract: () => ({
+      operations: [
+        { field: "initial_lot", op: "set", value: 0.05 },
+        { field: "multiplier", op: "set", value: 1.8 },
+        { field: "grid", op: "scale", factor: 0.7 },
+      ],
+      description: "Apply high risk preset (higher lot, aggressive mult, tight grid)",
+    }),
+  },
 
   // === TRAIL ADJUSTMENTS ===
   {
-    // "increase trailing by 50%", "boost trail"
     pattern: /(increase|boost)\s*(?:the\s*)?trail(?:ing)?(?:\s*(?:by\s*)?(\d+)\s*%)?/i,
     description: "Increase trailing values",
     extract: (match) => {
@@ -244,7 +346,6 @@ const SEMANTIC_RULES: SemanticRule[] = [
     },
   },
   {
-    // "reduce trailing by 30%", "decrease trail"
     pattern: /(reduce|decrease|lower)\s*(?:the\s*)?trail(?:ing)?(?:\s*(?:by\s*)?(\d+)\s*%)?/i,
     description: "Decrease trailing values",
     extract: (match) => {
@@ -259,12 +360,154 @@ const SEMANTIC_RULES: SemanticRule[] = [
       };
     },
   },
+
+  // === TRADING MODE ===
+  {
+    pattern: /(?:set\s+)?trading\s*mode\s+(?:to\s+)?(counter\s*trend|hedge|reverse)/i,
+    description: "Set trading mode",
+    extract: (match) => {
+      const mode = match[1].toLowerCase().replace(/\s+/g, ' ');
+      const modeMap: Record<string, string> = {
+        "counter trend": "Counter Trend",
+        "hedge": "Hedge",
+        "reverse": "Reverse",
+      };
+      return {
+        operations: [{ field: "trading_mode", op: "set", value: modeMap[mode] || mode }],
+        description: `Set trading mode to ${modeMap[mode] || mode}`,
+      };
+    },
+  },
+
+  // === ENABLE/DISABLE ===
+  {
+    pattern: /enable\s+(reverse|hedge|partial|close_partial|tp|sl|use_tp|use_sl)/i,
+    description: "Enable a feature",
+    extract: (match) => {
+      const featureAlias = match[1].toLowerCase();
+      const featureMap: Record<string, string> = {
+        reverse: "reverse_enabled",
+        hedge: "hedge_enabled",
+        partial: "close_partial",
+        close_partial: "close_partial",
+        tp: "use_tp",
+        sl: "use_sl",
+        use_tp: "use_tp",
+        use_sl: "use_sl",
+      };
+      const field = featureMap[featureAlias] || featureAlias;
+      return {
+        operations: [{ field, op: "set", value: true }],
+        description: `Enable ${featureAlias}`,
+      };
+    },
+  },
+  {
+    pattern: /disable\s+(reverse|hedge|partial|close_partial|tp|sl|use_tp|use_sl)/i,
+    description: "Disable a feature",
+    extract: (match) => {
+      const featureAlias = match[1].toLowerCase();
+      const featureMap: Record<string, string> = {
+        reverse: "reverse_enabled",
+        hedge: "hedge_enabled",
+        partial: "close_partial",
+        close_partial: "close_partial",
+        tp: "use_tp",
+        sl: "use_sl",
+        use_tp: "use_tp",
+        use_sl: "use_sl",
+      };
+      const field = featureMap[featureAlias] || featureAlias;
+      return {
+        operations: [{ field, op: "set", value: false }],
+        description: `Disable ${featureAlias}`,
+      };
+    },
+  },
+
+  // === LOT MULTIPLIER SCALE ===
+  {
+    pattern: /set\s+lot\s+(?:to\s+)?(\d+(?:\.\d+)?)/i,
+    description: "Set initial lot",
+    extract: (match) => {
+      const value = parseFloat(match[1]);
+      return {
+        operations: [{ field: "initial_lot", op: "set", value }],
+        description: `Set initial_lot to ${value}`,
+      };
+    },
+  },
+  {
+    pattern: /set\s+mult(?:iplier)?\s+(?:to\s+)?(\d+(?:\.\d+)?)/i,
+    description: "Set multiplier",
+    extract: (match) => {
+      const value = parseFloat(match[1]);
+      return {
+        operations: [{ field: "multiplier", op: "set", value }],
+        description: `Set multiplier to ${value}`,
+      };
+    },
+  },
+
+  // === TPSL ===
+  {
+    pattern: /set\s+(?:tp|takeprofit)\s+(?:to\s+)?(\d+(?:\.\d+)?)/i,
+    description: "Set take profit",
+    extract: (match) => {
+      const value = parseFloat(match[1]);
+      return {
+        operations: [
+          { field: "tp_value", op: "set", value },
+          { field: "use_tp", op: "set", value: true },
+        ],
+        description: `Set TP to ${value} and enable`,
+      };
+    },
+  },
+  {
+    pattern: /set\s+(?:sl|stoploss)\s+(?:to\s+)?(\d+(?:\.\d+)?)/i,
+    description: "Set stop loss",
+    extract: (match) => {
+      const value = parseFloat(match[1]);
+      return {
+        operations: [
+          { field: "sl_value", op: "set", value },
+          { field: "use_sl", op: "set", value: true },
+        ],
+        description: `Set SL to ${value} and enable`,
+      };
+    },
+  },
+
+  // === START LEVEL ===
+  {
+    pattern: /set\s+start\s*level\s+(?:to\s+)?(\d+)/i,
+    description: "Set start level",
+    extract: (match) => {
+      const value = parseInt(match[1]);
+      return {
+        operations: [{ field: "start_level", op: "set", value }],
+        description: `Set start_level to ${value}`,
+      };
+    },
+  },
+
+  // === SCALE ADJUSTMENTS ===
+  {
+    pattern: /set\s+(?:reverse|hedge)\s*scale\s+(?:to\s+)?(\d+(?:\.\d+)?)/i,
+    description: "Set reverse/hedge scale",
+    extract: (match) => {
+      const type = match[1].toLowerCase();
+      const value = parseFloat(match[2]);
+      const field = type === "reverse" ? "reverse_scale" : "hedge_scale";
+      return {
+        operations: [{ field, op: "set", value }],
+        description: `Set ${field} to ${value}%`,
+      };
+    },
+  },
 ];
 
-/**
- * Parse a natural language command and return structured semantic operations.
- * Returns null if no semantic rule matches (fall through to regular parser).
- */
 export function parseSemanticCommand(raw: string): SemanticCommand | null {
   const input = raw.toLowerCase().trim();
   
@@ -273,7 +516,6 @@ export function parseSemanticCommand(raw: string): SemanticCommand | null {
     if (match) {
       const result = rule.extract(match);
       if (result) {
-        // Generate preview strings for each operation
         result.preview = result.operations.map(op => {
           const opDesc = op.op === "scale" 
             ? `× ${op.factor?.toFixed(2)}`
@@ -292,19 +534,13 @@ export function parseSemanticCommand(raw: string): SemanticCommand | null {
   return null;
 }
 
-/**
- * Apply a semantic command to a config value.
- * Returns the new value after applying the operation.
- */
 export function applyOperation(currentValue: any, operation: FieldOperation): any {
-  // Handle non-numeric sets directly
   if (operation.op === "set" && (typeof operation.value === "string" || typeof operation.value === "boolean")) {
     return operation.value;
   }
 
-  // Ensure current value is a number for math ops
   const numValue = typeof currentValue === "number" ? currentValue : parseFloat(currentValue);
-  if (isNaN(numValue)) return currentValue; // Safety check
+  if (isNaN(numValue)) return currentValue;
 
   switch (operation.op) {
     case "scale":
@@ -320,9 +556,6 @@ export function applyOperation(currentValue: any, operation: FieldOperation): an
   }
 }
 
-/**
- * Clamp a value to MT4/MT5 safe bounds.
- */
 export function clampToBounds(field: string, value: number): number {
   const bounds: Record<string, [number, number]> = {
     initial_lot: [0.01, 100],
@@ -336,15 +569,14 @@ export function clampToBounds(field: string, value: number): number {
     close_partial: [0, 100],
     reverse_scale: [0, 1000],
     hedge_scale: [0, 1000],
+    start_level: [0, 100],
+    last_lot: [0.01, 100],
   };
   
   const [min, max] = bounds[field] || [0, Infinity];
   return Math.max(min, Math.min(max, value));
 }
 
-/**
- * Get available semantic rule descriptions for help/suggestions.
- */
 export function getSemanticSuggestions(): string[] {
   return SEMANTIC_RULES.map(r => r.description);
 }

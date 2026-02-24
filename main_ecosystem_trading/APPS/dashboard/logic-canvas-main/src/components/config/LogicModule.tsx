@@ -329,7 +329,8 @@ export function LogicModule({
   // Initialize field values only once using useRef to store initial values
   const initialFieldsRef = useRef<any[]>([]);
 
-  // Compute initial fields and set them only once
+  const logicConfigKey = logicConfig ? `${logicConfig.logic_id}-${JSON.stringify(logicConfig)}` : 'no-config';
+  
   useEffect(() => {
     const isGroup1 =
       (groups && groups.length > 0 && groups.some((g) => g === "Group 1")) ||
@@ -378,26 +379,28 @@ export function LogicModule({
     }
 
     setFieldValues(initialValues);
-  }, [logicConfig, groups, nameSafe, mode]); // This runs when the config changes to update the reference
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [logicConfigKey, groups, nameSafe, mode]);
 
-  // Enforce mode constraints on initialization and mode change
+  const prevModeRef = useRef(mode);
+  
   useEffect(() => {
+    if (prevModeRef.current === mode) return;
+    prevModeRef.current = mode;
+    
     if (Object.keys(fieldValues).length > 0) {
       if (mode === 1) {
-        // Mode 1: Cannot have "both" selected
         if (
           (fieldValues["allow_buy"] === "ON" ||
             fieldValues["allow_buy"] === true) &&
           (fieldValues["allow_sell"] === "ON" ||
             fieldValues["allow_sell"] === true)
         ) {
-          // Default to "buy" in Mode 1 if both are selected
           const updates = { allow_buy: "ON", allow_sell: "OFF" };
           setFieldValues((prev) => ({ ...prev, ...updates }));
           Object.entries(updates).forEach(([key, v]) => onUpdate?.(key, v));
         }
       } else if (mode === 2) {
-        // Mode 2: Must have "both" selected
         if (
           !(
             (fieldValues["allow_buy"] === "ON" ||
@@ -406,14 +409,14 @@ export function LogicModule({
               fieldValues["allow_sell"] === true)
           )
         ) {
-          // Force both in Mode 2
           const updates = { allow_buy: "ON", allow_sell: "ON" };
           setFieldValues((prev) => ({ ...prev, ...updates }));
           Object.entries(updates).forEach(([key, v]) => onUpdate?.(key, v));
         }
       }
     }
-  }, [mode, fieldValues, onUpdate]); // This runs when mode changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
 
   if (!engineSafe || !nameSafe) {
     return null;

@@ -12,12 +12,15 @@ import {
   GroupedParameter
 } from './types';
 
+const STORAGE_KEY = 'daavfx_parameter_grouping';
+
 export class ParameterGroupingManager {
   private state: TaggingSystemState;
   private onChangeCallbacks: Array<(state: TaggingSystemState) => void> = [];
 
   constructor() {
-    this.state = {
+    const saved = this.loadFromStorage();
+    this.state = saved || {
       tags: [],
       groups: [],
       rules: [],
@@ -38,11 +41,30 @@ export class ParameterGroupingManager {
   }
 
   private notifyChange(): void {
+    this.saveToStorage();
     this.onChangeCallbacks.forEach(callback => callback(this.getState()));
   }
 
   getState(): TaggingSystemState {
     return { ...this.state };
+  }
+
+  private saveToStorage(): void {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+    } catch {
+      return;
+    }
+  }
+
+  private loadFromStorage(): TaggingSystemState | null {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (!saved) return null;
+      return JSON.parse(saved);
+    } catch {
+      return null;
+    }
   }
 
   // Create a new tag
@@ -122,7 +144,6 @@ export class ParameterGroupingManager {
     };
 
     this.state.groups.push(newGroup);
-    this.updateGroupParameters(newGroup); // Populate parameters based on criteria
     this.notifyChange();
     return newGroup;
   }
@@ -133,11 +154,6 @@ export class ParameterGroupingManager {
     if (index === -1) return null;
 
     this.state.groups[index] = { ...this.state.groups[index], ...updates };
-
-    // If criteria changed, update parameters
-    if (updates.criteria) {
-      this.updateGroupParameters(this.state.groups[index]);
-    }
 
     this.notifyChange();
     return this.state.groups[index];
@@ -228,129 +244,32 @@ export class ParameterGroupingManager {
 
   // Find parameters by criteria
   findParametersByCriteria(config: MTConfig, criteria: GroupCriteria): GroupedParameter[] {
-    const results: GroupedParameter[] = [];
-
-    // Check engines
-    if (criteria.engineIds) {
-      for (const engine of config.engines) {
-        if (criteria.engineIds.includes(`Engine ${engine.engine_id}`)) {
-          // Check groups
-          for (const group of engine.groups) {
-            // Check logics
-            for (const logic of group.logics) {
-              // Add all parameters for this logic
-              Object.keys(logic).forEach(field => {
-                results.push({
-                  engineId: engine.engine_id,
-                  groupId: group.group_number,
-                  logicName: logic.logic_name,
-                  fieldName: field,
-                  currentValue: (logic as any)[field],
-                  tags: [],
-                });
-              });
-            }
-          }
-        }
-      }
-    }
-
-    // Check groups
-    if (criteria.groupNumbers) {
-      for (const engine of config.engines) {
-        for (const group of engine.groups) {
-          if (criteria.groupNumbers.includes(group.group_number)) {
-            // Add all parameters for all logics in this group
-            for (const logic of group.logics) {
-              Object.keys(logic).forEach(field => {
-                results.push({
-                  engineId: engine.engine_id,
-                  groupId: group.group_number,
-                  logicName: logic.logic_name,
-                  fieldName: field,
-                  currentValue: (logic as any)[field],
-                  tags: [],
-                });
-              });
-            }
-          }
-        }
-      }
-    }
-
-    // Check logics
-    if (criteria.logicNames) {
-      for (const engine of config.engines) {
-        for (const group of engine.groups) {
-          for (const logic of group.logics) {
-            if (criteria.logicNames.includes(logic.logic_name)) {
-              // Add all parameters for this logic
-              Object.keys(logic).forEach(field => {
-                results.push({
-                  engineId: engine.engine_id,
-                  groupId: group.group_number,
-                  logicName: logic.logic_name,
-                  fieldName: field,
-                  currentValue: (logic as any)[field],
-                  tags: [],
-                });
-              });
-            }
-          }
-        }
-      }
-    }
-
-    // Check categories (would need to map fields to categories)
-    if (criteria.categories) {
-      // This would require mapping each field to its category
-      // For now, we'll skip this as it requires the logic-inputs mapping
-    }
-
-    // Check field patterns
-    if (criteria.fieldPatterns) {
-      for (const engine of config.engines) {
-        for (const group of engine.groups) {
-          for (const logic of group.logics) {
-            Object.keys(logic).forEach(field => {
-              for (const pattern of criteria.fieldPatterns || []) {
-                try {
-                  const regex = new RegExp(pattern);
-                  if (regex.test(field)) {
-                    results.push({
-                      engineId: engine.engine_id,
-                      groupId: group.group_number,
-                      logicName: logic.logic_name,
-                      fieldName: field,
-                      currentValue: (logic as any)[field],
-                      tags: [],
-                    });
-                    break; // Found a match, no need to check other patterns
-                  }
-                } catch (e) {
-                  console.warn(`Invalid regex pattern: ${pattern}`, e);
-                }
-              }
-            });
-          }
-        }
-      }
-    }
-
-    // Remove duplicates
     const uniqueResults: GroupedParameter[] = [];
     const seen = new Set<string>();
 
-    for (const param of results) {
-      const key = this.getParameterKey(param);
-      if (!seen.has(key)) {
-        seen.add(key);
-        // Add existing tags for this parameter
-        const paramTags = this.state.parameterTags[key] || [];
-        uniqueResults.push({
-          ...param,
-          tags: paramTags,
-        });
+    for (const engine of config.engines) {
+      for (const group of engine.groups) {
+        for (const logic of group.logics) {
+          for (const field of Object.keys(logic)) {
+            if (field === 'logic_name') continue;
+            const param: GroupedParameter = {
+              engineId: engine.engine_id,
+              groupId: group.group_number,
+              logicName: logic.logic_name,
+              fieldName: field,
+              currentValue: (logic as any)[field],
+              tags: [],
+            };
+
+            if (!this.matchesCriteria(param, criteria)) continue;
+            const key = this.getParameterKey(param);
+            if (seen.has(key)) continue;
+            seen.add(key);
+
+            const paramTags = this.state.parameterTags[key] || [];
+            uniqueResults.push({ ...param, tags: paramTags });
+          }
+        }
       }
     }
 
@@ -359,8 +278,9 @@ export class ParameterGroupingManager {
 
   // Check if a parameter matches criteria
   private matchesCriteria(param: GroupedParameter, criteria: GroupCriteria): boolean {
-    if (criteria.engineIds && !criteria.engineIds.includes(`Engine ${param.engineId}`)) {
-      return false;
+    if (criteria.engineIds) {
+      const matchesEngine = criteria.engineIds.some((id) => id === param.engineId || id === `Engine ${param.engineId}`);
+      if (!matchesEngine) return false;
     }
 
     if (criteria.groupNumbers && !criteria.groupNumbers.includes(param.groupId)) {
@@ -380,21 +300,24 @@ export class ParameterGroupingManager {
             matchesPattern = true;
             break;
           }
-        } catch (e) {
-          console.warn(`Invalid regex pattern: ${pattern}`, e);
+        } catch {
+          continue;
         }
       }
       if (!matchesPattern) return false;
     }
 
-    return true;
-  }
+    if (criteria.valueRanges) {
+      for (const range of criteria.valueRanges) {
+        if (range.field !== param.fieldName) continue;
+        const value = typeof param.currentValue === 'number' ? param.currentValue : Number(param.currentValue);
+        if (Number.isNaN(value)) return false;
+        if (range.min !== undefined && value < range.min) return false;
+        if (range.max !== undefined && value > range.max) return false;
+      }
+    }
 
-  // Update parameters in a group based on its criteria
-  private updateGroupParameters(group: ParameterGroup): void {
-    // This would require access to the current config to populate parameters
-    // For now, we'll just clear the parameters
-    group.parameters = [];
+    return true;
   }
 
   // Get the key for a parameter (for indexing purposes)

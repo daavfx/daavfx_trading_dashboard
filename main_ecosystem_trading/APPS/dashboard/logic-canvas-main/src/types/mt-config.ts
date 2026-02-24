@@ -291,6 +291,7 @@ export interface LogicConfig {
   hedge_scale: number;                  // gInput_G{group}_Scale_{logic}_Hedge (e.g., 50.0 = 50%)
   reverse_reference: LogicReference;    // gInput_G{group}_{logic}_ReverseReference - which logic to reverse against
   hedge_reference: LogicReference;      // gInput_G{group}_{logic}_HedgeReference - which logic to hedge against
+  trading_mode?: string;
   
   // ===== TRAIL STEP ADVANCED (3 fields) =====
   trail_step_mode: TrailStepMode;       // gInput_TrailStepMode_{suffix} - how trail steps are applied

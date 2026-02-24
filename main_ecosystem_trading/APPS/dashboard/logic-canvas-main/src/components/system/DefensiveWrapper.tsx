@@ -24,25 +24,26 @@ export function DefensiveWrapper({
   renderThreshold,
   identicalPropsThreshold,
 }: DefensiveWrapperProps) {
-  // Production: no tracking at all
-  if (!IS_DEV) {
-    return <>{children}</>;
-  }
-
-  // Dev: minimal tracking
   const renderCount = useRef(0);
   const hasWarnedRef = useRef(false);
 
-  renderCount.current++;
+  if (IS_DEV) {
+    renderCount.current++;
+  }
 
   // Only warn once per component per session at 100+ renders
   useEffect(() => {
-    if (renderCount.current > 100 && !hasWarnedRef.current) {
-      console.warn(`[DefensiveWrapper] ${componentName} high render count: ${renderCount.current}`);
+    if (!IS_DEV) return;
+
+    const threshold = renderThreshold ?? maxRenders;
+    if (renderCount.current > threshold && !hasWarnedRef.current) {
+      console.warn(
+        `[DefensiveWrapper] ${componentName} high render count: ${renderCount.current}`,
+      );
       hasWarnedRef.current = true;
       onRenderThreshold?.();
     }
-  });
+  }, [componentName, maxRenders, onRenderThreshold, renderThreshold]);
 
   return <>{children}</>;
 }

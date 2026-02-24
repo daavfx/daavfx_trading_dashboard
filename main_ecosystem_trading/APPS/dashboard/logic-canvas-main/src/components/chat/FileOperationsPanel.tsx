@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Download, 
@@ -36,19 +36,36 @@ export function FileOperationsPanel({
   const [showExportOptions, setShowExportOptions] = useState(false);
   const [showLoadOptions, setShowLoadOptions] = useState(false);
   const [activeOperation, setActiveOperation] = useState<string | null>(null);
+  const clearActiveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (clearActiveTimeoutRef.current) {
+        clearTimeout(clearActiveTimeoutRef.current);
+        clearActiveTimeoutRef.current = null;
+      }
+    };
+  }, []);
+
+  const scheduleClearActive = () => {
+    if (clearActiveTimeoutRef.current) {
+      clearTimeout(clearActiveTimeoutRef.current);
+    }
+    clearActiveTimeoutRef.current = setTimeout(() => setActiveOperation(null), 2000);
+  };
 
   const handleExport = (format: "json" | "set") => {
     setActiveOperation(`export-${format}`);
     onExport(format);
     setShowExportOptions(false);
-    setTimeout(() => setActiveOperation(null), 2000);
+    scheduleClearActive();
   };
 
   const handleLoad = (format: "json" | "set") => {
     setActiveOperation(`load-${format}`);
     onLoad(format);
     setShowLoadOptions(false);
-    setTimeout(() => setActiveOperation(null), 2000);
+    scheduleClearActive();
   };
 
   return (

@@ -1,4 +1,5 @@
-/**
+
+/**
  * @deprecated ARCHIVED 2025-02-18
  * This is a CLI testing utility for chat commands.
  * It is not imported or used in the production application.
@@ -53,7 +54,16 @@ if (debug) {
   } else {
     console.log("\n❌ Some automated checks FAILED.");
   }
+}
 
+const isInteractive = process.argv.includes("--interactive") && Boolean(process.stdin.isTTY) && process.env.CI !== "true";
+
+if (!isInteractive) {
+  rl.close();
+  process.exit(allPassed ? 0 : 1);
+}
+
+if (debug) {
   console.log("\nENTERING INTERACTIVE MODE");
   console.log("Type a command to parse it (or 'exit' to quit):");
   console.log("-----------------------------------------------");

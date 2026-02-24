@@ -234,7 +234,7 @@ fn massive_v19_export_has_expected_structure() {
   let tmp = std::env::temp_dir().join("daavfx_massive_v19.set");
   let path_str = tmp.to_string_lossy().to_string();
 
-  export_massive_v19_setfile(cfg.clone(), path_str.clone(), "MT5".into()).expect("export failed");
+  export_massive_v19_setfile(cfg.clone(), path_str.clone(), "MT5".into(), Some(false)).expect("export failed");
 
   let file_content = std::fs::read_to_string(&tmp).expect("read failed");
   let validation = validate_v19_setfile(&file_content);
@@ -269,7 +269,7 @@ async fn massive_v19_export_then_import_overrides_values() {
   let tmp = std::env::temp_dir().join("daavfx_massive_v19_roundtrip.set");
   let path_str = tmp.to_string_lossy().to_string();
 
-  export_massive_v19_setfile(cfg.clone(), path_str.clone(), "MT5".into()).expect("export failed");
+  export_massive_v19_setfile(cfg.clone(), path_str.clone(), "MT5".into(), Some(false)).expect("export failed");
 
   let imported = import_set_file(path_str.clone()).await.expect("import failed");
 

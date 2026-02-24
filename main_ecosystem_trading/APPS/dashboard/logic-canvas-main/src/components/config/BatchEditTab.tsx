@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { 
   Sparkles, 
   Zap, 
@@ -42,6 +42,16 @@ export function BatchEditTab({ config, onConfigChange, onNavigate, platform }: B
   const [activeCommand, setActiveCommand] = useState<string | null>(null);
   const [pendingPlan, setPendingPlan] = useState<TransactionPlan | null>(null);
   const [lastAppliedPreview, setLastAppliedPreview] = useState<ChangePreview[] | null>(null);
+  const activeCommandResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (activeCommandResetRef.current) {
+        clearTimeout(activeCommandResetRef.current);
+        activeCommandResetRef.current = null;
+      }
+    };
+  }, []);
 
   const engineOptions = useMemo(() => {
     const fromConfig = (config?.engines || []).map((e) => `Engine ${e.engine_id}`);
@@ -149,7 +159,13 @@ export function BatchEditTab({ config, onConfigChange, onNavigate, platform }: B
   const handleToolClick = (command: string) => {
     setActiveCommand(command);
     // Reset after a brief delay so it can be triggered again
-    setTimeout(() => setActiveCommand(null), 100);
+    if (activeCommandResetRef.current) {
+      clearTimeout(activeCommandResetRef.current);
+    }
+    activeCommandResetRef.current = setTimeout(() => {
+      setActiveCommand(null);
+      activeCommandResetRef.current = null;
+    }, 100);
   };
 
   const refreshSnapshots = useCallback(() => {
@@ -191,7 +207,13 @@ export function BatchEditTab({ config, onConfigChange, onNavigate, platform }: B
       if (!payload) return;
       if (typeof payload === "string") {
         setActiveCommand(payload);
-        setTimeout(() => setActiveCommand(null), 100);
+        if (activeCommandResetRef.current) {
+          clearTimeout(activeCommandResetRef.current);
+        }
+        activeCommandResetRef.current = setTimeout(() => {
+          setActiveCommand(null);
+          activeCommandResetRef.current = null;
+        }, 100);
         return;
       }
       if (typeof payload === "object") {
@@ -204,7 +226,13 @@ export function BatchEditTab({ config, onConfigChange, onNavigate, platform }: B
         };
         if (action) {
           setActiveCommand(action);
-          setTimeout(() => setActiveCommand(null), 100);
+          if (activeCommandResetRef.current) {
+            clearTimeout(activeCommandResetRef.current);
+          }
+          activeCommandResetRef.current = setTimeout(() => {
+            setActiveCommand(null);
+            activeCommandResetRef.current = null;
+          }, 100);
         }
         onNavigate({ engines, groups, logics, fields });
       }

@@ -155,10 +155,6 @@ export function EngineCard({
                       (l: any) => l.logic_name?.toUpperCase() === logic,
                     );
 
-                  const logicConfig = foundLogicConfig
-                    ? structuredClone(foundLogicConfig)
-                    : undefined;
-
                   return (
                     <LogicModule
                       key={logic}
@@ -166,7 +162,7 @@ export function EngineCard({
                       engine={engine}
                       expanded={expandedLogics.includes(logic)}
                       onToggle={() => toggleLogic(logic)}
-                      logicConfig={logicConfig}
+                      logicConfig={foundLogicConfig}
                       groups={groups}
                       engineData={engineData}
                       selectedFields={selectedFields || []}

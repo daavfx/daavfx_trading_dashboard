@@ -14,6 +14,7 @@ export interface ProgressionPlanParams {
   startValue: number;
   endValue?: number;
   factor?: number;
+  customSequence?: number[];
   engines?: string[];
   groups: number[];
   logics?: string[];
@@ -94,7 +95,7 @@ export function createProgressionPlan(
   config: MTConfig,
   params: ProgressionPlanParams
 ): TransactionPlan {
-  const { field, progressionType, startValue, endValue, factor, engines, groups, logics } = params;
+  const { field, progressionType, startValue, endValue, factor, customSequence, engines, groups, logics } = params;
 
   const logicTargets = buildLogicTargets(logics);
 
@@ -105,6 +106,7 @@ export function createProgressionPlan(
     endValue,
     steps: groups.length,
     factor,
+    customSequence,
     roundTo: field === "initial_lot" ? 2 : 0
   });
 

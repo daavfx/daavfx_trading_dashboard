@@ -116,12 +116,13 @@ export class VersionControlManager {
       throw new Error(`Branch '${branchName}' already exists`);
     }
 
+    const hasActiveBranch = this.state.branches.some(b => b.isActive);
     const newBranch: Branch = {
       name: branchName,
       headSnapshotId: this.state.activeSnapshotId || null,
       createdAt: Date.now(),
       updatedAt: Date.now(),
-      isActive: false,
+      isActive: branchName === this.state.currentBranch && !hasActiveBranch,
     };
 
     this.state.branches.push(newBranch);
@@ -143,6 +144,7 @@ export class VersionControlManager {
     }));
 
     this.state.currentBranch = branchName;
+    this.state.activeSnapshotId = branch.headSnapshotId || null;
     this.notifyChange();
     return branch;
   }

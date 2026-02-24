@@ -67,6 +67,22 @@ export class CollaborationManager {
 
   // Connect to collaboration service
   connect(userId: string): void {
+    const now = Date.now();
+    const existingUser = this.state.users.find(u => u.id === userId);
+    if (!existingUser) {
+      this.state.users.push({
+        id: userId,
+        username: userId,
+        email: `${userId}@local`,
+        displayName: userId,
+        role: 'admin',
+        joinDate: now,
+        lastActive: now,
+      });
+    } else {
+      existingUser.lastActive = now;
+    }
+
     this.state.currentUser = userId;
     this.state.isConnected = true;
 

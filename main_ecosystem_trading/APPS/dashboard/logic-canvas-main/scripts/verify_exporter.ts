@@ -2,6 +2,8 @@ import { generateMassiveCompleteConfig } from "@/lib/setfile/massive-generator";
 import { exportToSetFileWithDirections } from "@/lib/setfile/exporter";
 import { LOGIC_SUFFIX_MAP, TOTAL_LOGIC_DIRECTIONS, FIELDS_PER_LOGIC } from "@/types/mt-config-complete";
 import { PARAM_NAMES } from "@/lib/export/complete-setfile-generator";
+import fs from "node:fs";
+import path from "node:path";
 
 function invTrailMethod(n: number): string {
   return n === 0 ? "Trail_Points" : n === 1 ? "Trail_AVG_Percent" : "Trail_AVG_Points";
@@ -31,9 +33,144 @@ function invBreakevenMode(n: number): string {
   switch (n) { case 0: return "Breakeven_Disabled"; case 1: return "Breakeven_Points"; case 2: return "Breakeven_Percent"; case 3: return "Breakeven_Price"; default: return "Breakeven_Disabled"; }
 }
 
+type ParsedSetfile = {
+  totalGInputKeys: number;
+  generalKeys: number;
+  logicKeys: number;
+  duplicateKeys: Array<{ key: string; count: number }>;
+  uniqueGroups: number;
+  uniqueSuffixes: number;
+  uniqueDirections: number;
+  logicDirectionsFound: number;
+  expectedLogicDirections: number;
+  fieldsPerLogicDirection: {
+    min: number;
+    max: number;
+    mode: number;
+  };
+  missingLogicDirections: number;
+};
+
+function parseMassiveV19Setfile(content: string): ParsedSetfile {
+  const rawLines = content.split(/\r?\n/);
+  const kvLines = rawLines
+    .map(l => l.trim())
+    .filter(l => l.length > 0 && !l.startsWith(";") && l.includes("="))
+    .map(l => {
+      const idx = l.indexOf("=");
+      return {
+        key: l.slice(0, idx).trim(),
+        value: l.slice(idx + 1).trim(),
+      };
+    })
+    .filter(({ key }) => key.startsWith("gInput_"));
+
+  const keyCounts = new Map<string, number>();
+  for (const { key } of kvLines) {
+    keyCounts.set(key, (keyCounts.get(key) || 0) + 1);
+  }
+  const duplicateKeys = Array.from(keyCounts.entries())
+    .filter(([, c]) => c > 1)
+    .map(([k, c]) => ({ key: k, count: c }))
+    .sort((a, b) => b.count - a.count || a.key.localeCompare(b.key));
+
+  const expectedSuffixes = new Set(Object.values(LOGIC_SUFFIX_MAP).map(v => v.suffix));
+
+  const groups = new Set<string>();
+  const suffixes = new Set<string>();
+  const directions = new Set<string>();
+
+  const logicDirectionFields = new Map<string, number>();
+  let logicKeys = 0;
+  let generalKeys = 0;
+
+  for (const { key } of kvLines) {
+    const m = key.match(/^gInput_(\d+)_([A-Z]{1,3})_(Buy|Sell)_(.+)$/);
+    if (m) {
+      const group = parseInt(m[1], 10);
+      const suffix = m[2];
+      const dir = m[3];
+      if (group >= 1 && group <= 15 && expectedSuffixes.has(suffix)) {
+        groups.add(String(group));
+        suffixes.add(suffix);
+        directions.add(dir);
+        const logicDirKey = `${group}_${suffix}_${dir}`;
+        logicDirectionFields.set(logicDirKey, (logicDirectionFields.get(logicDirKey) || 0) + 1);
+        logicKeys++;
+        continue;
+      }
+    }
+    generalKeys++;
+  }
+
+  const fieldCounts = Array.from(logicDirectionFields.values());
+  const freq = new Map<number, number>();
+  for (const c of fieldCounts) freq.set(c, (freq.get(c) || 0) + 1);
+  const mode = Array.from(freq.entries()).sort((a, b) => b[1] - a[1] || b[0] - a[0])[0]?.[0] ?? 0;
+  const min = fieldCounts.length ? Math.min(...fieldCounts) : 0;
+  const max = fieldCounts.length ? Math.max(...fieldCounts) : 0;
+
+  const expectedLogicDirections = TOTAL_LOGIC_DIRECTIONS;
+  const logicDirectionsFound = logicDirectionFields.size;
+  const missingLogicDirections = Math.max(0, expectedLogicDirections - logicDirectionsFound);
+
+  return {
+    totalGInputKeys: kvLines.length,
+    generalKeys,
+    logicKeys,
+    duplicateKeys,
+    uniqueGroups: groups.size,
+    uniqueSuffixes: suffixes.size,
+    uniqueDirections: directions.size,
+    logicDirectionsFound,
+    expectedLogicDirections,
+    fieldsPerLogicDirection: { min, max, mode },
+    missingLogicDirections,
+  };
+}
+
 function run() {
-  const config = generateMassiveCompleteConfig();
-  const content = exportToSetFileWithDirections(config);
+  const argPath = process.argv[2];
+  const mode = process.argv[3] || "";
+
+  const content = argPath
+    ? fs.readFileSync(path.resolve(argPath), "utf8")
+    : exportToSetFileWithDirections(generateMassiveCompleteConfig());
+
+  const massiveParsed = parseMassiveV19Setfile(content);
+
+  const massiveOk =
+    massiveParsed.duplicateKeys.length === 0 &&
+    massiveParsed.uniqueGroups === 15 &&
+    massiveParsed.uniqueDirections === 2 &&
+    massiveParsed.uniqueSuffixes === 21 &&
+    massiveParsed.logicDirectionsFound === massiveParsed.expectedLogicDirections &&
+    massiveParsed.fieldsPerLogicDirection.min === massiveParsed.fieldsPerLogicDirection.max;
+
+  console.log(JSON.stringify({
+    source: argPath || "(generated)",
+    totalGInputKeys: massiveParsed.totalGInputKeys,
+    logicKeys: massiveParsed.logicKeys,
+    generalKeys: massiveParsed.generalKeys,
+    logicDirectionsFound: massiveParsed.logicDirectionsFound,
+    expectedLogicDirections: massiveParsed.expectedLogicDirections,
+    missingLogicDirections: massiveParsed.missingLogicDirections,
+    uniqueGroups: massiveParsed.uniqueGroups,
+    uniqueSuffixes: massiveParsed.uniqueSuffixes,
+    uniqueDirections: massiveParsed.uniqueDirections,
+    fieldsPerLogicDirection: massiveParsed.fieldsPerLogicDirection,
+    duplicates: massiveParsed.duplicateKeys.slice(0, 20),
+  }, null, 2));
+
+  if (!massiveOk) {
+    console.error("[VERIFY] MASSIVE v19 setfile validation failed");
+    process.exit(1);
+  }
+  console.log("[VERIFY] MASSIVE v19 setfile validation passed");
+
+  if (mode !== "--roundtrip") {
+    return;
+  }
 
   const lines = content.split("\n").filter(l => l.trim().length > 0 && !l.startsWith(";"));
   const kv = lines.filter(l => l.startsWith("gInput_"));
@@ -206,8 +343,9 @@ function run() {
         case "HedgeEnabled": (logic as any).hedgeEnabled = raw === "1"; break;
         case "HedgeReference": (logic as any).hedgeReference = ("Logic_" + raw) as any; break;
         case "HedgeScale": (logic as any).hedgeScale = valNum; break;
-        case "OrderCountReference": (logic as any).orderCountReference = valNum; break;
+        case "MaxPowerOrders": (logic as any).maxOrderCap = valNum; break;
         case "OrderCountReferenceLogic": (logic as any).orderCountReferenceLogic = ("Logic_" + raw) as any; break;
+        case "OrderCountReference": (logic as any).orderCountReferenceLogic = ("Logic_" + raw) as any; break;
         case "CloseTargets": (logic as any).closeTargets = raw; break;
         case "StartLevel": (logic as any).startLevel = valNum; break;
         case "ResetLotOnRestart": (logic as any).resetLotOnRestart = raw === "1"; break;

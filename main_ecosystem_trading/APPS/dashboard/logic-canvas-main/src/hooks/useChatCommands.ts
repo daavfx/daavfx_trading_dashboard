@@ -10,7 +10,6 @@ import type { ChatMessage, CommandResult } from "@/lib/chat/types";
 import type { MTConfig } from "@/types/mt-config";
 import { useSettings } from "@/contexts/SettingsContext";
 import { withUseDirectPriceGrid, normalizeConfigForExport } from "@/utils/unit-mode";
-import { invoke } from "@tauri-apps/api/core";
 import { save, open } from "@tauri-apps/plugin-dialog";
 import { toast } from "sonner";
 
@@ -461,102 +460,25 @@ export function useChatCommands({
         params: command.params,
       });
       
-      let result: CommandResult;
+      const result: CommandResult = commandExecutor.execute(command);
 
-      if (command.type !== "unknown") {
-        result = commandExecutor.execute(command);
+      // AUTO-NAVIGATION logic (Restored)
+      if (result.success && result.queryResult?.navigationTargets && onNavigate) {
+        onNavigate(result.queryResult.navigationTargets);
+      }
 
-        // AUTO-NAVIGATION logic (Restored)
-        if (
-          result.success &&
-          result.queryResult?.navigationTargets &&
-          onNavigate
-        ) {
-          onNavigate(result.queryResult.navigationTargets);
-        }
-
-        if (
-          result.success &&
-          onNavigate &&
-          (result.pendingPlan || result.changes)
-        ) {
-          const field =
-            command.target.field ||
-            result.pendingPlan?.preview?.[0]?.field ||
-            result.changes?.[0]?.field;
-          if (field) {
-            onNavigate({
-              engines: command.target.engines,
-              groups: command.target.groups,
-              logics: command.target.logics,
-              fields: [field],
-            });
-          }
-        }
-      } else {
-        // Fallback to Local AI for unknown commands
-        try {
-          setMessages((prev) => [
-            ...prev.slice(-(MAX_CHAT_MESSAGES - 1)),
-            {
-              id: `thinking-${Date.now()}`,
-              role: "assistant",
-              content: "Thinking... (Local AI)",
-              timestamp: Date.now(),
-            },
-          ]);
-
-          const systemContext = `You are Ryiuk, the Daavfx Trading Assistant.
-        Available Fields: grid (pips), initial_lot (0.01+), multiplier (1.1+), trail_value, sl_value, tp_value.
-
-        If the user asks to change settings, output the EXACT command to do it.
-        Command Format: "set <field> to <value> for <target>"
-        Examples:
-        - "set grid to 500 for all groups"
-        - "set initial_lot to 0.05 for power"
-        - "enable hedge_mode for groups 1-5"
-
-        If the user asks a question, answer briefly.
-        Do not hallucinate commands.`;
-
-          console.log("[ChatCommand] Falling back to AI. Query:", trimmed);
-          const currentConfigStr = config
-            ? JSON.stringify(config, null, 2)
-            : "{}";
-          console.log(
-            "[ChatCommand] AI Context (Config Length):",
-            currentConfigStr.length,
-          );
-
-          const aiResponse = await invoke<string>("ask_ai", {
-            userQuery: trimmed,
-            currentConfig: currentConfigStr,
+      if (result.success && onNavigate && (result.pendingPlan || result.changes)) {
+        const field =
+          command.target.field ||
+          result.pendingPlan?.preview?.[0]?.field ||
+          result.changes?.[0]?.field;
+        if (field) {
+          onNavigate({
+            engines: command.target.engines,
+            groups: command.target.groups,
+            logics: command.target.logics,
+            fields: [field],
           });
-          console.log(
-            "[ChatCommand] AI Response received:",
-            aiResponse.substring(0, 50) + "...",
-          );
-
-          // Remove thinking message
-          setMessages((prev) =>
-            prev.filter((m) => !m.id.startsWith("thinking-")),
-          );
-
-          result = {
-            success: true,
-            message: aiResponse,
-          };
-        } catch (e) {
-          console.error("[ChatCommand] AI Error:", e);
-          // Remove thinking message
-          setMessages((prev) =>
-            prev.filter((m) => !m.id.startsWith("thinking-")),
-          );
-
-          result = {
-            success: false,
-            message: `I didn't understand that, and the local AI is offline or busy.\nError: ${e}`,
-          };
         }
       }
 

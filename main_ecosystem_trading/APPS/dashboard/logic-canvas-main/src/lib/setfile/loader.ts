@@ -1,4 +1,4 @@
-import type { MTConfig, LogicConfig } from "@/types/mt-config-complete";
+import type { MTConfigComplete, LogicConfig } from "@/types/mt-config-complete";
 import { LOGIC_SUFFIX_MAP } from "@/types/mt-config-complete";
 import type { ChangePreview } from "@/lib/chat/types";
 
@@ -50,7 +50,7 @@ export function parseSetContent(content: string): ParsedSet {
   return { globals, directional };
 }
 
-function findDirectionalLogic(config: MTConfig, engineId: "A" | "B" | "C", logicName: string, dir: "B" | "S", groupNum: number): LogicConfig | undefined {
+function findDirectionalLogic(config: MTConfigComplete, engineId: "A" | "B" | "C", logicName: string, dir: "B" | "S", groupNum: number): LogicConfig | undefined {
   const engine = config.engines.find(e => e.engine_id === engineId);
   if (!engine) return undefined;
   const group = engine.groups.find(g => g.group_number === groupNum);
@@ -58,7 +58,7 @@ function findDirectionalLogic(config: MTConfig, engineId: "A" | "B" | "C", logic
   return group.logics.find(l => l.logic_name === logicName && ((dir === "B" && l.allowBuy && !l.allowSell) || (dir === "S" && l.allowSell && !l.allowBuy)));
 }
 
-export function computeSetChanges(config: MTConfig, content: string): ChangePreview[] {
+export function computeSetChanges(config: MTConfigComplete, content: string): ChangePreview[] {
   const parsed = parseSetContent(content);
   const inverse = suffixInverse();
   const changes: ChangePreview[] = [];
@@ -119,8 +119,9 @@ export function computeSetChanges(config: MTConfig, content: string): ChangePrev
         case "HedgeEnabled": field = "hedgeEnabled"; newValue = raw === "1"; break;
         case "HedgeReference": field = "hedgeReference"; newValue = ("Logic_" + raw); break;
         case "HedgeScale": field = "hedgeScale"; newValue = valNum; break;
-        case "OrderCountReference": field = "orderCountReference"; newValue = valNum; break;
         case "OrderCountReferenceLogic": field = "orderCountReferenceLogic"; newValue = ("Logic_" + raw); break;
+        case "OrderCountReference": field = "orderCountReferenceLogic"; newValue = ("Logic_" + raw); break;
+        case "MaxPowerOrders": field = "maxOrderCap"; newValue = valNum; break;
         case "CloseTargets": field = "closeTargets"; newValue = raw; break;
         case "StartLevel": field = "startLevel"; newValue = valNum; break;
         case "ResetLotOnRestart": field = "resetLotOnRestart"; newValue = raw === "1"; break;
@@ -202,10 +203,10 @@ export function computeSetChanges(config: MTConfig, content: string): ChangePrev
 }
 
 // Apply parsed .set content directly to a config clone (non-mutating original)
-export function applySetContent(config: MTConfig, content: string): MTConfig {
+export function applySetContent(config: MTConfigComplete, content: string): MTConfigComplete {
   const parsed = parseSetContent(content);
   const inverse = suffixInverse();
-  const newConfig: MTConfig = structuredClone(config);
+  const newConfig: MTConfigComplete = structuredClone(config);
 
   for (const [key, map] of parsed.directional.entries()) {
     const km = key.match(/^([A-Z]{1,3})_(Buy|Sell)_G(\d+)$/)!;
@@ -263,8 +264,9 @@ export function applySetContent(config: MTConfig, content: string): MTConfig {
         case "HedgeEnabled": field = "hedgeEnabled"; newValue = raw === "1"; break;
         case "HedgeReference": field = "hedgeReference"; newValue = ("Logic_" + raw); break;
         case "HedgeScale": field = "hedgeScale"; newValue = valNum; break;
-        case "OrderCountReference": field = "orderCountReference"; newValue = valNum; break;
         case "OrderCountReferenceLogic": field = "orderCountReferenceLogic"; newValue = ("Logic_" + raw); break;
+        case "OrderCountReference": field = "orderCountReferenceLogic"; newValue = ("Logic_" + raw); break;
+        case "MaxPowerOrders": field = "maxOrderCap"; newValue = valNum; break;
         case "CloseTargets": field = "closeTargets"; newValue = raw; break;
         case "StartLevel": field = "startLevel"; newValue = valNum; break;
         case "ResetLotOnRestart": field = "resetLotOnRestart"; newValue = raw === "1"; break;

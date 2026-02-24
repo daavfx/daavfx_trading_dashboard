@@ -17,8 +17,6 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { invoke } from "@tauri-apps/api/core";
-import { save } from "@tauri-apps/plugin-dialog";
 import { toast } from "sonner";
 import type { MTConfig } from "@/types/mt-config";
 import { useMemo, useState } from "react";
@@ -26,8 +24,6 @@ import { useSystemHealth } from "@/hooks/useSystemHealth";
 import { ExportOptionsModal } from "./ExportOptionsModal";
 import { useSettings } from "@/contexts/SettingsContext";
 import { withUseDirectPriceGrid } from "@/utils/unit-mode";
-import { generateMassiveCompleteConfig } from "@/lib/config/generateMassiveConfig";
-import { exportToSetFileWithDirections } from "@/lib/setfile/exporter";
 import type { Platform } from "@/components/layout/TopBar";
 
 interface FooterRibbonProps {
@@ -136,31 +132,6 @@ export function FooterRibbon({ config, platform }: FooterRibbonProps) {
     setExportModalOpen(true);
   };
 
-  const handleGenerateMassiveExport = async () => {
-    try {
-      const generated = generateMassiveCompleteConfig("MT4");
-      const massiveConfig = generated.config;
-      const setfileContent = exportToSetFileWithDirections(massiveConfig);
-
-      const path = await save({
-        defaultPath: `DAAVFX_MASSIVE_COMPLETE.set`,
-        filters: [{ name: "Set File", extensions: ["set"] }],
-      });
-      if (!path) return;
-
-      await invoke("write_text_file", {
-        filePath: path,
-        content: setfileContent,
-      });
-
-      toast.success(
-        `Exported massive setfile: ${setfileContent.split("\n").length.toLocaleString()} lines`,
-      );
-    } catch (err) {
-      toast.error(`Export failed: ${err}`);
-    }
-  };
-
   return (
     <footer className="h-9 border-t border-border bg-background-elevated flex items-center justify-between px-4 text-[10px]">
       <div className="flex items-center gap-1">
@@ -189,14 +160,6 @@ export function FooterRibbon({ config, platform }: FooterRibbonProps) {
             >
               <FileJson className="w-3 h-3 mr-2" />
               Export JSON...
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className="text-xs cursor-pointer"
-              onClick={handleGenerateMassiveExport}
-            >
-              <FileText className="w-3 h-3 mr-2" />
-              Generate Massive & Export (.set)
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem

@@ -10,7 +10,7 @@
 // Matches MQL4 Loader.mqh format exactly
 
 import type {
-  MTConfig, 
+  MTConfigComplete, 
   LogicConfig, 
   TrailStepConfig, 
   PartialCloseConfig,
@@ -146,7 +146,7 @@ function createDefaultLogicConfig(logicName: string, groupNum: number, isPower: 
     closeTargets: "",
     
     // Engine-specific (Power doesn't have startLevel)
-    orderCountReference: 0,
+    maxOrderCap: 0,
     startLevel: isPower ? 0 : 1,
     resetLotOnRestart: false,
     restartPolicy: "Restart_Default"
@@ -334,7 +334,7 @@ function generateGlobalConfig(): GlobalConfig {
 }
 
 // Generate complete massive config
-export function generateMassiveCompleteConfig(): MTConfig {
+export function generateMassiveCompleteConfig(): MTConfigComplete {
   const logicTypes = ["Power", "Repower", "Scalp", "Stopper", "STO", "SCA", "RPO"];
   const engines: Array<"A" | "B" | "C"> = ["A", "B", "C"];
   const directions: Array<"B" | "S"> = ["B", "S"];
@@ -386,7 +386,7 @@ export function generateMassiveCompleteConfig(): MTConfig {
 }
 
 // Export to console for verification
-export function printConfigStats(config: MTConfig): void {
+export function printConfigStats(config: MTConfigComplete): void {
   console.log("=== MASSIVE CONFIG GENERATED ===");
   console.log(`Version: ${config.version}`);
   console.log(`Total Inputs: ${config.total_inputs.toLocaleString()}`);

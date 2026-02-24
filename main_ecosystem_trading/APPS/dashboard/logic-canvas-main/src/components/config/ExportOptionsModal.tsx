@@ -34,6 +34,7 @@ import { Separator } from "@/components/ui/separator";
 import type { MTConfig } from "@/types/mt-config";
 import { useSettings } from "@/contexts/SettingsContext";
 import { withUseDirectPriceGrid, normalizeConfigForExport } from "@/utils/unit-mode";
+import { hydrateMTConfigDefaults } from "@/utils/hydrate-mt-config-defaults";
 import type { Platform } from "@/components/layout/TopBar";
 
 interface ExportOptionsModalProps {
@@ -121,6 +122,52 @@ export function ExportOptionsModal({
 
     try {
       const configToExport = withUseDirectPriceGrid(config, settings);
+      const hydrated = hydrateMTConfigDefaults(configToExport);
+
+      const preparedForExport: MTConfig = {
+        ...hydrated,
+        general: {
+          ...hydrated.general,
+          require_license:
+            String(hydrated.general.license_key || "").trim().length > 0
+              ? hydrated.general.require_license
+              : false,
+        },
+        engines: (hydrated.engines || []).map((e) => ({
+          ...e,
+          groups: (e.groups || []).map((g) => {
+            if (e.engine_id !== "A") return g;
+            if (g.group_number <= 1) return g;
+            if (typeof (g as any).group_power_start === "number") return g;
+            return { ...g, group_power_start: g.group_number } as any;
+          }),
+        })),
+      };
+
+      const ensuredTradable: MTConfig = {
+        ...preparedForExport,
+        engines: (preparedForExport.engines || []).map((e) => {
+          if (e.engine_id !== "A") return e;
+          return {
+            ...e,
+            groups: (e.groups || []).map((g) => {
+              if (g.group_number !== 1) return g;
+              return {
+                ...g,
+                logics: (g.logics || []).map((l: any) => {
+                  if (String(l?.logic_name || "").toLowerCase() !== "power") return l;
+                  const enabledBuy = l?.enabled_b === true;
+                  const enabledSell = l?.enabled_s === true;
+                  const enabled = l?.enabled === true;
+                  if (enabled || enabledBuy || enabledSell) return l;
+                  return { ...l, enabled: true, allow_buy: true, allow_sell: true };
+                }),
+              };
+            }),
+          };
+        }),
+      };
+
       const ext = format === ".set" ? "set" : "json";
       const fullFileName = fileName.endsWith(`.${ext}`)
         ? fileName
@@ -140,13 +187,13 @@ export function ExportOptionsModal({
       // 1. Export File
       if (format === ".set") {
         await invoke("export_massive_v19_setfile", {
-          config: normalizeConfigForExport(configToExport),
+          config: normalizeConfigForExport(ensuredTradable),
           filePath: fullPath,
           platform: platform === "mt5" ? "MT5" : "MT4",
         });
       } else {
         await invoke("export_json_file", {
-          config: normalizeConfigForExport(configToExport),
+          config: normalizeConfigForExport(ensuredTradable),
           filePath: fullPath,
           tags: tagList.length > 0 ? tagList : null,
           comments: comments || null,
@@ -158,7 +205,7 @@ export function ExportOptionsModal({
       // 2. Save to Vault if requested
       if (saveToVault) {
         await invoke("save_to_vault", {
-          config: normalizeConfigForExport(configToExport),
+          config: normalizeConfigForExport(ensuredTradable),
           name: fileName.replace(/\.(set|json)$/i, ""),
           category: vaultCategory,
           tags: tagList.length > 0 ? tagList : null,

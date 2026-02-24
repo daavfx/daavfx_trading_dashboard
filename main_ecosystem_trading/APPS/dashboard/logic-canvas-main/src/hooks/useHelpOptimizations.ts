@@ -1,22 +1,30 @@
 // Performance optimizations for DAAVFX Help System
 // Debounced search, lazy loading, caching
 
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { HELP_ENTRIES, HELP_CATEGORIES } from '@/data/help-docs';
 
 // Debounced search hook
 export const useDebouncedSearch = (query: string, delay: number = 300) => {
   const [debouncedQuery, setDebouncedQuery] = useState(query);
-  const timeoutRef = useRef<NodeJS.Timeout>();
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
-  useCallback(() => {
+  useEffect(() => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
     }
-    
+
     timeoutRef.current = setTimeout(() => {
       setDebouncedQuery(query);
     }, delay);
+
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    };
   }, [query, delay]);
   
   return debouncedQuery;
@@ -49,8 +57,10 @@ export const useOptimizedSearch = (query: string) => {
     
     // Limit cache size
     if (searchCache.current.size > 50) {
-      const firstKey = searchCache.current.keys().next().value;
-      searchCache.current.delete(firstKey);
+      const firstKey = searchCache.current.keys().next().value as string | undefined;
+      if (firstKey) {
+        searchCache.current.delete(firstKey);
+      }
     }
     
     return results;
@@ -62,6 +72,13 @@ export const useLazyCategory = (categoryId: string) => {
   const [isLoading, setIsLoading] = useState(false);
   const [entries, setEntries] = useState<any[]>([]);
   const loadedCategories = useRef<Set<string>>(new Set());
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
   
   const loadCategory = useCallback(async () => {
     if (loadedCategories.current.has(categoryId)) {
@@ -73,6 +90,7 @@ export const useLazyCategory = (categoryId: string) => {
     // Simulate async loading (in real app, this could be API call)
     await new Promise(resolve => setTimeout(resolve, 100));
     
+    if (!isMountedRef.current) return;
     const categoryEntries = HELP_ENTRIES.filter(entry => entry.category === categoryId);
     setEntries(categoryEntries);
     loadedCategories.current.add(categoryId);
@@ -117,7 +135,7 @@ export const useVirtualScroll = (items: any[], itemHeight: number = 60, containe
 export const usePreloadContent = () => {
   const [isPreloaded, setIsPreloaded] = useState(false);
   
-  useMemo(() => {
+  useEffect(() => {
     // Preload first 6 categories (most commonly used)
     const criticalCategories = HELP_CATEGORIES.slice(0, 6);
     criticalCategories.forEach(category => {
@@ -171,6 +189,12 @@ export const useEfficientHelpRenderer = () => {
   const cacheEntry = (id: string, content: React.ReactNode) => {
     if (!renderCache.current.has(id)) {
       renderCache.current.set(id, content);
+      if (renderCache.current.size > 200) {
+        const firstKey = renderCache.current.keys().next().value as string | undefined;
+        if (firstKey) {
+          renderCache.current.delete(firstKey);
+        }
+      }
     }
     return renderCache.current.get(id);
   };

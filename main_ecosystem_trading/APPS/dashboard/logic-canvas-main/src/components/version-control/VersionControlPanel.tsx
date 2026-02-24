@@ -11,6 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { useVersionControl } from '@/hooks/useVersionControl';
 import { MTConfig } from '@/types/mt-config';
+import type { DiffResult } from '@/lib/version-control/types';
 import { Clock, GitBranch, GitCommit, GitCompare, RotateCcw, Plus, Play, Square, Tag } from 'lucide-react';
 
 interface VersionControlPanelProps {
@@ -40,6 +41,9 @@ export function VersionControlPanel({ config, onConfigChange }: VersionControlPa
   const [selectedSnapshot, setSelectedSnapshot] = useState<string | null>(null);
   const [isCreatingBranch, setIsCreatingBranch] = useState(false);
   const [isCommitting, setIsCommitting] = useState(false);
+  const [diffFrom, setDiffFrom] = useState('');
+  const [diffTo, setDiffTo] = useState('');
+  const [diffResult, setDiffResult] = useState<DiffResult | null>(null);
 
   // Auto-commit if needed
   useEffect(() => {
@@ -82,7 +86,25 @@ export function VersionControlPanel({ config, onConfigChange }: VersionControlPa
   };
 
   const handleSwitchBranch = async (branchName: string) => {
-    await switchBranch(branchName);
+    const ok = await switchBranch(branchName);
+    if (!ok) return;
+
+    const history = getBranchHistory(branchName);
+    const head = history[history.length - 1];
+    if (head) {
+      onConfigChange(head.config);
+      setSelectedSnapshot(head.id);
+    }
+  };
+
+  const handleCompare = () => {
+    if (!diffFrom || !diffTo) return;
+    try {
+      const res = compareSnapshots(diffFrom, diffTo);
+      setDiffResult(res);
+    } catch {
+      setDiffResult(null);
+    }
   };
 
   const snapshots = getSnapshots();
@@ -272,7 +294,14 @@ export function VersionControlPanel({ config, onConfigChange }: VersionControlPa
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>From Snapshot</Label>
-                <select className="w-full mt-1 p-2 border rounded">
+                <select
+                  className="w-full mt-1 p-2 border rounded"
+                  value={diffFrom}
+                  onChange={(e) => {
+                    setDiffFrom(e.target.value);
+                    setDiffResult(null);
+                  }}
+                >
                   <option value="">Select snapshot...</option>
                   {snapshots.map(snapshot => (
                     <option key={snapshot.id} value={snapshot.id}>
@@ -283,7 +312,14 @@ export function VersionControlPanel({ config, onConfigChange }: VersionControlPa
               </div>
               <div>
                 <Label>To Snapshot</Label>
-                <select className="w-full mt-1 p-2 border rounded">
+                <select
+                  className="w-full mt-1 p-2 border rounded"
+                  value={diffTo}
+                  onChange={(e) => {
+                    setDiffTo(e.target.value);
+                    setDiffResult(null);
+                  }}
+                >
                   <option value="">Select snapshot...</option>
                   {snapshots.map(snapshot => (
                     <option key={snapshot.id} value={snapshot.id}>
@@ -294,15 +330,44 @@ export function VersionControlPanel({ config, onConfigChange }: VersionControlPa
               </div>
             </div>
 
-            <Button disabled>
+            <Button onClick={handleCompare} disabled={!diffFrom || !diffTo}>
               <GitCompare className="h-4 w-4 mr-2" />
               Compare Snapshots
             </Button>
 
             <ScrollArea className="flex-1">
-              <div className="text-sm text-muted-foreground p-4">
-                Select two snapshots to compare their differences
-              </div>
+              {!diffResult ? (
+                <div className="text-sm text-muted-foreground p-4">
+                  Select two snapshots to compare their differences
+                </div>
+              ) : (
+                <div className="space-y-3 p-3">
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="outline">Added: {diffResult.added.length}</Badge>
+                    <Badge variant="outline">Modified: {diffResult.modified.length}</Badge>
+                    <Badge variant="outline">Removed: {diffResult.removed.length}</Badge>
+                  </div>
+
+                  {diffResult.modified.length > 0 && (
+                    <div className="space-y-2">
+                      <Label className="text-xs">Modified (top 30)</Label>
+                      <div className="space-y-1">
+                        {diffResult.modified.slice(0, 30).map((c, idx) => (
+                          <div key={`${c.engineId}-${c.groupId}-${c.logicName}-${c.field}-${idx}`} className="text-xs">
+                            <span className="text-muted-foreground">
+                              {c.engineId} • G{c.groupId} • {c.logicName} • {c.field}
+                            </span>
+                            <div>
+                              <span className="font-mono">{String(c.oldValue)}</span> →{" "}
+                              <span className="font-mono">{String(c.newValue)}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </ScrollArea>
           </TabsContent>
         </Tabs>

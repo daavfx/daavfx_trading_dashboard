@@ -1,7 +1,7 @@
 // SetFile Exporter - Exports to MQL4 .set format
 // Matches Loader.mqh key format exactly
 
-import type { MTConfig, LogicConfig, TrailStepConfig, PartialCloseConfig, GlobalConfig } from "@/types/mt-config-complete";
+import type { MTConfigComplete, LogicConfig, TrailStepConfig, PartialCloseConfig, GlobalConfig } from "@/types/mt-config-complete";
 import { LOGIC_SUFFIX_MAP } from "@/types/mt-config-complete";
 
 // Key formatting helpers - v19 format: gInput_{Group}_{Engine}{Logic}_{Direction}_{Param}
@@ -276,15 +276,11 @@ function exportLogicConfig(
   add("HedgeEnabled", logic.hedgeEnabled);
   add("HedgeReference", logicReferenceToString(logic.hedgeReference));
   add("HedgeScale", logic.hedgeScale);
-  add("OrderCountReference", logic.orderCountReference);
   add("OrderCountReferenceLogic", logicReferenceToString(logic.orderCountReferenceLogic));
   add("CloseTargets", logic.closeTargets);
 
   // Engine-specific (4 fields)
-  if (!logic.logic_name.includes("Power")) {
-    add("StartLevel", logic.startLevel);
-    add("LastLotPower", logic.lastLot);
-  }
+  add("StartLevel", logic.startLevel);
   add("ResetLotOnRestart", logic.resetLotOnRestart);
   add("RestartPolicy", restartPolicyToInt(logic.restartPolicy));
 }
@@ -377,7 +373,7 @@ function exportGlobalConfig(global: GlobalConfig, entries: Map<string, string>):
 }
 
 // Main export function
-export function exportToSetFile(config: MTConfig): string {
+export function exportToSetFile(config: MTConfigComplete): string {
   const entries = new Map<string, string>();
 
   // Export global config
@@ -411,7 +407,7 @@ export function exportToSetFile(config: MTConfig): string {
 }
 
 // Export with directional separation (BUY/SELL)
-export function exportToSetFileWithDirections(config: MTConfig): string {
+export function exportToSetFileWithDirections(config: MTConfigComplete): string {
   const entries = new Map<string, string>();
 
   // Export global config

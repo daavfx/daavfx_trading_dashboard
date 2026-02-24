@@ -808,8 +808,22 @@ pub async fn start_file_watcher(
     *state.watcher.lock().unwrap() = Some(watcher);
 
     std::thread::spawn(move || {
-        while rx.recv().is_ok() {
-            let _ = app_handle.emit("config-changed", platform.clone());
+        let mut consecutive_errors = 0;
+        loop {
+            match rx.recv() {
+                Ok(_) => {
+                    consecutive_errors = 0;
+                    let _ = app_handle.emit("config-changed", platform.clone());
+                }
+                Err(_) => {
+                    consecutive_errors += 1;
+                    if consecutive_errors >= 3 {
+                        println!("[WATCHER] File watcher channel closed, exiting thread");
+                        break;
+                    }
+                    std::thread::sleep(std::time::Duration::from_millis(100));
+                }
+            }
         }
     });
 
@@ -1091,23 +1105,6 @@ pub fn export_set_file(
 
     lines.push(String::new());
 
-    // License
-    lines.push("; === LICENSE ===".to_string());
-    lines.push(format!("gInput_LicenseKey={}", config.general.license_key));
-    lines.push(format!(
-        "gInput_LicenseServerURL={}",
-        config.general.license_server_url
-    ));
-    lines.push(format!(
-        "gInput_RequireLicense={}",
-        if config.general.require_license { 1 } else { 0 }
-    ));
-    lines.push(format!(
-        "gInput_LicenseCheckInterval={}",
-        config.general.license_check_interval
-    ));
-    lines.push(String::new());
-
     // Compounding
     lines.push("; === COMPOUNDING ===".to_string());
     lines.push(format!(
@@ -1347,9 +1344,8 @@ pub fn export_set_file(
             lines.push(format!("; --- Group {} ---", group.group_number));
 
             // GroupPowerStart: # of Power A trades to trigger this group (Groups 2-20 only)
-            if group.group_number > 1 {
+            if engine.engine_id == "A" && group.group_number > 1 {
                 if let Some(gps) = group.group_power_start {
-                    // Export for all 3 engines (P, BP, CP suffixes)
                     lines.push(format!(
                         "gInput_GroupPowerStart_P{}={}",
                         group.group_number, gps
@@ -1951,7 +1947,7 @@ pub fn export_set_file(
     Ok(())
 }
 
-#[cfg_attr(feature = "tauri-app", tauri::command)]
+#[cfg_attr(feature = "tauri-app", tauri::command(rename_all = "camelCase"))]
 pub fn export_set_file_to_mt_common_files(
     config: MTConfig,
     platform: String,
@@ -1978,11 +1974,12 @@ pub fn export_set_file_to_mt_common_files(
 }
 
 /// Export massive v19 setfile format: gInput_{Group}_{Engine}{Logic}_{Direction}_{Param}
-#[cfg_attr(feature = "tauri-app", tauri::command)]
+#[cfg_attr(feature = "tauri-app", tauri::command(rename_all = "camelCase"))]
 pub fn export_massive_v19_setfile(
     config: MTConfig,
     file_path: String,
     platform: String,
+    export_keymap_json: Option<bool>,
 ) -> Result<(), String> {
     let path_buf = PathBuf::from(&file_path);
     let sanitized_path = sanitize_and_validate_path(&path_buf)?;
@@ -2028,28 +2025,6 @@ pub fn export_massive_v19_setfile(
     lines.push(format!("gInput_MaxSlippagePoints={:.1}", config.general.max_slippage_points));
     
     // Config File
-    lines.push(format!("gInput_ConfigFileName={}", config.general.config_file_name));
-    lines.push(format!(
-        "gInput_ConfigFileIsCommon={}",
-        if config.general.config_file_is_common { 1 } else { 0 }
-    ));
-    
-    // Direct Price Grid
-    lines.push(format!(
-        "gInput_UseDirectPriceGrid={}",
-        if config.general.use_direct_price_grid { 1 } else { 0 }
-    ));
-    
-    // ===== LICENSE =====
-    lines.push(String::new());
-    lines.push("; === LICENSE ===".to_string());
-    lines.push(format!("gInput_LicenseKey={}", config.general.license_key));
-    lines.push(format!("gInput_LicenseServerURL={}", config.general.license_server_url));
-    lines.push(format!(
-        "gInput_RequireLicense={}",
-        if config.general.require_license { 1 } else { 0 }
-    ));
-    lines.push(format!("gInput_LicenseCheckInterval={}", config.general.license_check_interval));
     
     // ===== COMPOUNDING =====
     lines.push(String::new());
@@ -2061,6 +2036,15 @@ pub fn export_massive_v19_setfile(
     lines.push(format!("gInput_Input_CompoundingType={}", config.general.compounding_type));
     lines.push(format!("gInput_Input_CompoundingTarget={:.1}", config.general.compounding_target));
     lines.push(format!("gInput_Input_CompoundIncrease={:.1}", config.general.compounding_increase));
+    lines.push(format!(
+        "gInput_UseCompounding={}",
+        if config.general.compounding_enabled { 1 } else { 0 }
+    ));
+    let comp_type_int = match config.general.compounding_type.as_str() {
+        "Compound_Equity" => 1,
+        _ => 0,
+    };
+    lines.push(format!("gInput_CompoundingType={}", comp_type_int));
     
     // ===== CLEAN MATH =====
     lines.push(String::new());
@@ -2068,6 +2052,20 @@ pub fn export_massive_v19_setfile(
     lines.push(format!("gInput_GroupMode={}", config.general.group_mode.unwrap_or(1)));
     lines.push(format!("gInput_GridUnit={}", config.general.grid_unit.unwrap_or(0)));
     lines.push(format!("gInput_PipFactor={}", config.general.pip_factor.unwrap_or(0)));
+
+    lines.push(String::new());
+    lines.push("; === GROUP THRESHOLDS ===".to_string());
+    let engine_a = config.engines.iter().find(|e| e.engine_id == "A");
+    for g in 2..=15u8 {
+        let gps: i32 = engine_a
+            .and_then(|e| e.groups.iter().find(|gr| gr.group_number == g))
+            .and_then(|gr| gr.group_power_start)
+            .unwrap_or(g as i32);
+
+        lines.push(format!("gInput_GroupPowerStart_P{}={}", g, gps));
+        lines.push(format!("gInput_GroupPowerStart_BP{}={}", g, gps));
+        lines.push(format!("gInput_GroupPowerStart_CP{}={}", g, gps));
+    }
     
     // ===== RISK MANAGEMENT =====
     lines.push(String::new());
@@ -2079,7 +2077,12 @@ pub fn export_massive_v19_setfile(
     lines.push(format!("gInput_EquityStopValue={:.1}", rm.equity_stop_value));
     lines.push(format!("gInput_UseDrawdownStop={}", if rm.drawdown_stop_enabled { 1 } else { 0 }));
     lines.push(format!("gInput_MaxDrawdownPercent={:.1}", rm.max_drawdown_percent));
-    lines.push(format!("gInput_RiskAction={}", rm.risk_action.as_ref().unwrap_or(&"2".to_string())));
+    let risk_action_raw = rm
+        .risk_action
+        .as_ref()
+        .map(|s| s.as_str())
+        .unwrap_or("TriggerAction_StopEA_KeepTrades");
+    lines.push(format!("gInput_RiskAction={}", trigger_action_to_int(risk_action_raw)));
     
     // ===== NEWS FILTER =====
     lines.push(String::new());
@@ -2093,7 +2096,7 @@ pub fn export_massive_v19_setfile(
     lines.push(format!("gInput_NewsImpactLevel={}", nf.impact_level));
     lines.push(format!("gInput_MinutesBeforeNews={}", nf.minutes_before));
     lines.push(format!("gInput_MinutesAfterNews={}", nf.minutes_after));
-    lines.push(format!("gInput_NewsAction={}", nf.action));
+    lines.push(format!("gInput_NewsAction={}", trigger_action_to_int(&nf.action)));
     lines.push(format!("gInput_NewsCalendarFile={}", nf.calendar_file.as_ref().unwrap_or(&"".to_string())));
     
     // ===== TIME FILTERS =====
@@ -2121,7 +2124,11 @@ pub fn export_massive_v19_setfile(
         lines.push(format!("gInput_Session{}StartMinute={}", s.session_number, s.start_minute));
         lines.push(format!("gInput_Session{}EndHour={}", s.session_number, s.end_hour));
         lines.push(format!("gInput_Session{}EndMinute={}", s.session_number, s.end_minute));
-        lines.push(format!("gInput_Session{}Action={}", s.session_number, s.action));
+        lines.push(format!(
+            "gInput_Session{}Action={}",
+            s.session_number,
+            trigger_action_to_int(&s.action)
+        ));
     }
     
     lines.push(String::new());
@@ -2179,7 +2186,7 @@ pub fn export_massive_v19_setfile(
                 for direction in &directions {
                     let is_buy = *direction == "Buy";
 
-                    let enabled = logic.enabled && if is_buy { logic.allow_buy } else { logic.allow_sell };
+                    let enabled = if is_buy { logic.allow_buy } else { logic.allow_sell };
 
                     lines.push(format!(
                         "gInput_{}_{}_{}_Enabled={}",
@@ -2457,10 +2464,7 @@ pub fn export_massive_v19_setfile(
 
                     lines.push(format!(
                         "gInput_{}_{}_{}_OrderCountReferenceLogic={}",
-                        group_num,
-                        v19_suffix,
-                        direction,
-                        logic.order_count_reference
+                        group_num, v19_suffix, direction, logic.order_count_reference
                     ));
                     lines.push(format!(
                         "gInput_{}_{}_{}_StartLevel={}",
@@ -2646,11 +2650,73 @@ pub fn export_massive_v19_setfile(
         }
     }
 
+    let key_lines = lines
+        .iter()
+        .filter(|line| {
+            let s = line.trim();
+            !s.is_empty() && !s.starts_with(';') && s.contains('=')
+        })
+        .count();
+    if key_lines < 60000 {
+        return Err(format!(
+            "export_massive_v19_setfile: refusing to write non-massive output (key_lines={})",
+            key_lines
+        ));
+    }
+
     // Write to file
     let content = lines.join("\n");
     atomic_write(&sanitized_path, &content)?;
 
+    if export_keymap_json.unwrap_or(true) {
+        use std::collections::BTreeMap;
+
+        let keymap_path = PathBuf::from(format!("{}.keymap.json", file_path));
+        let sanitized_keymap_path = sanitize_and_validate_path(&keymap_path)?;
+
+        let mut map: BTreeMap<String, String> = BTreeMap::new();
+        let mut dup_keys: u32 = 0;
+        for line in &lines {
+            let s = line.trim();
+            if s.is_empty() || s.starts_with(';') {
+                continue;
+            }
+            if let Some((k, v)) = s.split_once('=') {
+                if map.insert(k.to_string(), v.to_string()).is_some() {
+                    dup_keys += 1;
+                }
+            }
+        }
+        if dup_keys > 0 {
+            return Err(format!(
+                "export_massive_v19_setfile: duplicate keys detected in output (dup_keys={})",
+                dup_keys
+            ));
+        }
+        if map.len() < 60000 {
+            return Err(format!(
+                "export_massive_v19_setfile: keymap too small for massive output (keys={})",
+                map.len()
+            ));
+        }
+
+        let json = serde_json::to_string_pretty(&map).map_err(|e| e.to_string())?;
+        atomic_write(&sanitized_keymap_path, &json)?;
+    }
+
     Ok(())
+}
+
+#[cfg_attr(feature = "tauri-app", tauri::command(rename_all = "camelCase"))]
+pub fn export_massive_v19_setfile_to_mt_common_files(
+    config: MTConfig,
+    platform: String,
+) -> Result<String, String> {
+    let common_dir = get_mt_common_files_dir()?;
+    let file_path = common_dir.join("ACTIVE.set");
+    let path_str = file_path.to_string_lossy().to_string();
+    export_massive_v19_setfile(config, path_str.clone(), platform, Some(true))?;
+    Ok(path_str)
 }
 
 #[derive(Serialize)]
@@ -2732,7 +2798,7 @@ fn decode_setfile_bytes(bytes: Vec<u8>) -> Result<String, String> {
     }
 }
 
-#[cfg_attr(feature = "tauri-app", tauri::command)]
+#[cfg_attr(feature = "tauri-app", tauri::command(rename_all = "camelCase"))]
 pub fn export_active_set_file_to_mt_common_files(
     config: MTConfig,
     platform: String,
@@ -2753,7 +2819,7 @@ pub fn export_active_set_file_to_mt_common_files(
     Ok(path_str)
 }
 
-#[cfg_attr(feature = "tauri-app", tauri::command)]
+#[cfg_attr(feature = "tauri-app", tauri::command(rename_all = "camelCase"))]
 pub fn _export_vault_file_to_mt_common_files(
     source_file_path: String,
     terminal_type: String,
@@ -3137,7 +3203,7 @@ pub struct _ExportValidationResult {
 }
 
 /// Export .set file with validation feedback
-#[cfg_attr(feature = "tauri-app", tauri::command)]
+#[cfg_attr(feature = "tauri-app", tauri::command(rename_all = "camelCase"))]
 pub fn _export_set_file_with_validation(
     config: MTConfig,
     file_path: String,
@@ -3200,7 +3266,7 @@ pub fn _export_set_file_with_validation(
 }
 
 /// Quick validation of a setfile path (check it exists and is readable)
-#[cfg_attr(feature = "tauri-app", tauri::command)]
+#[cfg_attr(feature = "tauri-app", tauri::command(rename_all = "camelCase"))]
 pub fn _validate_set_file_path(file_path: String) -> Result<bool, String> {
     let path = std::path::Path::new(&file_path);
     if path.exists() && path.is_file() {
@@ -3297,10 +3363,10 @@ fn resolve_vault_path(vault_path_override: Option<String>) -> Result<PathBuf, St
         }
     }
 
-    Ok(get_vault_path())
+    sanitize_and_validate_path(&get_vault_path())
 }
 
-#[cfg_attr(feature = "tauri-app", tauri::command)]
+#[cfg_attr(feature = "tauri-app", tauri::command(rename_all = "camelCase"))]
 pub async fn list_vault_files(vault_path_override: Option<String>) -> Result<VaultListing, String> {
     let vault_path = resolve_vault_path(vault_path_override)?;
     if !vault_path.exists() {
@@ -3439,17 +3505,20 @@ pub async fn list_vault_files(vault_path_override: Option<String>) -> Result<Vau
     })
 }
 
-#[cfg_attr(feature = "tauri-app", tauri::command)]
+#[cfg_attr(feature = "tauri-app", tauri::command(rename_all = "camelCase"))]
 pub async fn open_vault_folder(vault_path_override: Option<String>) -> Result<(), String> {
     let vault_path = resolve_vault_path(vault_path_override)?;
     if !vault_path.exists() {
         return Err("Vault folder does not exist".to_string());
     }
+    if !vault_path.is_dir() {
+        return Err("Vault path is not a folder".to_string());
+    }
 
     #[cfg(target_os = "windows")]
     {
         std::process::Command::new("explorer")
-            .arg(vault_path.to_string_lossy().to_string())
+            .arg(&vault_path)
             .spawn()
             .map_err(|e| format!("Failed to open folder: {}", e))?;
         return Ok(());
@@ -3459,20 +3528,62 @@ pub async fn open_vault_folder(vault_path_override: Option<String>) -> Result<()
     Err("Open folder not supported on this OS".to_string())
 }
 
-fn calculate_dir_size_recursive(dir: &PathBuf) -> Result<u64, std::io::Error> {
-    let mut size = 0;
-    if dir.exists() && dir.is_dir() {
-        for entry in fs::read_dir(dir)? {
-            let entry = entry?;
+struct VaultSizeCache {
+    last_size: u64,
+    last_calculated_at: Option<std::time::Instant>,
+}
+
+static VAULT_SIZE_CACHE: std::sync::OnceLock<std::sync::Mutex<VaultSizeCache>> =
+    std::sync::OnceLock::new();
+
+fn get_vault_size_cache() -> &'static std::sync::Mutex<VaultSizeCache> {
+    VAULT_SIZE_CACHE.get_or_init(|| std::sync::Mutex::new(VaultSizeCache {
+        last_size: 0,
+        last_calculated_at: None,
+    }))
+}
+
+fn calculate_dir_size_bounded(
+    root: &PathBuf,
+    time_budget: std::time::Duration,
+    max_entries: usize,
+) -> u64 {
+    let start = std::time::Instant::now();
+    let mut size = 0u64;
+    let mut scanned = 0usize;
+    let mut stack = vec![root.clone()];
+
+    while let Some(dir) = stack.pop() {
+        if start.elapsed() > time_budget || scanned >= max_entries {
+            break;
+        }
+
+        let entries = match fs::read_dir(&dir) {
+            Ok(e) => e,
+            Err(_) => continue,
+        };
+
+        for entry in entries.flatten() {
+            scanned += 1;
+            if start.elapsed() > time_budget || scanned >= max_entries {
+                break;
+            }
+
             let path = entry.path();
-            if path.is_file() {
-                size += entry.metadata()?.len();
-            } else if path.is_dir() {
-                size += calculate_dir_size_recursive(&path)?;
+            let meta = match entry.metadata() {
+                Ok(m) => m,
+                Err(_) => continue,
+            };
+
+            if meta.is_file() {
+                size = size.saturating_add(meta.len());
+            } else if meta.is_dir() {
+                stack.push(path);
             }
         }
     }
-    Ok(size)
+
+    size
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -3480,17 +3591,49 @@ pub struct VaultSizeResult {
     pub total_size: u64,
 }
 
-#[cfg_attr(feature = "tauri-app", tauri::command)]
+#[cfg_attr(feature = "tauri-app", tauri::command(rename_all = "camelCase"))]
 pub async fn get_vault_size(
     vault_path_override: Option<String>,
 ) -> Result<VaultSizeResult, String> {
     let vault_path = resolve_vault_path(vault_path_override)?;
     if !vault_path.exists() {
+        let mut cache = get_vault_size_cache()
+            .lock()
+            .map_err(|_| "Vault size cache poisoned".to_string())?;
+        cache.last_size = 0;
+        cache.last_calculated_at = None;
         return Ok(VaultSizeResult { total_size: 0 });
     }
 
-    let total_size = calculate_dir_size_recursive(&vault_path)
-        .map_err(|e| format!("Failed to calculate vault size: {}", e))?;
+    {
+        let cache = get_vault_size_cache()
+            .lock()
+            .map_err(|_| "Vault size cache poisoned".to_string())?;
+        if let Some(last) = cache.last_calculated_at {
+            if last.elapsed() < std::time::Duration::from_secs(60) {
+                return Ok(VaultSizeResult {
+                    total_size: cache.last_size,
+                });
+            }
+        }
+    }
+
+    let vault_path_for_task = vault_path.clone();
+    let total_size = tokio::task::spawn_blocking(move || {
+        calculate_dir_size_bounded(
+            &vault_path_for_task,
+            std::time::Duration::from_millis(250),
+            30_000,
+        )
+    })
+    .await
+    .map_err(|e| format!("Failed to calculate vault size: {}", e))?;
+
+    let mut cache = get_vault_size_cache()
+        .lock()
+        .map_err(|_| "Vault size cache poisoned".to_string())?;
+    cache.last_size = total_size;
+    cache.last_calculated_at = Some(std::time::Instant::now());
 
     Ok(VaultSizeResult { total_size })
 }
@@ -3573,7 +3716,7 @@ pub async fn open_mt_terminal_root() -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
         std::process::Command::new("explorer")
-            .arg(root.to_string_lossy().to_string())
+            .arg(&root)
             .spawn()
             .map_err(|e| format!("Failed to open folder: {}", e))?;
         return Ok(());
@@ -3583,7 +3726,7 @@ pub async fn open_mt_terminal_root() -> Result<(), String> {
     Err("Open folder not supported on this OS".to_string())
 }
 
-#[cfg_attr(feature = "tauri-app", tauri::command)]
+#[cfg_attr(feature = "tauri-app", tauri::command(rename_all = "camelCase"))]
 pub async fn read_recent_terminal_log(lines: u32) -> Result<TerminalLogTail, String> {
     let root = get_terminal_root_path()?;
     if !root.exists() {
@@ -3598,7 +3741,7 @@ pub async fn read_recent_terminal_log(lines: u32) -> Result<TerminalLogTail, Str
     })
 }
 
-#[cfg_attr(feature = "tauri-app", tauri::command)]
+#[cfg_attr(feature = "tauri-app", tauri::command(rename_all = "camelCase"))]
 pub async fn _export_vault_file(filename: String, target_path: String) -> Result<(), String> {
     // When exporting from Vault, we must DEOBFUSCATE the content
     // so it's usable by MT4/MT5 or other users.
@@ -3631,7 +3774,7 @@ pub async fn _export_vault_file(filename: String, target_path: String) -> Result
     Ok(())
 }
 
-#[cfg_attr(feature = "tauri-app", tauri::command)]
+#[cfg_attr(feature = "tauri-app", tauri::command(rename_all = "camelCase"))]
 pub async fn save_to_vault(
     config: MTConfig,
     name: String,
@@ -3715,7 +3858,7 @@ pub async fn save_to_vault(
     Ok(())
 }
 
-#[cfg_attr(feature = "tauri-app", tauri::command)]
+#[cfg_attr(feature = "tauri-app", tauri::command(rename_all = "camelCase"))]
 pub async fn _delete_from_vault(
     filename: String,
     vault_path_override: Option<String>,
@@ -4282,14 +4425,13 @@ fn parse_parameter_name(name: &str) -> Option<ParsedParameter> {
     // Join the remaining parts to form the parameter name
     let param_name = param_parts.join("_");
 
-    // Debug logging for parsed parameters
-    static mut PARSE_COUNT: usize = 0;
-    unsafe {
-        PARSE_COUNT += 1;
-        if PARSE_COUNT <= 20 {
-            println!("[SETFILE] Rust: Parsed '{}' -> engine={} group={} logic={} direction={} param={}",
-                     name, engine_char, group, logic_name, direction, param_name);
-        }
+    // Debug logging for parsed parameters - using AtomicUsize for thread safety
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    static PARSE_COUNT: AtomicUsize = AtomicUsize::new(0);
+    let count = PARSE_COUNT.fetch_add(1, Ordering::SeqCst);
+    if count < 20 {
+        println!("[SETFILE] Rust: Parsed '{}' -> engine={} group={} logic={} direction={} param={}",
+                 name, engine_char, group, logic_name, direction, param_name);
     }
 
     Some(ParsedParameter {
@@ -4622,12 +4764,11 @@ fn build_logic_config(
     let buy_params = direction_data.get("Buy");
     let sell_params = direction_data.get("Sell");
 
-    // Debug logging for first few logics
-    static mut LOGIC_DEBUG_COUNT: usize = 0;
-    let should_log = unsafe {
-        LOGIC_DEBUG_COUNT += 1;
-        LOGIC_DEBUG_COUNT <= 10
-    };
+    // Debug logging for first few logics - using AtomicUsize for thread safety
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    static LOGIC_DEBUG_COUNT: AtomicUsize = AtomicUsize::new(0);
+    let count = LOGIC_DEBUG_COUNT.fetch_add(1, Ordering::SeqCst);
+    let should_log = count < 10;
 
     if should_log {
         println!("[SETFILE] Rust: Building logic config for Engine {} Group {} Logic '{}' (suffix: {})",
@@ -5182,28 +5323,6 @@ pub async fn apply_mql_fixes(
     }
 }
 
-/// Start real-time file watching for MQL validation
-#[cfg(feature = "tauri-app")]
-#[tauri::command]
-pub async fn start_mql_file_watching(
-    app_handle: tauri::AppHandle,
-    state: State<'_, MTBridgeState>,
-) -> Result<(), String> {
-    let mut compiler_guard = state.mql_compiler.lock().unwrap();
-
-    if let Some(ref mut compiler) = *compiler_guard {
-        let callback = move |errors: Vec<CompilationError>| {
-            let _ = app_handle.emit("mql-validation-update", &errors);
-        };
-
-        compiler
-            .start_file_watching(callback)
-            .map_err(|e| format!("Failed to start file watching: {}", e))
-    } else {
-        Err("MQL Compiler not initialized.".to_string())
-    }
-}
-
 /// Get MQL compiler status and statistics
 #[cfg(feature = "tauri-app")]
 #[tauri::command]
@@ -5605,7 +5724,7 @@ pub async fn auto_detect_mt4_paths() -> Result<MT4Settings, String> {
     get_mt4_settings().await
 }
 
-#[cfg_attr(feature = "tauri-app", tauri::command)]
+#[cfg_attr(feature = "tauri-app", tauri::command(rename_all = "camelCase"))]
 pub async fn configure_mt4_path(path: String) -> Result<MT4Settings, String> {
     let path_buf = PathBuf::from(&path);
 
@@ -5660,7 +5779,7 @@ pub async fn test_mt4_connection() -> Result<bool, String> {
     }
 }
 
-#[cfg_attr(feature = "tauri-app", tauri::command)]
+#[cfg_attr(feature = "tauri-app", tauri::command(rename_all = "camelCase"))]
 pub async fn open_mt_folder(folder_type: String) -> Result<(), String> {
     let settings = get_mt4_settings().await?;
 
@@ -5680,11 +5799,15 @@ pub async fn open_mt_folder(folder_type: String) -> Result<(), String> {
     if !path.exists() {
         return Err("Folder does not exist".to_string());
     }
+    if !path.is_dir() {
+        return Err("Path is not a folder".to_string());
+    }
+    let path = sanitize_and_validate_path(&path)?;
 
     #[cfg(target_os = "windows")]
     {
         std::process::Command::new("explorer")
-            .arg(path.to_string_lossy().to_string())
+            .arg(&path)
             .spawn()
             .map_err(|e| format!("Failed to open folder: {}", e))?;
         return Ok(());

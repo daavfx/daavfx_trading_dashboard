@@ -1072,7 +1072,7 @@ export class CommandExecutor {
 
   private executeProgression(command: ParsedCommand): CommandResult {
     const { engines, groups, logics, field } = command.target;
-    const { startValue, endValue, progressionType, factor } = command.params;
+    const { startValue, endValue, progressionType, factor, customSequence } = command.params;
 
     if (!field || !groups || groups.length < 2) {
       return { success: false, message: "Need field and at least 2 groups for progression" };
@@ -1096,6 +1096,7 @@ export class CommandExecutor {
       startValue: defaultStart || 600,
       endValue,
       factor,
+      customSequence,
       engines,
       groups,
       logics

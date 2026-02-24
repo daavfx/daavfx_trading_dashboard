@@ -17,6 +17,7 @@ export class AnalyticsManager {
   private state: AnalyticsState;
   private onChangeCallbacks: Array<(state: AnalyticsState) => void> = [];
   private analysisInterval: NodeJS.Timeout | null = null;
+  private lastConfig: MTConfig | null = null;
 
   constructor(config?: AnalyticsConfig) {
     this.state = {
@@ -69,11 +70,14 @@ export class AnalyticsManager {
   }
 
   // Start periodic analysis
-  startAnalysis(): void {
+  startAnalysis(config?: MTConfig): void {
     if (this.analysisInterval) return; // Already running
+    if (config) {
+      this.lastConfig = config;
+    }
 
     this.analysisInterval = setInterval(() => {
-      this.performAnalysis();
+      void this.performAnalysis(this.lastConfig || undefined);
     }, 300000); // Run every 5 minutes
   }
 
@@ -88,6 +92,9 @@ export class AnalyticsManager {
   // Perform comprehensive analysis
   async performAnalysis(config?: MTConfig): Promise<void> {
     if (this.state.isAnalyzing) return;
+    if (config) {
+      this.lastConfig = config;
+    }
 
     this.state.isAnalyzing = true;
     this.notifyChange();
@@ -476,6 +483,7 @@ export class AnalyticsManager {
       this.analysisInterval = null;
     }
 
+    this.lastConfig = null;
     this.state = {
       correlations: [],
       performanceMetrics: [],

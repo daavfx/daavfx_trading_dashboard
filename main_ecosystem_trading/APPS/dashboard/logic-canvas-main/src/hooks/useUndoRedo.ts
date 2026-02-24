@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { MTConfig } from '@/types/mt-config';
 import { getUndoRedoManager, UndoRedoManager } from '@/lib/undo-redo/manager';
-import { UndoRedoState, ChangeOperation } from './types';
+import { UndoRedoState, ChangeOperation } from '@/lib/undo-redo/types';
 
 export function useUndoRedo(initialConfig?: MTConfig) {
   const [urManager] = useState<UndoRedoManager>(() => getUndoRedoManager());

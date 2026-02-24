@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowLeftRight, ChevronLeft, ChevronRight, Copy, Check } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,16 @@ export function CompareModal({ open, onClose, sourceEngine }: CompareModalProps)
   const [rightLogic, setRightLogic] = useState("POWER");
   const [currentGroup, setCurrentGroup] = useState(0);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const copiedFieldResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copiedFieldResetRef.current) {
+        clearTimeout(copiedFieldResetRef.current);
+        copiedFieldResetRef.current = null;
+      }
+    };
+  }, []);
 
   const group = groups[currentGroup];
   const leftData = getMockData(leftEngine, leftLogic, group);
@@ -55,7 +65,13 @@ export function CompareModal({ open, onClose, sourceEngine }: CompareModalProps)
   const copyValue = (field: string, value: string | number, direction: "left" | "right") => {
     // console.log(`Copying ${field}: ${value} to ${direction === "left" ? "right" : "left"}`);
     setCopiedField(field);
-    setTimeout(() => setCopiedField(null), 1500);
+    if (copiedFieldResetRef.current) {
+      clearTimeout(copiedFieldResetRef.current);
+    }
+    copiedFieldResetRef.current = setTimeout(() => {
+      setCopiedField(null);
+      copiedFieldResetRef.current = null;
+    }, 1500);
   };
 
   const prevGroup = () => setCurrentGroup(prev => Math.max(0, prev - 1));

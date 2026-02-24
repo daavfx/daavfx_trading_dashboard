@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { toast } from "sonner";
 import { type ImperativePanelHandle } from "react-resizable-panels";
@@ -8,6 +8,7 @@ import { ChatPanel } from "@/components/layout/ChatPanel";
 import { BatchEditPanel } from "@/components/config/BatchEditPanel";
 import { EngineCard } from "@/components/config/EngineCard";
 import { GeneralCategories } from "@/components/config/GeneralCategories";
+import { GroupThresholdsCard } from "@/components/config/GroupThresholdsCard";
 import { MultiEditIndicator } from "@/components/config/MultiEditIndicator";
 import { SelectionDashboard } from "@/components/config/SelectionDashboard";
 import { EmptyState } from "@/components/config/EmptyState";
@@ -24,8 +25,7 @@ import { BatchEditTab } from "@/components/config/BatchEditTab";
 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { useMTConfig, useConfigUpdater } from "@/hooks/useMTConfig";
-import { useMTFileOps } from "@/hooks/useMTFileOps";
+import { useMTConfig } from "@/hooks/useMTConfig";
 import type {
   Platform as MTPlatform,
   GeneralConfig,
@@ -47,6 +47,7 @@ import { CollaborationPanel } from "@/components/visual-enhancements/Collaborati
 import { UndoRedoPanel } from "@/components/visual-enhancements/UndoRedoPanel";
 import { MemorySystemPanel } from "@/components/version-control/MemorySystemPanel";
 import { ParameterGroupingPanel } from "@/components/version-control/ParameterGroupingPanel";
+import { getUndoRedoManager } from "@/lib/undo-redo/manager";
 
 import {
   ResizableHandle,
@@ -54,7 +55,7 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 
-import { SingleEditContext } from "@/components/config/SingleEditContext";
+import { getMatchingFieldIds } from "@/utils/input-search";
 
 // Mock data for when config is not loaded
 const mockGeneralConfig: GeneralConfig = {
@@ -154,6 +155,7 @@ export default function Index() {
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
   const [selectedLogics, setSelectedLogics] = useState<string[]>([]);
   const [selectedFields, setSelectedFields] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState<string>("");
   const [vaultModalOpen, setVaultModalOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
@@ -189,10 +191,37 @@ export default function Index() {
     saveToVault: boolean;
     format: "set" | "json";
   } | null>(null);
+  const externalCommandResetRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+
+  useEffect(() => {
+    return () => {
+      if (externalCommandResetRef.current) {
+        clearTimeout(externalCommandResetRef.current);
+        externalCommandResetRef.current = null;
+      }
+    };
+  }, []);
+
+  const filteredFields = useMemo(() => {
+    if (!searchQuery.trim()) return selectedFields;
+    const matchingIds = getMatchingFieldIds(searchQuery);
+    if (selectedFields.length > 0) {
+      return selectedFields.filter(f => matchingIds.includes(f));
+    }
+    return matchingIds;
+  }, [searchQuery, selectedFields]);
 
   const pushChatCommand = (command: string) => {
     setExternalCommand(command);
-    setTimeout(() => setExternalCommand(null), 0);
+    if (externalCommandResetRef.current) {
+      clearTimeout(externalCommandResetRef.current);
+    }
+    externalCommandResetRef.current = setTimeout(() => {
+      setExternalCommand(null);
+      externalCommandResetRef.current = null;
+    }, 0);
   };
 
   const openVaultSave = (draft?: {
@@ -242,25 +271,116 @@ export default function Index() {
     saveConfig: realSaveConfig,
     setConfigOnly,
   } = useMTConfig(mtPlatform);
-  const { batchUpdateLogics, updateGeneral, updateLogic } = useConfigUpdater(
-    realConfig,
-    realSaveConfig,
-  );
-  const { exportCompleteV3LegacySetfile } = useMTFileOps(
-    mtPlatform,
-    realConfig,
-  );
   const [configWarnings, setConfigWarnings] = useState<ConfigWarning[]>([]);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const config = realConfig;
+  const undoRedoManagerRef = useRef(getUndoRedoManager());
+  const skipUndoRecordRef = useRef(false);
+
+  const deepEqual = (a: unknown, b: unknown) => {
+    if (Object.is(a, b)) return true;
+    if (typeof a !== typeof b) return false;
+    if (a === null || b === null) return false;
+    if (typeof a !== "object") return false;
+    try {
+      return JSON.stringify(a) === JSON.stringify(b);
+    } catch {
+      return false;
+    }
+  };
+
+  const countConfigChanges = (prev: MTConfig, next: MTConfig) => {
+    let changes = 0;
+
+    const prevGeneral = prev.general || ({} as any);
+    const nextGeneral = next.general || ({} as any);
+    const generalKeys = new Set([...Object.keys(prevGeneral), ...Object.keys(nextGeneral)]);
+    for (const key of generalKeys) {
+      if (!deepEqual((prevGeneral as any)[key], (nextGeneral as any)[key])) {
+        changes++;
+      }
+    }
+
+    const prevEngines = new Map(prev.engines.map((e) => [e.engine_id, e] as const));
+    const nextEngines = new Map(next.engines.map((e) => [e.engine_id, e] as const));
+    const engineIds = new Set([...prevEngines.keys(), ...nextEngines.keys()]);
+
+    for (const engineId of engineIds) {
+      const prevEngine = prevEngines.get(engineId);
+      const nextEngine = nextEngines.get(engineId);
+      if (!prevEngine || !nextEngine) {
+        changes++;
+        continue;
+      }
+
+      const prevGroups = new Map(prevEngine.groups.map((g) => [g.group_number, g] as const));
+      const nextGroups = new Map(nextEngine.groups.map((g) => [g.group_number, g] as const));
+      const groupIds = new Set([...prevGroups.keys(), ...nextGroups.keys()]);
+
+      for (const groupId of groupIds) {
+        const prevGroup = prevGroups.get(groupId);
+        const nextGroup = nextGroups.get(groupId);
+        if (!prevGroup || !nextGroup) {
+          changes++;
+          continue;
+        }
+
+        const prevLogics = new Map(prevGroup.logics.map((l: any) => [l.logic_name, l] as const));
+        const nextLogics = new Map(nextGroup.logics.map((l: any) => [l.logic_name, l] as const));
+        const logicNames = new Set([...prevLogics.keys(), ...nextLogics.keys()]);
+
+        for (const logicName of logicNames) {
+          const prevLogic = prevLogics.get(logicName);
+          const nextLogic = nextLogics.get(logicName);
+          if (!prevLogic || !nextLogic) {
+            changes++;
+            continue;
+          }
+
+          const keys = new Set([...Object.keys(prevLogic), ...Object.keys(nextLogic)]);
+          keys.delete("logic_name");
+
+          for (const key of keys) {
+            if (!deepEqual(prevLogic[key], nextLogic[key])) {
+              changes++;
+            }
+          }
+        }
+      }
+    }
+
+    return changes;
+  };
 
   const handleGeneralUpdate = async (updates: Partial<GeneralConfig>) => {
     if (!config) return;
-    await updateGeneral(updates);
+    await handleSaveConfig({ ...config, general: { ...config.general, ...updates } });
   };
 
   const handleSaveConfig = async (newConfig: MTConfig) => {
+    const prev = config;
+    if (prev && !skipUndoRecordRef.current) {
+      const changeCount = countConfigChanges(prev, newConfig);
+      if (changeCount > 0) {
+        undoRedoManagerRef.current.addOperation({
+          type: "GROUP_UPDATE",
+          target: { engineId: "CONFIG", parameter: "__CONFIG__" },
+          before: JSON.parse(JSON.stringify(prev)),
+          after: JSON.parse(JSON.stringify(newConfig)),
+          description: `Config update (${changeCount} changes)`,
+        });
+      }
+    }
     await realSaveConfig(newConfig);
+  };
+
+  const handleSaveConfigNoUndoRecord = async (newConfig: MTConfig) => {
+    skipUndoRecordRef.current = true;
+    try {
+      await handleSaveConfig(newConfig);
+    } finally {
+      skipUndoRecordRef.current = false;
+    }
   };
 
   const lastSavedLabel = config?.last_saved_at
@@ -293,22 +413,55 @@ export default function Index() {
     return () => clearTimeout(timeout);
   }, [config]);
 
-  // Auto-save config on app close - only save minimal metadata, not full config
   useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (config) {
-        try {
-          // Only save magic numbers and basic settings, not full config
-          const minimalSave = {
+    if (!config) return;
+
+    const timeout = setTimeout(() => {
+      try {
+        const nowIso = new Date().toISOString();
+        const enrichedConfig = {
+          ...config,
+          last_saved_at: nowIso,
+          last_saved_platform: mtPlatform,
+        };
+        localStorage.setItem("daavfx-last-config", JSON.stringify(enrichedConfig));
+        localStorage.setItem(
+          "daavfx-last-config-meta",
+          JSON.stringify({
             magic: config.general?.magic_number,
             magicBuy: config.general?.magic_number_buy,
             magicSell: config.general?.magic_number_sell,
-            timestamp: Date.now()
-          };
-          localStorage.setItem("daavfx-last-config-meta", JSON.stringify(minimalSave));
-        } catch (e) {
-          // Silent fail
-        }
+            timestamp: Date.now(),
+          }),
+        );
+      } catch {
+      }
+    }, 750);
+
+    return () => clearTimeout(timeout);
+  }, [config, mtPlatform]);
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (!config) return;
+      try {
+        const nowIso = new Date().toISOString();
+        const enrichedConfig = {
+          ...config,
+          last_saved_at: nowIso,
+          last_saved_platform: mtPlatform,
+        };
+        localStorage.setItem("daavfx-last-config", JSON.stringify(enrichedConfig));
+        localStorage.setItem(
+          "daavfx-last-config-meta",
+          JSON.stringify({
+            magic: config.general?.magic_number,
+            magicBuy: config.general?.magic_number_buy,
+            magicSell: config.general?.magic_number_sell,
+            timestamp: Date.now(),
+          }),
+        );
+      } catch {
       }
     };
 
@@ -326,7 +479,7 @@ export default function Index() {
       window.removeEventListener("beforeunload", handleBeforeUnload);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [config]);
+  }, [config, mtPlatform]);
 
   // Get real engine data from config or use mock
   const realEngineConfigs =
@@ -631,6 +784,23 @@ export default function Index() {
             setSelectedLogics(["POWER"]);
           }
         }}
+        searchQuery={searchQuery}
+        onSearchQueryChange={setSearchQuery}
+        onSearchSelect={(item) => {
+          if (item.type === "field") {
+            setSelectedFields([item.id]);
+          } else if (item.type === "category") {
+            const matchingFields = getMatchingFieldIds(item.id);
+            setSelectedFields(matchingFields);
+          } else if (item.type === "logic") {
+            setSelectedLogics([item.id]);
+          } else if (item.type === "engine") {
+            setSelectedEngines([`Engine ${item.id}`]);
+          } else if (item.type === "group") {
+            setSelectedGroups([`Group ${item.id}`]);
+          }
+          setHasStarted(true);
+        }}
       />
 
       <div className="flex-1 overflow-hidden">
@@ -736,7 +906,7 @@ export default function Index() {
                             selectedEngines={selectedEngines}
                             selectedGroups={selectedGroups}
                             selectedLogics={selectedLogics}
-                            selectedFields={selectedFields || []}
+                            selectedFields={filteredFields || []}
                             isMultiEdit={isMultiEdit}
                             chatActive={chatActive}
                             pendingPlan={chatPendingPlan}
@@ -749,9 +919,6 @@ export default function Index() {
                             onSendToChat={(cmd) => pushChatCommand(cmd)}
                             onOpenVaultSave={(draft) => openVaultSave(draft)}
                             onClearSelection={clearSelection}
-                            onExportCompleteV3Legacy={
-                              exportCompleteV3LegacySetfile
-                            }
                           />
                         </div>
                       )}
@@ -772,6 +939,13 @@ export default function Index() {
 
                       {viewMode === "logics" && (
                         <div className="space-y-3 mt-4">
+                          {config && selectedGroups.length > 0 && (
+                            <GroupThresholdsCard
+                              config={config}
+                              selectedGroups={selectedGroups}
+                              onConfigChange={handleSaveConfig}
+                            />
+                          )}
                           {loading ? (
                             <div className="text-center py-8 text-muted-foreground">
                               Loading configuration...
@@ -791,7 +965,7 @@ export default function Index() {
                                   engineData={engineConfig.engineData}
                                   mtConfig={config}
                                   selectedLogics={selectedLogics}
-                                  selectedFields={selectedFields || []}
+                                  selectedFields={filteredFields || []}
                                   mode={mode}
                                   onUpdateLogic={(logic, field, value) => {
                                     if (!config || selectedGroups.length === 0) return;
@@ -828,7 +1002,7 @@ export default function Index() {
                                             return {
                                               ...g,
                                               logics: g.logics.map((l) => {
-                                                if (l.logic_name !== logic) return l;
+                                                if (l.logic_name?.toUpperCase() !== logic.toUpperCase()) return l;
                                                 return {
                                                   ...l,
                                                   [field]: processedValue as any,
@@ -897,7 +1071,7 @@ export default function Index() {
                         <div className="mt-4">
                           <UndoRedoPanel
                             config={config}
-                            onConfigChange={handleSaveConfig}
+                            onConfigChange={handleSaveConfigNoUndoRecord}
                           />
                         </div>
                       )}
@@ -934,7 +1108,7 @@ export default function Index() {
                 onLoadSetfile={(loadedConfig) => {
                   setHasStarted(true);
                   if (loadedConfig) {
-                    handleSaveConfig(loadedConfig);
+                    handleSaveConfig(hydrateMTConfigDefaults(loadedConfig));
                     setSelectedEngines(["Engine A"]);
                     setSelectedGroups(["Group 1"]);
                     setSelectedLogics(["POWER"]);

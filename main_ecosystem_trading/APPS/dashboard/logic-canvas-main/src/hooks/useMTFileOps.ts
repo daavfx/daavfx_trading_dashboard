@@ -6,16 +6,10 @@ import type { MTConfig } from "@/types/mt-config";
 import { useMTConfig } from "./useMTConfig";
 import { useSettings } from "@/contexts/SettingsContext";
 import { withUseDirectPriceGrid, normalizeConfigForExport } from "@/utils/unit-mode";
-import { generateCompleteSetfile } from "@/lib/export/complete-setfile-generator";
+import { hydrateMTConfigDefaults } from "@/utils/hydrate-mt-config-defaults";
 import {
   generateMassiveCompleteConfig,
-  printConfigStats,
 } from "@/lib/config/generateMassiveConfig";
-import {
-  exportToSetFile,
-  exportToSetFileWithDirections,
-} from "@/lib/setfile/exporter";
-import type { MTConfig as MTConfigComplete } from "@/types/mt-config-complete";
 
 export type ActiveSetStatus = {
   path: string;
@@ -84,30 +78,69 @@ export function useMTFileOps(
 
     try {
       const configToExport = withUseDirectPriceGrid(config, settings);
+      const prepared = hydrateMTConfigDefaults(configToExport);
+
+      const preparedForExport: MTConfig = {
+        ...prepared,
+        general: {
+          ...prepared.general,
+          require_license:
+            String(prepared.general.license_key || "").trim().length > 0
+              ? prepared.general.require_license
+              : false,
+        },
+        engines: (prepared.engines || []).map((e) => ({
+          ...e,
+          groups: (e.groups || []).map((g) => {
+            if (e.engine_id !== "A") return g;
+            if (g.group_number <= 1) return g;
+            if (typeof g.group_power_start === "number") return g;
+            return { ...g, group_power_start: g.group_number };
+          }),
+        })),
+      };
+
+      const ensuredTradable: MTConfig = {
+        ...preparedForExport,
+        engines: (preparedForExport.engines || []).map((e) => {
+          if (e.engine_id !== "A") return e;
+          return {
+            ...e,
+            groups: (e.groups || []).map((g) => {
+              if (g.group_number !== 1) return g;
+              return {
+                ...g,
+                logics: (g.logics || []).map((l: any) => {
+                  if (String(l?.logic_name || "").toLowerCase() !== "power")
+                    return l;
+                  const enabledBuy = l?.enabled_b === true;
+                  const enabledSell = l?.enabled_s === true;
+                  const enabled = l?.enabled === true;
+                  if (enabled || enabledBuy || enabledSell) return l;
+                  return { ...l, enabled: true, allow_buy: true, allow_sell: true };
+                }),
+              };
+            }),
+          };
+        }),
+      };
+
       if (tauriAvailable) {
         const filePath = await save({
-          filters: [
-            {
-              name: "Set File",
-              extensions: ["set"],
-            },
-          ],
-          defaultPath: `Config.set`,
+          filters: [{ name: "Set File", extensions: ["set"] }],
+          defaultPath: "ACTIVE.set",
         });
-
         if (!filePath) return;
 
         await invoke("export_massive_v19_setfile", {
-          config: normalizeConfigForExport(configToExport),
-          filePath: filePath,
+          config: normalizeConfigForExport(ensuredTradable),
+          filePath,
           platform: mtPlatform,
         });
 
-        toast.success("Successfully exported .set file");
+        toast.success(`Exported .set file: ${filePath}`);
       } else {
-        const content = generateCompleteSetfile(configToExport);
-        downloadTextFile("Config.set", content);
-        toast.success("Downloaded .set file in browser");
+        toast.error("Exporting .set requires the app backend (Tauri).");
       }
     } catch (err) {
       toast.error(`Failed to export .set file: ${err}`);
@@ -141,7 +174,7 @@ export function useMTFileOps(
           : String(filePath).split(/[/\\\\]/).pop() || String(filePath);
         importedConfig = { ...importedConfig, current_set_name: name };
 
-        await loadConfigOnly(importedConfig);
+        await loadConfigOnly(hydrateMTConfigDefaults(importedConfig));
         toast.success("Loaded .set file locally");
       } else {
         toast.error("Importing .set requires the app backend. Use JSON import in browser mode.");
@@ -217,7 +250,7 @@ export function useMTFileOps(
         }
 
         console.log("[SETFILE] ========== PROCESSING CONFIG ==========");
-        await loadConfigOnly(importedConfig);
+        await loadConfigOnly(hydrateMTConfigDefaults(importedConfig));
         console.log("[SETFILE] ========== LOAD COMPLETE ==========");
 
         toast.success("Loaded .set file locally (not synced to MT)");
@@ -266,98 +299,6 @@ export function useMTFileOps(
       toast.error(`Failed to export JSON file: ${err}`);
     }
   }, [config, tauriAvailable]);
-
-  const exportCompleteV3LegacySetfile = useCallback(async () => {
-    try {
-      const setfileContent = generateCompleteSetfile(config);
-      if (tauriAvailable) {
-        const filePath = await save({
-          filters: [
-            {
-              name: "Complete Set File",
-              extensions: ["set"],
-            },
-          ],
-          defaultPath: `xauusd_hardcoded_1.set`,
-        });
-
-        if (!filePath) return;
-
-        await invoke("write_text_file", {
-          filePath,
-          content: setfileContent,
-        });
-
-        toast.success(
-          `Successfully exported complete V3 legacy setfile (${setfileContent.split("\n").length} lines)`,
-        );
-      } else {
-        downloadTextFile("xauusd_hardcoded_1.set", setfileContent);
-        toast.success("Downloaded legacy setfile in browser");
-      }
-    } catch (err) {
-      console.error("Export complete setfile error:", err);
-      toast.error(`Failed to export complete setfile: ${err}`);
-    }
-  }, [config, tauriAvailable]);
-
-  const exportMassiveCompleteSetfile = useCallback(async () => {
-    try {
-      console.log(
-        "[EXPORT] Generating massive complete setfile with all 69,000+ inputs...",
-      );
-
-      // Generate the complete config
-      const generatedResult = generateMassiveCompleteConfig(mtPlatform);
-      const massiveConfig = generatedResult.config;
-      printConfigStats(massiveConfig);
-
-      console.log(
-        `[EXPORT] Generated config with ${massiveConfig.total_inputs.toLocaleString()} inputs`,
-      );
-
-      // Export to setfile format string using TypeScript exporter (with directional separation)
-      const setfileContent = exportToSetFileWithDirections(massiveConfig);
-      const lineCount = setfileContent.split("\n").length;
-
-      if (tauriAvailable) {
-        const filePath = await save({
-          filters: [
-            {
-              name: "Complete Massive Set File",
-              extensions: ["set"],
-            },
-          ],
-          defaultPath: `DAAVILEFX_MASSIVE_COMPLETE.set`,
-        });
-
-        if (!filePath) return;
-
-        await invoke("write_text_file", {
-          filePath,
-          content: setfileContent,
-        });
-
-        toast.success(
-          `Exported massive setfile: ${lineCount.toLocaleString()} lines to ${filePath.split("\\").pop()}`,
-        );
-        console.log("[EXPORT] Successfully exported to:", filePath);
-        return massiveConfig;
-      } else {
-        downloadTextFile("DAAVILEFX_MASSIVE_COMPLETE.set", setfileContent);
-        toast.success(
-          `Downloaded massive setfile: ${lineCount.toLocaleString()} lines`,
-        );
-        return massiveConfig;
-      }
-
-      return massiveConfig;
-    } catch (err) {
-      console.error("[EXPORT] Error:", err);
-      toast.error(`Failed to export massive setfile: ${err}`);
-      throw err;
-    }
-  }, [mtPlatform, tauriAvailable]);
 
   const importJsonFile = useCallback(async () => {
     try {
@@ -444,8 +385,6 @@ export function useMTFileOps(
     importSetFileLocally,
     exportJsonFile,
     importJsonFile,
-    exportCompleteV3LegacySetfile,
-    exportMassiveCompleteSetfile,
     generateMassiveSetfile,
     activeSetStatus,
     refreshActiveSetStatus,

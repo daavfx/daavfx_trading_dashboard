@@ -21,6 +21,7 @@ export function UndoRedoPanel({ config, onConfigChange }: UndoRedoPanelProps) {
     state,
     undo,
     redo,
+    selectiveUndo,
     getUndoOperations,
     getRedoOperations,
     canUndo,
@@ -40,7 +41,7 @@ export function UndoRedoPanel({ config, onConfigChange }: UndoRedoPanelProps) {
       // Selective undo
       const result = await selectiveUndo(selectedUndoOps);
       if (config) {
-        let newConfig = {...config};
+        let newConfig = config;
         for (const op of result) {
           newConfig = applyOperationToConfig(newConfig, op);
         }
