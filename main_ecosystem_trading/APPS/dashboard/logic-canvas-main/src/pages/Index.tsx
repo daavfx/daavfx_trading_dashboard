@@ -8,6 +8,7 @@ import { ChatPanel } from "@/components/layout/ChatPanel";
 import { QuickActionsPanel } from "@/components/layout/QuickActionsPanel";
 import { BatchEditPanel } from "@/components/config/BatchEditPanel";
 import { EngineCard } from "@/components/config/EngineCard";
+import { GroupCard } from "@/components/config/GroupCard";
 import { GeneralCategories } from "@/components/config/GeneralCategories";
 import { GroupThresholdsCard } from "@/components/config/GroupThresholdsCard";
 import { MultiEditIndicator } from "@/components/config/MultiEditIndicator";
@@ -953,72 +954,73 @@ export default function Index() {
                               Loading configuration...
                             </div>
                           ) : (
-                            realEngineConfigs
-                              .filter((ec) =>
-                                selectedEngines.includes(ec.engine),
-                              )
-                              .map((engineConfig, idx) => (
-                                <EngineCard
-                                  key={`${engineConfig.engine}-${idx}`}
-                                  engine={engineConfig.engine}
-                                  tradingType={engineConfig.tradingType}
-                                  groups={selectedGroups}
-                                  platform={platform}
-                                  engineData={engineConfig.engineData}
-                                  mtConfig={config}
-                                  selectedLogics={selectedLogics}
-                                  selectedFields={filteredFields || []}
-                                  mode={mode}
-                                  onUpdateLogic={(logic, field, value) => {
-                                    if (!config || selectedGroups.length === 0) return;
-                                    const groupNum = parseInt(
-                                      selectedGroups[0].replace("Group ", ""),
-                                    );
-                                    let processedValue = value;
-                                    if (
-                                      typeof value === "string" &&
-                                      (field.includes("enabled") ||
-                                        field.includes("allow_") ||
-                                        field === "close_partial")
-                                    ) {
-                                      processedValue =
-                                        value === "ON" || value === "true" || value === "1";
-                                    } else if (
-                                      typeof value === "string" &&
-                                      !isNaN(Number(value))
-                                    ) {
-                                      processedValue = Number(value);
-                                    }
-                                    const targetEngineId = engineConfig.engineData?.engine_id as
-                                      | "A"
-                                      | "B"
-                                      | "C";
-                                    const newConfig: MTConfig = {
-                                      ...config,
-                                      engines: config.engines.map((e) => {
-                                        if (e.engine_id !== targetEngineId) return e;
-                                        return {
-                                          ...e,
-                                          groups: e.groups.map((g) => {
-                                            if (g.group_number !== groupNum) return g;
+                            selectedGroups.map((group) => (
+                              <div key={group} className="space-y-3">
+                                <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider px-1">
+                                  {group}
+                                </div>
+                                {realEngineConfigs
+                                  .filter((ec) => selectedEngines.includes(ec.engine))
+                                  .map((engineConfig, idx) => (
+                                    <GroupCard
+                                      key={`${group}-${engineConfig.engine}-${idx}`}
+                                      group={group}
+                                      engine={engineConfig.engine}
+                                      engineData={engineConfig.engineData}
+                                      selectedLogics={selectedLogics}
+                                      selectedFields={filteredFields || []}
+                                      mode={mode}
+                                      platform={platform}
+                                      config={config}
+                                      onUpdateLogic={(logic, field, value, groupNum) => {
+                                        if (!config) return;
+                                        let processedValue = value;
+                                        if (
+                                          typeof value === "string" &&
+                                          (field.includes("enabled") ||
+                                            field.includes("allow_") ||
+                                            field === "close_partial")
+                                        ) {
+                                          processedValue =
+                                            value === "ON" || value === "true" || value === "1";
+                                        } else if (
+                                          typeof value === "string" &&
+                                          !isNaN(Number(value))
+                                        ) {
+                                          processedValue = Number(value);
+                                        }
+                                        const targetEngineId = engineConfig.engineData?.engine_id as
+                                          | "A"
+                                          | "B"
+                                          | "C";
+                                        const newConfig: MTConfig = {
+                                          ...config,
+                                          engines: config.engines.map((e) => {
+                                            if (e.engine_id !== targetEngineId) return e;
                                             return {
-                                              ...g,
-                                              logics: g.logics.map((l) => {
-                                                if (l.logic_name?.toUpperCase() !== logic.toUpperCase()) return l;
+                                              ...e,
+                                              groups: e.groups.map((g) => {
+                                                if (g.group_number !== groupNum) return g;
                                                 return {
-                                                  ...l,
-                                                  [field]: processedValue as any,
+                                                  ...g,
+                                                  logics: g.logics.map((l) => {
+                                                    if (l.logic_name?.toUpperCase() !== logic.toUpperCase()) return l;
+                                                    return {
+                                                      ...l,
+                                                      [field]: processedValue as any,
+                                                    };
+                                                  }),
                                                 };
                                               }),
                                             };
                                           }),
                                         };
-                                      }),
-                                    };
-                                    handleSaveConfig(newConfig);
-                                  }}
-                                />
-                              ))
+                                        handleSaveConfig(newConfig);
+                                      }}
+                                    />
+                                  ))}
+                              </div>
+                            ))
                           )}
                         </div>
                       )}
