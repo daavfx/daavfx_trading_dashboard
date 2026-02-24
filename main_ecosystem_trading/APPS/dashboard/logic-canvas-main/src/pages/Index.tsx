@@ -168,6 +168,7 @@ export default function Index() {
   const [mode, setMode] = useState<1 | 2>(1);
 
   const [isChatCollapsed, setIsChatCollapsed] = useState(false);
+  const [isQuickActionsCollapsed, setIsQuickActionsCollapsed] = useState(false);
   const chatPanelRef = useRef<ImperativePanelHandle>(null);
   const [externalCommand, setExternalCommand] = useState<string | null>(null);
   const [chatPendingPlan, setChatPendingPlan] =
@@ -302,8 +303,8 @@ export default function Index() {
       }
     }
 
-    const prevEngines = new Map(prev.engines.map((e) => [e.engine_id, e] as const));
-    const nextEngines = new Map(next.engines.map((e) => [e.engine_id, e] as const));
+    const prevEngines = prev.engines ? new Map(prev.engines.map((e) => [e.engine_id, e] as const)) : new Map();
+    const nextEngines = next.engines ? new Map(next.engines.map((e) => [e.engine_id, e] as const)) : new Map();
     const engineIds = new Set([...prevEngines.keys(), ...nextEngines.keys()]);
 
     for (const engineId of engineIds) {
@@ -1153,6 +1154,14 @@ export default function Index() {
                     config={config}
                     onConfigChange={handleSaveConfig}
                     onViewModeChange={handleViewModeChange}
+                    isCollapsed={isQuickActionsCollapsed}
+                    onToggleCollapse={() => setIsQuickActionsCollapsed(!isQuickActionsCollapsed)}
+                    onOpenVaultSave={(draft) => {
+                      setVaultSaveDraft(draft || null);
+                      setPreviousViewMode(viewMode);
+                      setViewMode("save_config");
+                      setHasStarted(true);
+                    }}
                   />
                 </ResizablePanel>
               </>

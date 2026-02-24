@@ -24,6 +24,7 @@ interface QuickActionsPanelProps {
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
   onViewModeChange?: (mode: string) => void;
+  onOpenVaultSave?: (draft?: { name: string; category: string; tags: string[]; comments: string; saveToVault: boolean; format: "set" | "json" }) => void;
 }
 
 export function QuickActionsPanel({
@@ -32,6 +33,7 @@ export function QuickActionsPanel({
   isCollapsed = false,
   onToggleCollapse,
   onViewModeChange,
+  onOpenVaultSave,
 }: QuickActionsPanelProps) {
   const { state, createSnapshot, restoreFromSnapshot } = useVersionControl(config || undefined);
   const snapshots = state.snapshots;
@@ -178,7 +180,7 @@ export function QuickActionsPanel({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => onViewModeChange?.("save_config")}
+                onClick={() => onOpenVaultSave?.()}
                 className="h-8 text-[10px] gap-1.5"
               >
                 <Save className="w-3 h-3" />
