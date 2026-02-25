@@ -250,11 +250,33 @@ export function QuickActionsPanel({
         <div className="p-3 space-y-3">
           {/* Change Preview Section - Only in Chat Mode with pending plan */}
           {isChatMode && pendingPlan && (
-            <VisualChangeReviewInline 
-              plan={pendingPlan}
-              onConfirm={onConfirmPlan}
-              onCancel={onCancelPlan}
-            />
+            <div className="rounded-xl border border-primary/30 p-4 bg-primary/5">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-semibold text-foreground">
+                    {pendingPlan.preview.length} Changes
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={onConfirmPlan}
+                    className="text-xs font-medium bg-primary text-primary-foreground py-1.5 px-3 rounded hover:bg-primary/90 transition-colors"
+                  >
+                    Apply All
+                  </button>
+                  <button
+                    onClick={onCancelPlan}
+                    className="text-xs font-medium bg-muted text-muted-foreground py-1.5 px-3 rounded hover:bg-muted/80 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {pendingPlan.description || 'Review in sidebar →'}
+              </p>
+            </div>
           )}
 
           {/* No Changes Yet - Only in Chat Mode when no pending plan */}

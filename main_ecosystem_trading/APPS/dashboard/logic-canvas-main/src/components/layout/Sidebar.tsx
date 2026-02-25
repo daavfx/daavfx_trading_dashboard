@@ -313,7 +313,7 @@ export function Sidebar({
             </div>
           ) : viewMode === "chat" ? (
             <>
-              {/* Change Review UI - Show when there's a pending plan */}
+              {/* Change Review UI - Use Aggregated view for scalability */}
               {pendingPlan ? (
                 <VisualChangeReviewInline
                   plan={pendingPlan}
