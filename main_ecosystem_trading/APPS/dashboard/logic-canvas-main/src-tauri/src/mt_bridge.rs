@@ -2177,7 +2177,7 @@ pub fn export_massive_v19_setfile(
 
             for logic_name in &logic_names {
                 let logic = group
-                    .and_then(|g| g.logics.iter().find(|l| l.logic_name == *logic_name))
+                    .and_then(|g| g.logics.iter().find(|l| l.logic_name.to_uppercase() == *logic_name))
                     .cloned()
                     .unwrap_or_else(|| create_default_logic(logic_name));
 
@@ -2238,12 +2238,17 @@ pub fn export_massive_v19_setfile(
                         pick_dir_f64(is_buy, logic.multiplier, logic.multiplier_b, logic.multiplier_s)
                     ));
 
+                    // Debug: Log grid value being exported
+                    let grid_value = pick_dir_f64(is_buy, logic.grid, logic.grid_b, logic.grid_s);
+                    println!("DEBUG_EXPORT: Group {} {} {} Grid: base={}, b={:?}, s={:?}, selected={}", 
+                        group_num, v19_suffix, direction, logic.grid, logic.grid_b, logic.grid_s, grid_value);
+                    
                     lines.push(format!(
                         "gInput_{}_{}_{}_Grid={:.1}",
                         group_num,
                         v19_suffix,
                         direction,
-                        pick_dir_f64(is_buy, logic.grid, logic.grid_b, logic.grid_s)
+                        grid_value
                     ));
 
                     lines.push(format!("gInput_{}_{}_{}_GridBehavior={}", group_num, v19_suffix, direction, 0));
@@ -5984,7 +5989,7 @@ pub async fn parse_massive_setfile(file_path: String) -> Result<MassiveSetfilePa
 
         if let Some(group_config) = engine_config.groups.iter_mut().find(|g| g.group_number == group_u8) {
             // Group exists, add logic if needed
-            if !group_config.logics.iter().any(|l| l.logic_name == logic) {
+            if !group_config.logics.iter().any(|l| l.logic_name.to_uppercase() == logic.to_uppercase()) {
                 let mut new_logic = create_default_logic_config(&logic);
                 new_logic.enabled = true;
                 group_config.logics.push(new_logic);
@@ -6314,7 +6319,7 @@ fn apply_param_to_config(
     if let Some(engine_config) = config.engines.iter_mut().find(|e| e.engine_id == engine_id) {
         let group_u8 = group as u8;
         if let Some(group_config) = engine_config.groups.iter_mut().find(|g| g.group_number == group_u8) {
-            if let Some(logic) = group_config.logics.iter_mut().find(|l| l.logic_name == logic_name) {
+            if let Some(logic) = group_config.logics.iter_mut().find(|l| l.logic_name.to_uppercase() == logic_name.to_uppercase()) {
                 // Apply parameter based on param name and direction
                 match param_name {
                     "Initial_loT" | "InitialLot" | "Initial_Lot" => {
@@ -6908,7 +6913,7 @@ fn build_config_from_v19_setfile(content: &str) -> Result<MTConfig, String> {
 
             if let Some(engine) = config.engines.iter_mut().find(|e| e.engine_id == engine_id) {
                 if let Some(group) = engine.groups.iter_mut().find(|g| g.group_number == group_u8) {
-                    if let Some(logic) = group.logics.iter_mut().find(|l| l.logic_name == logic_name) {
+                    if let Some(logic) = group.logics.iter_mut().find(|l| l.logic_name.to_uppercase() == logic_name.to_uppercase()) {
                         apply_v19_param_to_logic(logic, is_buy, &parsed_key.param, raw_val);
                     }
                 }

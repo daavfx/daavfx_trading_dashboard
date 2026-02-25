@@ -17,13 +17,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import type { MTConfig } from "@/types/mt-config";
 import { useVersionControl } from "@/hooks/useVersionControl";
+import { ViewMode } from "@/components/layout/Sidebar";
 
 interface QuickActionsPanelProps {
   config?: MTConfig | null;
   onConfigChange?: (config: MTConfig) => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
-  onViewModeChange?: (mode: string) => void;
+  onViewModeChange?: (mode: ViewMode) => void;
   onOpenVaultSave?: (draft?: { name: string; category: string; tags: string[]; comments: string; saveToVault: boolean; format: "set" | "json" }) => void;
 }
 

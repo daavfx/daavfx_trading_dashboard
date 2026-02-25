@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { MTConfig } from '@/types/mt-config';
 import { getVersionControlManager, VersionControlManager } from '@/lib/version-control/manager';
-import { VersionControlState, Snapshot, Branch } from './types';
+import { VersionControlState, Snapshot, Branch } from '@/lib/version-control/types';
 
 export function useVersionControl(initialConfig?: MTConfig) {
   const [vcManager] = useState<VersionControlManager>(() => getVersionControlManager());
@@ -44,14 +44,14 @@ export function useVersionControl(initialConfig?: MTConfig) {
     }
   }, [vcManager]);
 
-  const restoreFromSnapshot = useCallback(async (snapshotId: string): Promise<boolean> => {
+  const restoreFromSnapshot = useCallback(async (snapshotId: string): Promise<MTConfig | null> => {
     setIsLoading(true);
     try {
       const snapshot = vcManager.restoreFromSnapshot(snapshotId);
-      return !!snapshot;
+      return snapshot?.config || null;
     } catch (error) {
       console.error('Failed to restore from snapshot:', error);
-      return false;
+      return null;
     } finally {
       setIsLoading(false);
     }

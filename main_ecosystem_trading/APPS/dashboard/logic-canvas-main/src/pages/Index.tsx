@@ -32,6 +32,8 @@ import type {
   Platform as MTPlatform,
   GeneralConfig,
   MTConfig,
+  GroupConfig,
+  LogicConfig,
 } from "@/types/mt-config";
 import { mockFullConfig } from "@/data/mock-config";
 import {
@@ -127,6 +129,9 @@ const mockGeneralConfig: GeneralConfig = {
     action: "TriggerAction_StopEA_KeepTrades",
     calendar_file: "DAAVFX_NEWS.csv",
   },
+  reverse_magic_base: 0,
+  hedge_magic_base: 0,
+  hedge_magic_independent: false,
 };
 
 const engineConfigs = [
@@ -316,20 +321,20 @@ export default function Index() {
         continue;
       }
 
-      const prevGroups = new Map(prevEngine.groups.map((g) => [g.group_number, g] as const));
-      const nextGroups = new Map(nextEngine.groups.map((g) => [g.group_number, g] as const));
+      const prevGroups = new Map(prevEngine.groups.map((g: GroupConfig) => [g.group_number, g] as const));
+      const nextGroups = new Map(nextEngine.groups.map((g: GroupConfig) => [g.group_number, g] as const));
       const groupIds = new Set([...prevGroups.keys(), ...nextGroups.keys()]);
 
       for (const groupId of groupIds) {
-        const prevGroup = prevGroups.get(groupId);
-        const nextGroup = nextGroups.get(groupId);
+        const prevGroup = prevGroups.get(groupId) as GroupConfig | undefined;
+        const nextGroup = nextGroups.get(groupId) as GroupConfig | undefined;
         if (!prevGroup || !nextGroup) {
           changes++;
           continue;
         }
 
-        const prevLogics = new Map(prevGroup.logics.map((l: any) => [l.logic_name, l] as const));
-        const nextLogics = new Map(nextGroup.logics.map((l: any) => [l.logic_name, l] as const));
+        const prevLogics = new Map(prevGroup.logics.map((l: LogicConfig) => [l.logic_name, l] as const));
+        const nextLogics = new Map(nextGroup.logics.map((l: LogicConfig) => [l.logic_name, l] as const));
         const logicNames = new Set([...prevLogics.keys(), ...nextLogics.keys()]);
 
         for (const logicName of logicNames) {
@@ -344,7 +349,7 @@ export default function Index() {
           keys.delete("logic_name");
 
           for (const key of keys) {
-            if (!deepEqual(prevLogic[key], nextLogic[key])) {
+            if (!deepEqual((prevLogic as any)[key], (nextLogic as any)[key])) {
               changes++;
             }
           }
@@ -420,13 +425,13 @@ export default function Index() {
     if (!config) return;
 
     const timeout = setTimeout(() => {
+      const nowIso = new Date().toISOString();
+      const enrichedConfig = {
+        ...config,
+        last_saved_at: nowIso,
+        last_saved_platform: mtPlatform,
+      };
       try {
-        const nowIso = new Date().toISOString();
-        const enrichedConfig = {
-          ...config,
-          last_saved_at: nowIso,
-          last_saved_platform: mtPlatform,
-        };
         localStorage.setItem("daavfx-last-config", JSON.stringify(enrichedConfig));
         localStorage.setItem(
           "daavfx-last-config-meta",
@@ -437,7 +442,13 @@ export default function Index() {
             timestamp: Date.now(),
           }),
         );
-      } catch {
+      } catch (e: any) {
+        if (e?.name === 'QuotaExceededError') {
+          localStorage.removeItem("daavfx_undo_redo");
+          try {
+            localStorage.setItem("daavfx-last-config", JSON.stringify(enrichedConfig));
+          } catch {}
+        }
       }
     }, 750);
 
@@ -447,13 +458,13 @@ export default function Index() {
   useEffect(() => {
     const handleBeforeUnload = () => {
       if (!config) return;
+      const nowIso = new Date().toISOString();
+      const enrichedConfig = {
+        ...config,
+        last_saved_at: nowIso,
+        last_saved_platform: mtPlatform,
+      };
       try {
-        const nowIso = new Date().toISOString();
-        const enrichedConfig = {
-          ...config,
-          last_saved_at: nowIso,
-          last_saved_platform: mtPlatform,
-        };
         localStorage.setItem("daavfx-last-config", JSON.stringify(enrichedConfig));
         localStorage.setItem(
           "daavfx-last-config-meta",
@@ -464,7 +475,13 @@ export default function Index() {
             timestamp: Date.now(),
           }),
         );
-      } catch {
+      } catch (e: any) {
+        if (e?.name === 'QuotaExceededError') {
+          localStorage.removeItem("daavfx_undo_redo");
+          try {
+            localStorage.setItem("daavfx-last-config", JSON.stringify(enrichedConfig));
+          } catch {}
+        }
       }
     };
 
@@ -495,7 +512,7 @@ export default function Index() {
             ? "Hedge Trading"
             : "Direct Trading",
       engineData: engine,
-    })) || engineConfigs.map((e) => ({ ...e, engineData: null }));
+    })) || engineConfigs.map((e) => ({ ...e, engineData: undefined }));
 
   const handleSelectionChange = (
     type: "engines" | "groups" | "logics",
@@ -599,47 +616,78 @@ export default function Index() {
       if (data.strategyType === "buy") {
         configToSave.general.allow_buy = true;
         configToSave.general.allow_sell = true;
-        // Buy mode - only Buy values are edited, Sell values unchanged
-        if (configToSave.logics) {
-          configToSave.logics.forEach((logic: any) => {
-            logic.allow_buy = true;
-            logic.allow_sell = true;
+        // Buy mode - sync Buy values to Sell for export
+        configToSave.engines?.forEach((engine: any) => {
+          engine.groups?.forEach((group: any) => {
+            group.logics?.forEach((logic: any) => {
+              logic.allow_buy = true;
+              logic.allow_sell = true;
+              // Copy Buy values to Sell suffix
+              if (logic.initial_lot) logic.initial_lot_b = logic.initial_lot;
+              if (logic.multiplier) logic.multiplier_b = logic.multiplier;
+              if (logic.grid) logic.grid_b = logic.grid;
+              if (logic.trail_value) logic.trail_value_b = logic.trail_value;
+              if (logic.trail_start) logic.trail_start_b = logic.trail_start;
+              if (logic.trail_step) logic.trail_step_b = logic.trail_step;
+            });
           });
-        }
+        });
       } else if (data.strategyType === "sell") {
         configToSave.general.allow_buy = true;
         configToSave.general.allow_sell = true;
-        // Sell mode - only Sell values are edited, Buy values unchanged
-        if (configToSave.logics) {
-          configToSave.logics.forEach((logic: any) => {
-            logic.allow_buy = true;
-            logic.allow_sell = true;
+        // Sell mode - sync Sell values to Buy for export
+        configToSave.engines?.forEach((engine: any) => {
+          engine.groups?.forEach((group: any) => {
+            group.logics?.forEach((logic: any) => {
+              logic.allow_buy = true;
+              logic.allow_sell = true;
+              // Copy Sell suffix values to base
+              if (logic.initial_lot_s) logic.initial_lot = logic.initial_lot_s;
+              if (logic.multiplier_s) logic.multiplier = logic.multiplier_s;
+              if (logic.grid_s) logic.grid = logic.grid_s;
+              if (logic.trail_value_s) logic.trail_value = logic.trail_value_s;
+              if (logic.trail_start_s) logic.trail_start = logic.trail_start_s;
+              if (logic.trail_step_s) logic.trail_step = logic.trail_step_s;
+            });
           });
-        }
+        });
       } else {
-        // Both Sides mode - copy Buy values to Sell and vice versa
+        // Both Sides mode - ensure both directions have values
         configToSave.general.allow_buy = true;
         configToSave.general.allow_sell = true;
-        if (configToSave.logics) {
-          configToSave.logics.forEach((logic: any) => {
-            logic.allow_buy = true;
-            logic.allow_sell = true;
-            // Copy Buy values to Sell
-            if (logic.initial_lot) logic.initial_lot_s = logic.initial_lot;
-            if (logic.multiplier) logic.multiplier_s = logic.multiplier;
-            if (logic.grid) logic.grid_s = logic.grid;
-            if (logic.trail_method !== undefined)
-              logic.trail_method_s = logic.trail_method;
-            if (logic.trail_value) logic.trail_value_s = logic.trail_value;
-            // Copy Sell values to Buy
-            if (logic.initial_lot_s) logic.initial_lot = logic.initial_lot_s;
-            if (logic.multiplier_s) logic.multiplier = logic.multiplier_s;
-            if (logic.grid_s) logic.grid = logic.grid_s;
-            if (logic.trail_method_s !== undefined)
-              logic.trail_method = logic.trail_method_s;
-            if (logic.trail_value_s) logic.trail_value = logic.trail_value_s;
+        configToSave.engines?.forEach((engine: any) => {
+          engine.groups?.forEach((group: any) => {
+            group.logics?.forEach((logic: any) => {
+              logic.allow_buy = true;
+              logic.allow_sell = true;
+              // Sync base values to both suffixes for export
+              if (logic.initial_lot) {
+                logic.initial_lot_b = logic.initial_lot;
+                logic.initial_lot_s = logic.initial_lot;
+              }
+              if (logic.multiplier) {
+                logic.multiplier_b = logic.multiplier;
+                logic.multiplier_s = logic.multiplier;
+              }
+              if (logic.grid) {
+                logic.grid_b = logic.grid;
+                logic.grid_s = logic.grid;
+              }
+              if (logic.trail_value) {
+                logic.trail_value_b = logic.trail_value;
+                logic.trail_value_s = logic.trail_value;
+              }
+              if (logic.trail_start) {
+                logic.trail_start_b = logic.trail_start;
+                logic.trail_start_s = logic.trail_start;
+              }
+              if (logic.trail_step) {
+                logic.trail_step_b = logic.trail_step;
+                logic.trail_step_s = logic.trail_step;
+              }
+            });
           });
-        }
+        });
       }
 
       // 1. Export to file if path provided
@@ -682,6 +730,18 @@ export default function Index() {
             comments: data.comments,
           });
         } else {
+          // Debug: Log grid values before export
+          console.log("DEBUG_EXPORT: Config before export:");
+          configToExport.engines?.forEach((engine: any, ei: number) => {
+            engine.groups?.forEach((group: any, gi: number) => {
+              group.logics?.forEach((logic: any, li: number) => {
+                if (logic.logic_name === "Power" && gi === 0) {
+                  console.log(`DEBUG_EXPORT: Engine ${ei} Group ${gi} Power: grid=${logic.grid}, grid_b=${logic.grid_b}, grid_s=${logic.grid_s}`);
+                }
+              });
+            });
+          });
+          
           await invoke("export_massive_v19_setfile", {
             config: normalizeConfigForExport(configToExport),
             filePath: fullPath,
@@ -1030,7 +1090,7 @@ export default function Index() {
                           <GeneralCategories
                             platform={platform}
                             generalConfig={config?.general || mockGeneralConfig}
-                            mtPlatform={mtPlatform}
+                            mtPlatform={platform}
                             mode={mode}
                             selectedCategory={selectedGeneralCategory}
                             onConfigChange={(newGeneralConfig) => {

@@ -45,8 +45,18 @@ export class UndoRedoManager {
   private saveToStorage(): void {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
-    } catch (e) {
-      console.warn('[UndoRedo] Failed to save to storage:', e);
+    } catch (e: any) {
+      if (e?.name === 'QuotaExceededError') {
+        console.warn('[UndoRedo] Storage quota exceeded, clearing old data');
+        const stack = this.getCurrentStack();
+        stack.undo = stack.undo.slice(-20);
+        stack.redo = [];
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+        } catch {
+          localStorage.removeItem(STORAGE_KEY);
+        }
+      }
     }
   }
 

@@ -335,12 +335,9 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
   const initializedRef = useRef<string | null>(null);
   
   useEffect(() => {
-    // Only initialize once per logic (not on every config change)
-    if (initializedRef.current === logicConfigKey && Object.keys(fieldValues).length > 0) {
-      return;
-    }
+    // Re-initialize when logicConfig changes (e.g., when loading a new setfile)
     initializedRef.current = logicConfigKey;
-    
+
     const isGroup1 =
       group === "Group 1" ||
       (groups && groups.length > 0 && groups.some((g) => g === "Group 1")) ||
@@ -390,7 +387,7 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
 
     setFieldValues(initialValues);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [logicConfigKey, groups, nameSafe]);
+  }, [logicConfig, logicConfigKey, groups, nameSafe]);
 
   const prevModeRef = useRef(mode);
   

@@ -55,7 +55,8 @@ function findDirectionalLogic(config: MTConfigComplete, engineId: "A" | "B" | "C
   if (!engine) return undefined;
   const group = engine.groups.find(g => g.group_number === groupNum);
   if (!group) return undefined;
-  return group.logics.find(l => l.logic_name === logicName && ((dir === "B" && l.allowBuy && !l.allowSell) || (dir === "S" && l.allowSell && !l.allowBuy)));
+  // Find logic by name - direction is handled via _b/_s suffixed fields, not allow_buy/allow_sell
+  return group.logics.find(l => l.logic_name === logicName);
 }
 
 export function computeSetChanges(config: MTConfigComplete, content: string): ChangePreview[] {
@@ -73,7 +74,7 @@ export function computeSetChanges(config: MTConfigComplete, content: string): Ch
     const engineId = res.engine;
     const logicName = res.logic;
 
-    const logic = findDirectionalLogic(config, engineId, logicName, dir, group);
+  const logic = findDirectionalLogic(config, engineId, logicName, dir, group);
     if (!logic) continue;
 
     for (const [param, raw] of map.entries()) {
@@ -82,8 +83,8 @@ export function computeSetChanges(config: MTConfigComplete, content: string): Ch
       let newValue: any = raw;
       switch (param) {
         case "Start": field = "enabled"; newValue = raw === "1"; break;
-        case "AllowBuy": field = "allowBuy"; newValue = raw === "1"; break;
-        case "AllowSell": field = "allowSell"; newValue = raw === "1"; break;
+        case "AllowBuy": /* skip - handled globally */ continue;
+        case "AllowSell": /* skip - handled globally */ continue;
         case "Initial_loT": field = "initialLot"; newValue = valNum; break;
         case "LastLot": field = "lastLot"; newValue = valNum; break;
         case "LastLotPower": field = "lastLot"; newValue = valNum; break;
@@ -221,19 +222,22 @@ export function applySetContent(config: MTConfigComplete, content: string): MTCo
     const logic = findDirectionalLogic(newConfig, engineId, logicName, dir, group);
     if (!logic) continue;
 
+    // Direction suffix for fields (Sell uses _s suffix in dashboard)
+    const dirSuffix = dir === "S" ? "_s" : "";
+
     for (const [param, raw] of map.entries()) {
       const valNum = Number(raw);
       let field: string | null = null;
       let newValue: any = raw;
       switch (param) {
         case "Start": field = "enabled"; newValue = raw === "1"; break;
-        case "AllowBuy": field = "allowBuy"; newValue = raw === "1"; break;
-        case "AllowSell": field = "allowSell"; newValue = raw === "1"; break;
-        case "Initial_loT": field = "initialLot"; newValue = valNum; break;
-        case "LastLot": field = "lastLot"; newValue = valNum; break;
-        case "LastLotPower": field = "lastLot"; newValue = valNum; break;
-        case "Mult": field = "multiplier"; newValue = valNum; break;
-        case "Grid": field = "grid"; newValue = valNum; break;
+        case "AllowBuy": /* skip - handled globally */ continue;
+        case "AllowSell": /* skip - handled globally */ continue;
+        case "Initial_loT": field = `initialLot`; newValue = valNum; break;
+        case "LastLot": field = `lastLot`; newValue = valNum; break;
+        case "LastLotPower": field = `lastLot`; newValue = valNum; break;
+        case "Mult": field = `multiplier`; newValue = valNum; break;
+        case "Grid": field = `grid`; newValue = valNum; break;
         case "GridBehavior": field = "gridBehavior"; newValue = invGridBehavior(valNum); break;
         case "Trail": field = "trailMethod"; newValue = invTrailMethod(valNum); break;
         case "TrailValue": field = "trailValue"; newValue = valNum; break;

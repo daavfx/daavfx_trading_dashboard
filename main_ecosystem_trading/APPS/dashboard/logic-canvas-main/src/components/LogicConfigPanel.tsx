@@ -67,6 +67,15 @@ interface LogicConfig {
   sl_value?: number;
   // Reverse Reference - ONLY FIELD ADDED FOR REVERSE
   reverse_reference?: string;
+  // Grid behavior
+  grid_behavior?: string;
+  // Hedge
+  hedge_enabled?: boolean;
+  hedge_reference?: string;
+  hedge_scale?: number;
+  // Reverse
+  reverse_enabled?: boolean;
+  reverse_scale?: number;
 }
 
 interface LogicConfigPanelProps {

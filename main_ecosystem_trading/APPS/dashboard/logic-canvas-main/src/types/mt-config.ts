@@ -363,6 +363,8 @@ export interface LogicConfig {
   trigger_bars?: number;                // gInput_G1_TriggerBars_P (Group 1 ONLY!)
   trigger_minutes?: number;             // gInput_G1_TriggerMinutes_P (Group 1 ONLY!)
   trigger_pips?: number;                // gInput_G1_TriggerPips_P (Group 1 ONLY!)
+  grid_behavior?: string;               // Grid behavior setting (e.g., "Counter Trend")
+  partial_close?: boolean;              // Partial close enabled
 }
 
 // Field count verification (V17.04+):

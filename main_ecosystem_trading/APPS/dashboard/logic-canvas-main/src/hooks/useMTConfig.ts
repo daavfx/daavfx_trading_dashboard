@@ -50,7 +50,14 @@ export function useMTConfig(platform: Platform) {
         last_saved_at: nowIso,
         last_saved_platform: platform,
       };
-      localStorage.setItem("daavfx-last-config", JSON.stringify(enrichedConfig));
+      try {
+        localStorage.setItem("daavfx-last-config", JSON.stringify(enrichedConfig));
+      } catch (e: any) {
+        if (e?.name === 'QuotaExceededError') {
+          localStorage.removeItem("daavfx_undo_redo");
+          localStorage.setItem("daavfx-last-config", JSON.stringify(enrichedConfig));
+        }
+      }
       setConfig(enrichedConfig);
       toast.success("Saved local configuration");
     } catch (err) {
