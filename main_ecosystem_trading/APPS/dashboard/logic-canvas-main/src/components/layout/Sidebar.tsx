@@ -14,15 +14,25 @@ import {
   TableProperties,
   X,
   Sparkles,
-  MoreHorizontal
+  MoreHorizontal,
+  AlertTriangle,
+  TrendingUp,
+  TrendingDown,
+  ArrowRightLeft,
+  Hash,
+  Target,
+  CheckCheck,
+  XOctagon
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { generalCategoriesList } from "@/components/config/GeneralCategories";
 import { useVersionControl } from "@/hooks/useVersionControl";
 import type { MTConfig } from "@/types/mt-config";
 import type { Platform } from "@/components/layout/TopBar";
+import type { TransactionPlan, ChangePreview } from "@/lib/chat/types";
 
 const engines = ["Engine A", "Engine B", "Engine C"] as const;
 const groups = Array.from({ length: 20 }, (_, i) => `Group ${i + 1}`);
@@ -42,6 +52,10 @@ interface SidebarProps {
   selectedGeneralCategory?: string;
   onSelectGeneralCategory?: (category: string) => void;
   platform?: Platform;
+  // Change review props for batch mode
+  pendingPlan?: TransactionPlan | null;
+  onConfirmPlan?: () => void;
+  onCancelPlan?: () => void;
 }
 
 const sidebarBorderClass = "border-l-platform-mt4/50";
@@ -68,6 +82,9 @@ export function Sidebar({
   selectedGeneralCategory,
   onSelectGeneralCategory,
   platform,
+  pendingPlan,
+  onConfirmPlan,
+  onCancelPlan,
 }: SidebarProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const sidebarRef = useRef<HTMLElement>(null);
@@ -301,175 +318,101 @@ export function Sidebar({
             </div>
           ) : viewMode === "batch" ? (
             <>
-              <Section
-                title="Batch Workspace"
-                icon={<TableProperties className="w-3.5 h-3.5" />}
-                expanded={true}
-                onToggle={() => {}}
-                compact={isCompact}
-              >
-                <div className="grid grid-cols-2 gap-1">
-                  <button
-                    onClick={() => onViewModeChange("version-control")}
-                    className="text-xs px-2 py-1 rounded-md border border-border/50 hover:bg-muted/30 transition-colors"
+              {/* Change Review UI - Show when there's a pending plan */}
+              {pendingPlan ? (
+                <VisualChangeReviewInline
+                  plan={pendingPlan}
+                  onConfirm={onConfirmPlan}
+                  onCancel={onCancelPlan}
+                />
+              ) : (
+                <>
+                  {/* Fallback when no pending plan */}
+                  <Section
+                    title="Batch Workspace"
+                    icon={<TableProperties className="w-3.5 h-3.5" />}
+                    expanded={true}
+                    onToggle={() => {}}
+                    compact={isCompact}
                   >
-                    Version Control
-                  </button>
-                  <button
-                    onClick={() => onViewModeChange("vault")}
-                    className="text-xs px-2 py-1 rounded-md border border-border/50 hover:bg-muted/30 transition-colors"
-                  >
-                    Vault
-                  </button>
-                </div>
-              </Section>
-
-              <Section
-                title="Recent Snapshots"
-                icon={<Sparkles className="w-3.5 h-3.5" />}
-                expanded={true}
-                onToggle={() => {}}
-                compact={isCompact}
-              >
-                <div className="space-y-0.5">
-                  {snapshots.length === 0 ? (
-                    <div className="text-[11px] text-muted-foreground px-2 py-1">No snapshots yet</div>
-                  ) : (
-                    [...snapshots].slice(-6).reverse().map((s) => (
+                    <div className="grid grid-cols-2 gap-1">
                       <button
-                        key={s.id}
                         onClick={() => onViewModeChange("version-control")}
-                        className="w-full text-left text-xs px-2 py-1 rounded-md hover:bg-muted/30 transition-colors"
-                        title={new Date(s.metadata.timestamp).toLocaleString()}
+                        className="text-xs px-2 py-1 rounded-md border border-border/50 hover:bg-muted/30 transition-colors"
                       >
-                        {s.metadata.message || "Snapshot"}
+                        Version Control
                       </button>
-                    ))
-                  )}
-                </div>
-              </Section>
+                      <button
+                        onClick={() => onViewModeChange("vault")}
+                        className="text-xs px-2 py-1 rounded-md border border-border/50 hover:bg-muted/30 transition-colors"
+                      >
+                        Vault
+                      </button>
+                    </div>
+                  </Section>
 
-              <Section
-                title="Source Control"
-                icon={<Sparkles className="w-3.5 h-3.5" />}
-                expanded={true}
-                onToggle={() => {}}
-                compact={isCompact}
-              >
-                <div className="flex gap-2">
-                  <button
-                    onClick={async () => {
-                      if (!config) return;
-                      await createSnapshot(config, "Batch snapshot");
-                    }}
-                    className="text-xs px-2 py-1 rounded-md border border-border/50 hover:bg-muted/30 transition-colors"
+                  <Section
+                    title="Recent Snapshots"
+                    icon={<Sparkles className="w-3.5 h-3.5" />}
+                    expanded={true}
+                    onToggle={() => {}}
+                    compact={isCompact}
                   >
-                    Create Snapshot
-                  </button>
-                  <button
-                    onClick={async () => {
-                      const snaps = getSnapshots();
-                      if (snaps.length) {
-                        const lastId = snaps[snaps.length - 1].id;
-                        const ok = await restoreFromSnapshot(lastId);
-                        if (ok) {
-                          const last = getSnapshots().find(s => s.id === lastId);
-                          if (last) onConfigChange?.(last.config);
-                        }
-                      }
-                    }}
-                    className="text-xs px-2 py-1 rounded-md border border-border/50 hover:bg-muted/30 transition-colors"
-                  >
-                    Restore Last
-                  </button>
-                </div>
-              </Section>
+                    <div className="space-y-0.5">
+                      {snapshots.length === 0 ? (
+                        <div className="text-[11px] text-muted-foreground px-2 py-1">No snapshots yet</div>
+                      ) : (
+                        [...snapshots].slice(-6).reverse().map((s) => (
+                          <button
+                            key={s.id}
+                            onClick={() => onViewModeChange("version-control")}
+                            className="w-full text-left text-xs px-2 py-1 rounded-md hover:bg-muted/30 transition-colors"
+                            title={new Date(s.metadata.timestamp).toLocaleString()}
+                          >
+                            {s.metadata.message || "Snapshot"}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </Section>
 
-              <Section
-                title="Bulk Operations"
-                icon={<Zap className="w-3.5 h-3.5" />}
-                expanded={true}
-                onToggle={() => {}}
-                compact={isCompact}
-              >
-                <div className="grid grid-cols-3 gap-1">
-                  <button
-                    onClick={() => {
-                      onViewModeChange("batch");
-                      const groupNums = selectedGroups
-                        .map((g) => {
-                          const m = g.match(/(\d+)/);
-                          return m ? parseInt(m[1], 10) : NaN;
-                        })
-                        .filter((n) => Number.isFinite(n));
-                      window.dispatchEvent(
-                        new CustomEvent("batch-sidebar-command", {
-                          detail: {
-                            action: "apply",
-                            engines: selectedEngines,
-                            groups: groupNums,
-                            logics: selectedLogics,
-                            fields: [],
-                          },
-                        })
-                      );
-                    }}
-                    className="text-xs px-2 py-1 rounded-md border border-border/50 hover:bg-muted/30 transition-colors"
+                  <Section
+                    title="Source Control"
+                    icon={<Sparkles className="w-3.5 h-3.5" />}
+                    expanded={true}
+                    onToggle={() => {}}
+                    compact={isCompact}
                   >
-                    Apply All
-                  </button>
-                  <button
-                    onClick={() => {
-                      onViewModeChange("batch");
-                      const groupNums = selectedGroups
-                        .map((g) => {
-                          const m = g.match(/(\d+)/);
-                          return m ? parseInt(m[1], 10) : NaN;
-                        })
-                        .filter((n) => Number.isFinite(n));
-                      window.dispatchEvent(
-                        new CustomEvent("batch-sidebar-command", {
-                          detail: {
-                            action: "apply 1-5",
-                            engines: selectedEngines,
-                            groups: groupNums,
-                            logics: selectedLogics,
-                            fields: [],
-                          },
-                        })
-                      );
-                    }}
-                    className="text-xs px-2 py-1 rounded-md border border-border/50 hover:bg-muted/30 transition-colors"
-                  >
-                    Apply 1-5
-                  </button>
-                  <button
-                    onClick={() => {
-                      onViewModeChange("batch");
-                      const groupNums = selectedGroups
-                        .map((g) => {
-                          const m = g.match(/(\d+)/);
-                          return m ? parseInt(m[1], 10) : NaN;
-                        })
-                        .filter((n) => Number.isFinite(n));
-                      window.dispatchEvent(
-                        new CustomEvent("batch-sidebar-command", {
-                          detail: {
-                            action: "apply remaining",
-                            engines: selectedEngines,
-                            groups: groupNums,
-                            logics: selectedLogics,
-                            fields: [],
-                          },
-                        })
-                      );
-                    }}
-                    className="text-xs px-2 py-1 rounded-md border border-border/50 hover:bg-muted/30 transition-colors"
-                  >
-                    Apply Remaining
-                  </button>
-                </div>
-              </Section>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={async () => {
+                          if (!config) return;
+                          await createSnapshot(config, "Batch snapshot");
+                        }}
+                        className="text-xs px-2 py-1 rounded-md border border-border/50 hover:bg-muted/30 transition-colors"
+                      >
+                        Create Snapshot
+                      </button>
+                      <button
+                        onClick={async () => {
+                          const snaps = getSnapshots();
+                          if (snaps.length) {
+                            const lastId = snaps[snaps.length - 1].id;
+                            const ok = await restoreFromSnapshot(lastId);
+                            if (ok) {
+                              const last = getSnapshots().find(s => s.id === lastId);
+                              if (last) onConfigChange?.(last.config);
+                            }
+                          }
+                        }}
+                        className="text-xs px-2 py-1 rounded-md border border-border/50 hover:bg-muted/30 transition-colors"
+                      >
+                        Restore Last
+                      </button>
+                    </div>
+                  </Section>
+                </>
+              )}
             </>
           ) : (
             <>
@@ -802,5 +745,311 @@ function CategoryItem({ label, icon, selected, onSelect, color, compact }: Categ
       <span className="font-medium">{label}</span>
       {selected && <ChevronRight className="ml-auto w-3 h-3 text-primary" />}
     </button>
+  );
+}
+
+// Visual Change Review Inline Component - Advanced UI for reviewing changes
+function VisualChangeReviewInline({
+  plan,
+  onConfirm,
+  onCancel
+}: {
+  plan: TransactionPlan;
+  onConfirm?: () => void;
+  onCancel?: () => void;
+}) {
+  const [approvedIndices, setApprovedIndices] = useState<Set<number>>(() => new Set(plan.preview.map((_, i) => i)));
+  const [rejectedIndices, setRejectedIndices] = useState<Set<number>>(new Set());
+  const [showRiskDetails, setShowRiskDetails] = useState(false);
+
+  const totalChanges = plan.preview.length;
+  const approvedCount = approvedIndices.size;
+  const rejectedCount = rejectedIndices.size;
+  const pendingCount = totalChanges - approvedCount - rejectedCount;
+
+  const handleApprove = (index: number) => {
+    setApprovedIndices(prev => new Set([...prev, index]));
+    setRejectedIndices(prev => {
+      const next = new Set(prev);
+      next.delete(index);
+      return next;
+    });
+  };
+
+  const handleReject = (index: number) => {
+    setRejectedIndices(prev => new Set([...prev, index]));
+    setApprovedIndices(prev => {
+      const next = new Set(prev);
+      next.delete(index);
+      return next;
+    });
+  };
+
+  const handleApproveAll = () => {
+    setApprovedIndices(new Set(plan.preview.map((_, i) => i)));
+    setRejectedIndices(new Set());
+  };
+
+  const handleRejectAll = () => {
+    setRejectedIndices(new Set(plan.preview.map((_, i) => i)));
+    setApprovedIndices(new Set());
+  };
+
+  const getRiskColor = (level: string) => {
+    switch (level) {
+      case "critical": return "text-red-500 bg-red-500/10 border-red-500/20";
+      case "high": return "text-orange-500 bg-orange-500/10 border-orange-500/20";
+      case "medium": return "text-yellow-500 bg-yellow-500/10 border-yellow-500/20";
+      case "low": return "text-green-500 bg-green-500/10 border-green-500/20";
+      default: return "text-muted-foreground bg-muted border-border";
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      {/* Header with Stats */}
+      <div className="flex items-center justify-between p-3 rounded-lg border border-border/60 bg-card/50">
+        <div className="flex items-center gap-3">
+          <Sparkles className="w-4 h-4 text-amber-500" />
+          <div>
+            <div className="text-xs font-semibold">Review Changes</div>
+            <div className="text-[10px] text-muted-foreground">
+              {approvedCount} accepted · {rejectedCount} rejected · {pendingCount} pending
+            </div>
+          </div>
+        </div>
+        
+        {/* Risk Badge */}
+        <button
+          onClick={() => setShowRiskDetails(!showRiskDetails)}
+          className={cn(
+            "flex items-center gap-1.5 px-2 py-1 rounded border text-[10px] font-medium transition-colors",
+            getRiskColor(plan.risk.level)
+          )}
+        >
+          <AlertTriangle className="w-3 h-3" />
+          {plan.risk.level.toUpperCase()} RISK
+        </button>
+      </div>
+
+      {/* Risk Details */}
+      <AnimatePresence>
+        {showRiskDetails && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
+          >
+            <div className={cn(
+              "p-3 rounded-lg border space-y-2",
+              getRiskColor(plan.risk.level)
+            )}>
+              <div className="text-[10px] font-medium">Risk Score: {plan.risk.score}/100</div>
+              {plan.risk.reasons.length > 0 && (
+                <ul className="text-[10px] space-y-1 list-disc list-inside">
+                  {plan.risk.reasons.map((reason, i) => (
+                    <li key={i}>{reason}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Bulk Actions */}
+      <div className="flex items-center gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-8 text-[10px] gap-1.5"
+          onClick={handleApproveAll}
+        >
+          <CheckCheck className="w-3.5 h-3.5" />
+          Accept All
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-8 text-[10px] gap-1.5"
+          onClick={handleRejectAll}
+        >
+          <XOctagon className="w-3.5 h-3.5" />
+          Reject All
+        </Button>
+      </div>
+
+      {/* Change Cards */}
+      <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+        <AnimatePresence mode="popLayout">
+          {plan.preview.map((change, index) => (
+            <VisualChangeCard
+              key={`${change.engine}-${change.group}-${change.field}-${index}`}
+              change={change}
+              index={index}
+              isApproved={approvedIndices.has(index) ? true : rejectedIndices.has(index) ? false : null}
+              onApprove={() => handleApprove(index)}
+              onReject={() => handleReject(index)}
+            />
+          ))}
+        </AnimatePresence>
+      </div>
+
+      {/* Footer Actions */}
+      <div className="flex items-center justify-between pt-2 border-t border-border/60">
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-8 text-[10px]"
+          onClick={onCancel}
+        >
+          Cancel
+        </Button>
+        <Button
+          size="sm"
+          className="h-8 text-[10px] gap-1.5 bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-400 hover:to-emerald-400"
+          onClick={onConfirm}
+          disabled={approvedCount === 0}
+        >
+          <Check className="w-3.5 h-3.5" />
+          Apply {approvedCount} Changes
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// Visual Change Card Component
+function VisualChangeCard({
+  change,
+  index,
+  isApproved,
+  onApprove,
+  onReject
+}: {
+  change: ChangePreview;
+  index: number;
+  isApproved: boolean | null;
+  onApprove: () => void;
+  onReject: () => void;
+}) {
+  const delta = change.delta || 0;
+  const deltaPercent = change.deltaPercent || 0;
+  const isIncrease = delta > 0;
+  const isDecrease = delta < 0;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: 20 }}
+      className={cn(
+        "relative rounded-lg border p-3 transition-all",
+        isApproved === true && "border-green-500/50 bg-green-500/5",
+        isApproved === false && "border-red-500/50 bg-red-500/5 opacity-60",
+        isApproved === null && "border-border/60 bg-card/40 hover:border-border"
+      )}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <span className="flex items-center gap-1 text-[10px] font-mono text-muted-foreground">
+            <Hash className="w-3 h-3" />
+            {index + 1}
+          </span>
+          <div className="flex items-center gap-1.5">
+            <Target className="w-3 h-3 text-primary" />
+            <span className="text-xs font-medium">{change.logic}</span>
+            <span className="text-[10px] text-muted-foreground">G{change.group}</span>
+          </div>
+        </div>
+        
+        {/* Status Badge */}
+        {isApproved === true && (
+          <span className="flex items-center gap-1 text-[10px] text-green-500 font-medium">
+            <Check className="w-3 h-3" /> Accepted
+          </span>
+        )}
+        {isApproved === false && (
+          <span className="flex items-center gap-1 text-[10px] text-red-500 font-medium">
+            <X className="w-3 h-3" /> Rejected
+          </span>
+        )}
+      </div>
+
+      {/* Change Display */}
+      <div className="flex items-center gap-3 py-2">
+        {/* Old Value */}
+        <div className="flex-1 min-w-0">
+          <div className="text-[9px] text-muted-foreground uppercase tracking-wide mb-1">Current</div>
+          <div className="text-sm font-mono text-muted-foreground line-through decoration-red-400/50">
+            {change.currentValue}
+          </div>
+        </div>
+
+        {/* Arrow & Delta */}
+        <div className="flex flex-col items-center">
+          <ArrowRightLeft className="w-4 h-4 text-muted-foreground/50" />
+          {(isIncrease || isDecrease) && (
+            <div className={cn(
+              "flex items-center gap-0.5 text-[9px] font-medium mt-1",
+              isIncrease ? "text-green-500" : "text-red-500"
+            )}>
+              {isIncrease ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+              {Math.abs(deltaPercent).toFixed(1)}%
+            </div>
+          )}
+        </div>
+
+        {/* New Value */}
+        <div className="flex-1 min-w-0">
+          <div className="text-[9px] text-primary uppercase tracking-wide mb-1">New</div>
+          <div className="text-sm font-mono text-foreground">
+            {change.newValue}
+          </div>
+        </div>
+      </div>
+
+      {/* Field Label */}
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] text-muted-foreground font-medium bg-muted/30 px-2 py-0.5 rounded">
+          {change.field}
+        </span>
+        
+        {/* Action Buttons */}
+        {isApproved === null && (
+          <div className="flex items-center gap-1">
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7 hover:bg-green-500/10 hover:text-green-500"
+              onClick={onApprove}
+            >
+              <Check className="w-4 h-4" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7 hover:bg-red-500/10 hover:text-red-500"
+              onClick={onReject}
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+        )}
+        
+        {isApproved !== null && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 text-[10px]"
+            onClick={() => isApproved === true ? onReject() : onApprove()}
+          >
+            {isApproved === true ? "Undo Accept" : "Undo Reject"}
+          </Button>
+        )}
+      </div>
+    </motion.div>
   );
 }

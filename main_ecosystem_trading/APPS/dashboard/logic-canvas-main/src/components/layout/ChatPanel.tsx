@@ -31,8 +31,9 @@ import { commandExecutor } from "@/lib/chat";
 import { ChatMessageContent } from "@/components/chat/ChatMessageContent";
 import { QuickActionsPanel } from "@/components/chat/QuickActionsPanel";
 import { FileOperationsPanel } from "@/components/chat/FileOperationsPanel";
+import { ChangePreviewPanel } from "@/components/chat/ChangePreviewPanel";
 import type { MTConfig } from "@/types/mt-config";
-import type { TransactionPlan, ChangePreview } from "@/lib/chat/types";
+import type { TransactionPlan, ChangePreview, FieldChange } from "@/lib/chat/types";
 
 interface ChatPanelProps {
   config?: MTConfig | null;
@@ -90,6 +91,10 @@ export function ChatPanel({
   const [showGuide, setShowGuide] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  
+  // Track pending plan and recent changes for the ChangePreviewPanel
+  const [localPendingPlan, setLocalPendingPlan] = useState<TransactionPlan | null>(null);
+  const [localRecentChanges, setLocalRecentChanges] = useState<FieldChange[]>([]);
 
   const defaultTarget = {
     engines: selectedEngines
@@ -225,6 +230,18 @@ export function ChatPanel({
       if (pendingPlan && lastAppliedPreview) break;
     }
 
+    // Update local state for ChangePreviewPanel
+    setLocalPendingPlan(pendingPlan);
+    setLocalRecentChanges(lastAppliedPreview ? 
+      lastAppliedPreview.map(c => ({
+        engine: c.engine,
+        group: c.group,
+        logic: c.logic,
+        field: c.field,
+        oldValue: c.currentValue,
+        newValue: c.newValue
+      })) : []);
+    
     onPlanSnapshot({ pendingPlan, lastAppliedPreview });
   }, [messages, onPlanSnapshot]);
 
@@ -444,6 +461,20 @@ export function ChatPanel({
               </button>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Change Preview Panel - Shows pending/recent changes */}
+      {(localPendingPlan || localRecentChanges.length > 0) && (
+        <div className="px-4 py-2 border-t border-border/50">
+          <ChangePreviewPanel
+            pendingPlan={localPendingPlan}
+            recentChanges={localRecentChanges}
+            onConfirm={() => sendMessage("apply")}
+            onCancel={() => sendMessage("cancel")}
+            onUndo={() => sendMessage("undo")}
+            compact
+          />
         </div>
       )}
 

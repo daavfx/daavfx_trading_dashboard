@@ -9,8 +9,10 @@ import { parseCommand, getSuggestions, commandExecutor } from "@/lib/chat";
 import type { ChatMessage, CommandResult } from "@/lib/chat/types";
 import type { MTConfig } from "@/types/mt-config";
 import { useSettings } from "@/contexts/SettingsContext";
+import { useChatState } from "@/contexts/ChatStateContext";
 import { withUseDirectPriceGrid, normalizeConfigForExport } from "@/utils/unit-mode";
 import { save, open } from "@tauri-apps/plugin-dialog";
+import { invoke } from "@tauri-apps/api/core";
 import { toast } from "sonner";
 
 interface UseChatCommandsOptions {
@@ -33,8 +35,18 @@ export function useChatCommands({
   onClearSelection,
   defaultTarget,
 }: UseChatCommandsOptions) {
-  const { settings, updateSettingPersisted } = useSettings();
-  const [messages, setMessages] = useState<ChatMessage[]>([
+  const { settings, updateSetting, saveSettings } = useSettings();
+  
+  // Use ChatStateContext for persistent state across tab switches
+  let chatState: ReturnType<typeof useChatState> | null = null;
+  try {
+    chatState = useChatState();
+  } catch {
+    // Context not available, use local state
+  }
+  
+  // Local fallback state if context is not available
+  const [localMessages, setLocalMessages] = useState<ChatMessage[]>([
     {
       id: "welcome",
       role: "system",
@@ -43,8 +55,15 @@ export function useChatCommands({
       timestamp: Date.now(),
     },
   ]);
+  const [localInputValue, setLocalInputValue] = useState("");
+  
+  // Use context state if available, otherwise local state
+  const messages = chatState?.messages ?? localMessages;
+  const setMessages = chatState?.setMessages ?? setLocalMessages;
+  const inputValue = chatState?.inputValue ?? localInputValue;
+  const setInputValue = chatState?.setInputValue ?? setLocalInputValue;
+  
   const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [inputValue, setInputValue] = useState("");
 
   // Sync config to executor
   useEffect(() => {
@@ -134,7 +153,8 @@ export function useChatCommands({
           return;
         }
 
-        updateSettingPersisted("autoApproveTransactions", next);
+        updateSetting("autoApproveTransactions", next);
+        saveSettings();
         commandExecutor.setAutoApprove(next);
         const assistantMessage: ChatMessage = {
           id: `assistant-${Date.now()}`,
@@ -462,25 +482,27 @@ export function useChatCommands({
       
       const result: CommandResult = commandExecutor.execute(command);
 
-      // AUTO-NAVIGATION logic (Restored)
-      if (result.success && result.queryResult?.navigationTargets && onNavigate) {
-        onNavigate(result.queryResult.navigationTargets);
-      }
+      // AUTO-NAVIGATION DISABLED - Stay in Chat view
+      // Navigation now only updates selection state without switching views
+      // This allows users to see changes in the chat interface
+      // if (result.success && result.queryResult?.navigationTargets && onNavigate) {
+      //   onNavigate(result.queryResult.navigationTargets);
+      // }
 
-      if (result.success && onNavigate && (result.pendingPlan || result.changes)) {
-        const field =
-          command.target.field ||
-          result.pendingPlan?.preview?.[0]?.field ||
-          result.changes?.[0]?.field;
-        if (field) {
-          onNavigate({
-            engines: command.target.engines,
-            groups: command.target.groups,
-            logics: command.target.logics,
-            fields: [field],
-          });
-        }
-      }
+      // if (result.success && onNavigate && (result.pendingPlan || result.changes)) {
+      //   const field =
+      //     command.target.field ||
+      //     result.pendingPlan?.preview?.[0]?.field ||
+      //     result.changes?.[0]?.field;
+      //   if (field) {
+      //     onNavigate({
+      //       engines: command.target.engines,
+      //       groups: command.target.groups,
+      //       logics: command.target.logics,
+      //       fields: [field],
+      //     });
+      //   }
+      // }
 
       const assistantMessage: ChatMessage = {
         id: `assistant-${Date.now()}`,
@@ -502,7 +524,8 @@ export function useChatCommands({
       onNavigate,
       defaultTarget,
       settings,
-      updateSettingPersisted,
+      updateSetting,
+      saveSettings,
     ],
   );
 

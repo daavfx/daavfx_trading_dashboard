@@ -202,7 +202,8 @@ interface VisualTransactionReviewProps {
 }
 
 export function VisualTransactionReview({ plan, onApply, onCancel, onEditChange }: VisualTransactionReviewProps) {
-  const [approvedIndices, setApprovedIndices] = useState<Set<number>>(new Set());
+  // Pre-approve all changes by default so user can just click "Apply"
+  const [approvedIndices, setApprovedIndices] = useState<Set<number>>(() => new Set(plan.preview.map((_, i) => i)));
   const [rejectedIndices, setRejectedIndices] = useState<Set<number>>(new Set());
   const [showRiskDetails, setShowRiskDetails] = useState(false);
 

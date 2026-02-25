@@ -43,6 +43,7 @@ import {
 } from "@/utils/config-validation";
 import { hydrateMTConfigDefaults } from "@/utils/hydrate-mt-config-defaults";
 import { useSettings } from "@/contexts/SettingsContext";
+import { ChatStateProvider, useChatState } from "@/contexts/ChatStateContext";
 import { withUseDirectPriceGrid, normalizeConfigForExport } from "@/utils/unit-mode";
 import type { TransactionPlan, ChangePreview } from "@/lib/chat/types";
 import { VersionControlPanel } from "@/components/version-control/VersionControlPanel";
@@ -156,7 +157,7 @@ const platformToMT = (p: Platform): MTPlatform => {
   return "MT4"; // fallback
 };
 
-export default function Index() {
+function Index() {
   const { settings } = useSettings();
   const [selectedEngines, setSelectedEngines] = useState<string[]>([]);
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
@@ -591,8 +592,9 @@ export default function Index() {
       setSelectedFields([]);
     }
 
-    // Switch to logics view to see the result
-    setViewMode("logics");
+    // DO NOT switch view mode - stay in current view (Chat)
+    // This allows users to see changes in the chat interface
+    // setViewMode("logics");
   };
 
   const handleVaultSave = async (data: VaultSaveData) => {
@@ -868,10 +870,11 @@ export default function Index() {
 
       <div className="flex-1 overflow-hidden">
         <ResizablePanelGroup direction="horizontal">
+          {/* Left Navigation Sidebar - ALWAYS visible including Chat view */}
           <ResizablePanel
             id="sidebar"
             order={1}
-            defaultSize={18}
+            defaultSize={16}
             minSize={5}
             maxSize={30}
           >
@@ -887,6 +890,31 @@ export default function Index() {
               onConfigChange={handleSaveConfig}
               selectedGeneralCategory={selectedGeneralCategory}
               onSelectGeneralCategory={handleGeneralCategoryChange}
+              pendingPlan={chatPendingPlan}
+              onConfirmPlan={() => {
+                if (chatPendingPlan && config) {
+                  const newConfig = JSON.parse(JSON.stringify(config)) as MTConfig;
+                  chatPendingPlan.preview.forEach(change => {
+                    const engine = newConfig.engines?.find(e => e.engine_name === change.engine);
+                    if (engine) {
+                      const group = engine.groups?.find(g => g.group_number === change.group);
+                      if (group) {
+                        const logic = group.logics?.find(l => l.logic_name === change.logic);
+                        if (logic && change.field in logic) {
+                          (logic as any)[change.field] = change.newValue;
+                        }
+                      }
+                    }
+                  });
+                  handleSaveConfig(newConfig);
+                  setChatLastAppliedPreview(chatPendingPlan.preview);
+                  setChatPendingPlan(null);
+                  toast.success(`Applied ${chatPendingPlan.preview.length} changes`);
+                }
+              }}
+              onCancelPlan={() => {
+                setChatPendingPlan(null);
+              }}
             />
           </ResizablePanel>
           <ResizableHandle withHandle />
@@ -905,7 +933,7 @@ export default function Index() {
               viewMode === "collaboration"
                 ? 82
                 : viewMode === "batch"
-                  ? 82
+                  ? 50
                   : 62
             }
           >
@@ -1199,7 +1227,7 @@ export default function Index() {
             viewMode !== "undo-redo" &&
             viewMode !== "memory" &&
             viewMode !== "grouping" &&
-            viewMode !== "collaboration" && (
+            viewMode !== "collaboration" && viewMode !== "batch" && (
               <>
                 <ResizableHandle withHandle />
 
@@ -1228,6 +1256,78 @@ export default function Index() {
                 </ResizablePanel>
               </>
             )}
+
+          {/* Quick Changes Sidebar for Chat/Batch mode - Advanced change review UI */}
+          {viewMode === "batch" && (
+            <>
+              <ResizableHandle withHandle />
+              
+              <ResizablePanel
+                id="quick-changes-panel"
+                order={3}
+                defaultSize={28}
+                minSize={20}
+                maxSize={40}
+                collapsible={true}
+                collapsedSize={4}
+              >
+                <QuickActionsPanel
+                  config={config}
+                  onConfigChange={handleSaveConfig}
+                  onViewModeChange={handleViewModeChange}
+                  isCollapsed={isQuickActionsCollapsed}
+                  onToggleCollapse={() => setIsQuickActionsCollapsed(!isQuickActionsCollapsed)}
+                  onOpenVaultSave={(draft) => {
+                    setVaultSaveDraft(draft || null);
+                    setPreviousViewMode(viewMode);
+                    setViewMode("save_config");
+                    setHasStarted(true);
+                  }}
+                  viewMode={viewMode}
+                  pendingPlan={chatPendingPlan}
+                  recentChanges={chatLastAppliedPreview?.map(p => ({
+                    engine: p.engine,
+                    group: p.group,
+                    logic: p.logic,
+                    field: p.field,
+                    oldValue: p.currentValue,
+                    newValue: p.newValue
+                  })) || []}
+                  onConfirmPlan={() => {
+                    if (chatPendingPlan && config) {
+                      const newConfig = JSON.parse(JSON.stringify(config)) as MTConfig;
+                      chatPendingPlan.preview.forEach(change => {
+                        const engine = newConfig.engines?.find(e => e.engine_name === change.engine);
+                        if (engine) {
+                          const group = engine.groups?.find(g => g.group_number === change.group);
+                          if (group) {
+                            const logic = group.logics?.find(l => l.logic_name === change.logic);
+                            if (logic && change.field in logic) {
+                              (logic as any)[change.field] = change.newValue;
+                            }
+                          }
+                        }
+                      });
+                      handleSaveConfig(newConfig);
+                      setChatLastAppliedPreview(chatPendingPlan.preview);
+                      setChatPendingPlan(null);
+                      toast.success(`Applied ${chatPendingPlan.preview.length} changes`);
+                    }
+                  }}
+                  onCancelPlan={() => {
+                    setChatPendingPlan(null);
+                    toast.info("Changes cancelled");
+                  }}
+                  onUndoChanges={() => {
+                    setChatLastAppliedPreview(null);
+                    toast.info("Undo not yet implemented - use version control");
+                  }}
+                />
+              </ResizablePanel>
+            </>
+          )}
+
+
         </ResizablePanelGroup>
       </div>
 
@@ -1256,5 +1356,14 @@ export default function Index() {
         />
       )}
     </div>
+  );
+}
+
+// Wrap Index with ChatStateProvider for persistent chat state
+export default function IndexWithChatState() {
+  return (
+    <ChatStateProvider>
+      <Index />
+    </ChatStateProvider>
   );
 }
