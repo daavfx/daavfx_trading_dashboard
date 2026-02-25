@@ -931,15 +931,25 @@ function Index() {
                   handleSaveConfig(newConfig);
                   setChatLastAppliedPreview(chatPendingPlan.preview);
                   
-                  // Add to command history
-                  const newHistoryItem = {
-                    id: `cmd-${Date.now()}`,
-                    command: chatPendingPlan.description || 'Apply changes',
-                    timestamp: new Date(),
-                    status: 'applied' as const,
-                    changesCount: chatPendingPlan.preview.length,
-                  };
-                  setCommandHistory(prev => [...prev, newHistoryItem].slice(-50));
+                  // Update the pending command status to 'applied'
+                  setCommandHistory(prev => {
+                    const lastPending = prev.findLast(c => c.status === 'pending');
+                    if (lastPending) {
+                      return prev.map(c => 
+                        c.id === lastPending.id 
+                          ? { ...c, status: 'applied' as const, changesCount: chatPendingPlan.preview.length }
+                          : c
+                      );
+                    }
+                    // If no pending found, add new entry
+                    return [...prev, {
+                      id: `cmd-${Date.now()}`,
+                      command: chatPendingPlan.description || 'Apply changes',
+                      timestamp: new Date(),
+                      status: 'applied' as const,
+                      changesCount: chatPendingPlan.preview.length,
+                    }].slice(-50);
+                  });
                   
                   // Update stats
                   setChatStats(prev => ({
@@ -955,14 +965,24 @@ function Index() {
               }}
               onCancelPlan={() => {
                 if (chatPendingPlan) {
-                  // Add to command history as cancelled
-                  const newHistoryItem = {
-                    id: `cmd-${Date.now()}`,
-                    command: chatPendingPlan.description || 'Apply changes',
-                    timestamp: new Date(),
-                    status: 'cancelled' as const,
-                  };
-                  setCommandHistory(prev => [...prev, newHistoryItem].slice(-50));
+                  // Update the pending command status to 'cancelled'
+                  setCommandHistory(prev => {
+                    const lastPending = prev.findLast(c => c.status === 'pending');
+                    if (lastPending) {
+                      return prev.map(c => 
+                        c.id === lastPending.id 
+                          ? { ...c, status: 'cancelled' as const }
+                          : c
+                      );
+                    }
+                    // If no pending found, add new entry
+                    return [...prev, {
+                      id: `cmd-${Date.now()}`,
+                      command: chatPendingPlan.description || 'Apply changes',
+                      timestamp: new Date(),
+                      status: 'cancelled' as const,
+                    }].slice(-50);
+                  });
                 }
                 setChatPendingPlan(null);
               }}
@@ -1197,6 +1217,23 @@ function Index() {
                             config={config}
                             onConfigChange={handleSaveConfig}
                             onNavigate={handleChatNavigation}
+                            onCommandSent={(command, hasPlan, changesCount) => {
+                              // Add to command history when a command creates a plan
+                              if (hasPlan) {
+                                const newHistoryItem = {
+                                  id: `cmd-${Date.now()}`,
+                                  command: command,
+                                  timestamp: new Date(),
+                                  status: 'pending' as const,
+                                  changesCount,
+                                };
+                                setCommandHistory(prev => [...prev, newHistoryItem].slice(-50));
+                              }
+                            }}
+                            onPlanSnapshot={({ pendingPlan, lastAppliedPreview }) => {
+                              setChatPendingPlan(pendingPlan);
+                              setChatLastAppliedPreview(lastAppliedPreview);
+                            }}
                           />
                         </div>
                       )}

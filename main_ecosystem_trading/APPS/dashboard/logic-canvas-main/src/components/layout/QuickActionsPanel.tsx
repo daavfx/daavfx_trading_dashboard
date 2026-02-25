@@ -103,7 +103,7 @@ export function QuickActionsPanel({
   };
 
   // Check if we're in chat mode
-  const isChatMode = viewMode === "batch";
+  const isChatMode = viewMode === "chat";
 
   // Get risk styling
   const riskLevel = pendingPlan?.risk?.level || "low";

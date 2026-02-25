@@ -50,6 +50,8 @@ interface ChatPanelProps {
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
   onClearSelection?: () => void;
+  // Callback when a command is sent to the chat
+  onCommandSent?: (command: string, hasPlan: boolean, changesCount?: number) => void;
 }
 
 interface CommandTemplate {
@@ -87,6 +89,7 @@ export function ChatPanel({
   isCollapsed = false,
   onToggleCollapse,
   onClearSelection,
+  onCommandSent,
 }: ChatPanelProps) {
   const [showGuide, setShowGuide] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(false);
@@ -243,7 +246,15 @@ export function ChatPanel({
       })) : []);
     
     onPlanSnapshot({ pendingPlan, lastAppliedPreview });
-  }, [messages, onPlanSnapshot]);
+    
+    // Notify parent when a new command creates a pending plan
+    if (onCommandSent && pendingPlan) {
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage?.role === 'user') {
+        onCommandSent(lastMessage.content, true, pendingPlan.preview.length);
+      }
+    }
+  }, [messages, onPlanSnapshot, onCommandSent]);
 
   // Handle external commands from BatchEditTab gadgets
   useEffect(() => {

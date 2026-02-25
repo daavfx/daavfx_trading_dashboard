@@ -22,9 +22,16 @@ interface BatchEditTabProps {
   onConfigChange: (config: MTConfig) => void;
   onNavigate: (target: { engines?: string[]; groups?: number[]; logics?: string[]; fields?: string[] }) => void;
   platform?: Platform;
+  // Callback when a command is sent to the chat
+  onCommandSent?: (command: string, hasPlan: boolean, changesCount?: number) => void;
+  // Callback when plan snapshot changes
+  onPlanSnapshot?: (snapshot: {
+    pendingPlan: any | null;
+    lastAppliedPreview: any[] | null;
+  }) => void;
 }
 
-export function BatchEditTab({ config, onConfigChange, onNavigate, platform }: BatchEditTabProps) {
+export function BatchEditTab({ config, onConfigChange, onNavigate, platform, onCommandSent, onPlanSnapshot }: BatchEditTabProps) {
   const [activeCommand, setActiveCommand] = useState<string | null>(null);
   const activeCommandResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -353,6 +360,8 @@ export function BatchEditTab({ config, onConfigChange, onNavigate, platform }: B
               selectedEngines={scopeEngines}
               selectedGroups={scopeGroups}
               selectedLogics={scopeLogics}
+              onCommandSent={onCommandSent}
+              onPlanSnapshot={onPlanSnapshot}
             />
           </div>
         </div>
