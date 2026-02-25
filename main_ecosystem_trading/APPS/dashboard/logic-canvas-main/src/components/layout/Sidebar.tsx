@@ -14,15 +14,8 @@ import {
   TableProperties,
   X,
   Sparkles,
-  MoreHorizontal,
-  AlertTriangle,
+  MessageSquare,
   TrendingUp,
-  TrendingDown,
-  ArrowRightLeft,
-  Hash,
-  Target,
-  CheckCheck,
-  XOctagon
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -30,6 +23,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { generalCategoriesList } from "@/components/config/GeneralCategories";
 import { useVersionControl } from "@/hooks/useVersionControl";
+import { AggregatedChangeReview } from "@/components/changes/AggregatedChangeReview";
+import { RecentCommands } from "@/components/chat/RecentCommands";
+import { ChatStatistics } from "@/components/chat/ChatStatistics";
+import { QuickActions } from "@/components/chat/QuickActions";
 import type { MTConfig } from "@/types/mt-config";
 import type { Platform } from "@/components/layout/TopBar";
 import type { TransactionPlan, ChangePreview } from "@/lib/chat/types";
@@ -38,7 +35,7 @@ const engines = ["Engine A", "Engine B", "Engine C"] as const;
 const groups = Array.from({ length: 20 }, (_, i) => `Group ${i + 1}`);
 const logics = ["POWER", "REPOWER", "SCALPER", "STOPPER", "STO", "SCA", "RPO"] as const;
 
-export type ViewMode = "logics" | "general" | "batch" | "vault" | "version-control" | "analytics" | "undo-redo" | "memory" | "grouping" | "collaboration" | "save_config";
+export type ViewMode = "logics" | "general" | "chat" | "vault" | "version-control" | "analytics" | "undo-redo" | "memory" | "grouping" | "collaboration" | "save_config";
 
 interface SidebarProps {
   selectedEngines: string[];
@@ -56,6 +53,21 @@ interface SidebarProps {
   pendingPlan?: TransactionPlan | null;
   onConfirmPlan?: () => void;
   onCancelPlan?: () => void;
+  // Command history for chat integration
+  commandHistory?: Array<{
+    id: string;
+    command: string;
+    timestamp: Date;
+    status: 'pending' | 'applied' | 'cancelled' | 'error';
+    changesCount?: number;
+  }>;
+  stats?: {
+    totalChangesApplied: number;
+    commandsToday: number;
+    snapshotsCount: number;
+    lastCommandAt: Date | null;
+  };
+  onCommandClick?: (command: string) => void;
 }
 
 const sidebarBorderClass = "border-l-platform-mt4/50";
@@ -85,6 +97,9 @@ export function Sidebar({
   pendingPlan,
   onConfirmPlan,
   onCancelPlan,
+  commandHistory = [],
+  stats = { totalChangesApplied: 0, commandsToday: 0, snapshotsCount: 0, lastCommandAt: null },
+  onCommandClick,
 }: SidebarProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const sidebarRef = useRef<HTMLElement>(null);
@@ -189,119 +204,99 @@ export function Sidebar({
       "h-full border-r border-border bg-sidebar flex flex-col border-l-2 transition-all duration-200",
       sidebarBorderClass
     )}>
-      {/* View Mode Toggle */}
+      {/* View Mode Toggle - Pill Style */}
       <div className={cn("p-3 border-b border-border", isCompact && "p-2")}>
-        <div className={cn("grid grid-cols-5 gap-1 rounded-lg bg-muted/40 p-1", isCompact && "grid-cols-5")}>
-          <button
+        <div className={cn(
+          "flex gap-1 p-1 bg-muted/30 rounded-lg",
+          isCompact && "flex-col"
+        )}>
+          <ViewModePill
+            icon={<Zap className="w-4 h-4" />}
+            label="Logics"
+            isActive={viewMode === "logics"}
             onClick={() => onViewModeChange("logics")}
-            title="Logics"
-            className={cn(
-              "min-w-0 w-full flex flex-col items-center justify-center gap-0.5 py-1.5 px-1 rounded-md transition-all",
-              viewMode === "logics"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <Zap className="w-4 h-4" />
-            {!isCompact && <span className="w-full truncate text-[9px] font-medium leading-none text-center">Logics</span>}
-          </button>
-          <button
+            compact={isCompact}
+          />
+          <ViewModePill
+            icon={<Settings2 className="w-4 h-4" />}
+            label="General"
+            isActive={viewMode === "general"}
             onClick={() => onViewModeChange("general")}
-            title="General"
-            className={cn(
-              "min-w-0 w-full flex flex-col items-center justify-center gap-0.5 py-1.5 px-1 rounded-md transition-all",
-              viewMode === "general"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <Settings2 className="w-4 h-4" />
-            {!isCompact && <span className="w-full truncate text-[9px] font-medium leading-none text-center">General</span>}
-          </button>
-          <button
-            onClick={() => onViewModeChange("batch")}
-            title="Chat"
-            className={cn(
-              "min-w-0 w-full flex flex-col items-center justify-center gap-0.5 py-1.5 px-1 rounded-md transition-all",
-              viewMode === "batch"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <TableProperties className="w-4 h-4" />
-            {!isCompact && <span className="w-full truncate text-[9px] font-medium leading-none text-center">Chat</span>}
-          </button>
-          <button
+            compact={isCompact}
+          />
+          <ViewModePill
+            icon={<MessageSquare className="w-4 h-4" />}
+            label="Chat"
+            isActive={viewMode === "chat"}
+            onClick={() => onViewModeChange("chat")}
+            compact={isCompact}
+            badge={pendingPlan ? pendingPlan.changes?.length : undefined}
+          />
+          <ViewModePill
+            icon={<Layers className="w-4 h-4" />}
+            label="Vault"
+            isActive={viewMode === "vault"}
             onClick={() => onViewModeChange("vault")}
-            title="Vault"
-            className={cn(
-              "min-w-0 w-full flex flex-col items-center justify-center gap-0.5 py-1.5 px-1 rounded-md transition-all",
-              viewMode === "vault"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <Layers className="w-4 h-4" />
-            {!isCompact && <span className="w-full truncate text-[9px] font-medium leading-none text-center">Vault</span>}
-          </button>
+            compact={isCompact}
+          />
         </div>
       </div>
 
       {/* Search */}
       {!isCompact && (
-      <div className="p-3 border-b border-border">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-          <Input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search..."
-            className="pl-9 pr-8 h-9 text-xs input-refined"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
-        {searchQuery && (
-          <div className="mt-2 text-[10px] text-muted-foreground">
-            {hasSearchResults ? (
-              <span>{filteredEngines.length + filteredGroups.length + filteredLogics.length} results</span>
-            ) : (
-              <span className="text-destructive">No results found</span>
+        <div className="p-3 border-b border-border">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search..."
+              className="pl-9 pr-8 h-9 text-xs bg-muted/30 border-border/50 focus:border-primary/50 focus:bg-background transition-colors"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
             )}
           </div>
-        )}
-      </div>
+          {searchQuery && (
+            <div className="mt-2 text-[10px] text-muted-foreground">
+              {hasSearchResults ? (
+                <span>{filteredEngines.length + filteredGroups.length + filteredLogics.length} results</span>
+              ) : (
+                <span className="text-destructive">No results found</span>
+              )}
+            </div>
+          )}
+        </div>
       )}
 
       {/* Collapse/Expand All */}
-      {!isCompact && (
-      <div className="px-3 py-2 border-b border-border/50 flex items-center justify-between">
-        <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Navigation</span>
-        <div className="flex gap-1">
-          <button
-            onClick={expandAll}
-            className="text-[10px] text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted/40 transition-colors"
-          >
-            Expand
-          </button>
-          <button
-            onClick={collapseAll}
-            className="text-[10px] text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted/40 transition-colors"
-          >
-            Collapse
-          </button>
+      {!isCompact && viewMode !== "chat" && viewMode !== "general" && (
+        <div className="px-3 py-2 border-b border-border/50 flex items-center justify-between">
+          <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Navigation</span>
+          <div className="flex gap-1">
+            <button
+              onClick={expandAll}
+              className="text-[10px] text-muted-foreground hover:text-primary px-2 py-1 rounded hover:bg-primary/10 transition-colors"
+            >
+              Expand
+            </button>
+            <button
+              onClick={collapseAll}
+              className="text-[10px] text-muted-foreground hover:text-primary px-2 py-1 rounded hover:bg-primary/10 transition-colors"
+            >
+              Collapse
+            </button>
+          </div>
         </div>
-      </div>
       )}
 
       <ScrollArea className="flex-1">
-        <div className={cn("p-3 space-y-1", isCompact && "p-2")}>
+        <div className={cn("p-3 space-y-3", isCompact && "p-2")}>
           {viewMode === "general" ? (
             <div className="space-y-1">
               {generalCategoriesList.map((category) => (
@@ -316,7 +311,7 @@ export function Sidebar({
                 />
               ))}
             </div>
-          ) : viewMode === "batch" ? (
+          ) : viewMode === "chat" ? (
             <>
               {/* Change Review UI - Show when there's a pending plan */}
               {pendingPlan ? (
@@ -327,74 +322,26 @@ export function Sidebar({
                 />
               ) : (
                 <>
-                  {/* Fallback when no pending plan */}
-                  <Section
-                    title="Batch Workspace"
-                    icon={<TableProperties className="w-3.5 h-3.5" />}
-                    expanded={true}
-                    onToggle={() => {}}
-                    compact={isCompact}
-                  >
-                    <div className="grid grid-cols-2 gap-1">
-                      <button
-                        onClick={() => onViewModeChange("version-control")}
-                        className="text-xs px-2 py-1 rounded-md border border-border/50 hover:bg-muted/30 transition-colors"
-                      >
-                        Version Control
-                      </button>
-                      <button
-                        onClick={() => onViewModeChange("vault")}
-                        className="text-xs px-2 py-1 rounded-md border border-border/50 hover:bg-muted/30 transition-colors"
-                      >
-                        Vault
-                      </button>
+                  {/* Chat Workspace - Improved Fallback UI */}
+                  <div className="space-y-4">
+                    {/* Recent Commands */}
+                    <div className="rounded-lg border border-border/50 bg-card/30 p-3">
+                      <RecentCommands
+                        commands={commandHistory}
+                        maxItems={5}
+                        compact={isCompact}
+                        onCommandClick={onCommandClick}
+                      />
                     </div>
-                  </Section>
 
-                  <Section
-                    title="Recent Snapshots"
-                    icon={<Sparkles className="w-3.5 h-3.5" />}
-                    expanded={true}
-                    onToggle={() => {}}
-                    compact={isCompact}
-                  >
-                    <div className="space-y-0.5">
-                      {snapshots.length === 0 ? (
-                        <div className="text-[11px] text-muted-foreground px-2 py-1">No snapshots yet</div>
-                      ) : (
-                        [...snapshots].slice(-6).reverse().map((s) => (
-                          <button
-                            key={s.id}
-                            onClick={() => onViewModeChange("version-control")}
-                            className="w-full text-left text-xs px-2 py-1 rounded-md hover:bg-muted/30 transition-colors"
-                            title={new Date(s.metadata.timestamp).toLocaleString()}
-                          >
-                            {s.metadata.message || "Snapshot"}
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  </Section>
-
-                  <Section
-                    title="Source Control"
-                    icon={<Sparkles className="w-3.5 h-3.5" />}
-                    expanded={true}
-                    onToggle={() => {}}
-                    compact={isCompact}
-                  >
-                    <div className="flex gap-2">
-                      <button
-                        onClick={async () => {
+                    {/* Quick Actions */}
+                    <div className="rounded-lg border border-border/50 bg-card/30 p-3">
+                      <QuickActions
+                        onCreateSnapshot={async () => {
                           if (!config) return;
-                          await createSnapshot(config, "Batch snapshot");
+                          await createSnapshot(config, "Manual snapshot");
                         }}
-                        className="text-xs px-2 py-1 rounded-md border border-border/50 hover:bg-muted/30 transition-colors"
-                      >
-                        Create Snapshot
-                      </button>
-                      <button
-                        onClick={async () => {
+                        onRestoreLast={async () => {
                           const snaps = getSnapshots();
                           if (snaps.length) {
                             const lastId = snaps[snaps.length - 1].id;
@@ -405,12 +352,23 @@ export function Sidebar({
                             }
                           }
                         }}
-                        className="text-xs px-2 py-1 rounded-md border border-border/50 hover:bg-muted/30 transition-colors"
-                      >
-                        Restore Last
-                      </button>
+                        onOpenVault={() => onViewModeChange("vault")}
+                        onOpenVersionControl={() => onViewModeChange("version-control")}
+                        compact={isCompact}
+                      />
                     </div>
-                  </Section>
+
+                    {/* Statistics */}
+                    <div className="rounded-lg border border-border/50 bg-card/30 p-3">
+                      <ChatStatistics
+                        stats={{
+                          ...stats,
+                          snapshotsCount: snapshots.length,
+                        }}
+                        compact={isCompact}
+                      />
+                    </div>
+                  </div>
                 </>
               )}
             </>
@@ -517,27 +475,26 @@ export function Sidebar({
         </div>
       </ScrollArea>
 
-
       {/* Selection Summary */}
       {(selectedEngines.length > 1 || selectedGroups.length > 1 || selectedLogics.length > 1) && (
-        <div className="p-3 border-t border-border bg-muted/20">
+        <div className="p-3 border-t border-border bg-gradient-to-t from-muted/30 to-transparent">
           <div className="flex items-center gap-2 mb-2">
             <Sparkles className="w-3 h-3 text-primary" />
-            <span className="text-[10px] text-foreground font-medium">Multi-Edit Mode</span>
+            <span className="text-[10px] text-foreground font-semibold">Multi-Edit Mode</span>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {selectedEngines.length > 1 && (
-              <span className="px-2 py-1 rounded-md bg-accent/15 text-accent text-[10px] font-medium">
+              <span className="px-2 py-1 rounded-md bg-blue-500/15 text-blue-400 text-[10px] font-medium border border-blue-500/20">
                 {selectedEngines.length} engines
               </span>
             )}
             {selectedGroups.length > 1 && (
-              <span className="px-2 py-1 rounded-md bg-success/15 text-success text-[10px] font-medium">
+              <span className="px-2 py-1 rounded-md bg-green-500/15 text-green-400 text-[10px] font-medium border border-green-500/20">
                 {selectedGroups.length} groups
               </span>
             )}
             {selectedLogics.length > 1 && (
-              <span className="px-2 py-1 rounded-md bg-primary/15 text-primary text-[10px] font-medium">
+              <span className="px-2 py-1 rounded-md bg-amber-500/15 text-amber-400 text-[10px] font-medium border border-amber-500/20">
                 {selectedLogics.length} logics
               </span>
             )}
@@ -545,6 +502,41 @@ export function Sidebar({
         </div>
       )}
     </aside>
+  );
+}
+
+// View Mode Pill Component
+interface ViewModePillProps {
+  icon: React.ReactNode;
+  label: string;
+  isActive: boolean;
+  onClick: () => void;
+  compact?: boolean;
+  badge?: number;
+}
+
+function ViewModePill({ icon, label, isActive, onClick, compact, badge }: ViewModePillProps) {
+  return (
+    <button
+      onClick={onClick}
+      title={label}
+      className={cn(
+        "flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-md transition-all duration-200 relative",
+        isActive
+          ? "bg-background text-foreground shadow-sm border border-border/50"
+          : "text-muted-foreground hover:text-foreground hover:bg-muted/40",
+        compact && "flex-col gap-0.5 py-1.5"
+      )}
+    >
+      <span className={cn(isActive && "text-primary")}>{icon}</span>
+      {!compact && <span className="text-[10px] font-medium">{label}</span>}
+      {compact && <span className="w-full truncate text-[8px] font-medium text-center leading-none">{label}</span>}
+      {badge !== undefined && badge > 0 && (
+        <span className="absolute -top-1 -right-1 min-w-[16px] h-4 flex items-center justify-center text-[9px] font-bold bg-primary text-primary-foreground rounded-full px-1">
+          {badge > 99 ? '99+' : badge}
+        </span>
+      )}
+    </button>
   );
 }
 
@@ -577,34 +569,46 @@ function Section({ title, icon, expanded, onToggle, onSelectAll, count, muted, w
           <span className="text-muted-foreground">{icon}</span>
         </div>
         {expanded && (
-           <div className="py-1 flex flex-col items-center gap-1">{children}</div>
+          <div className="py-1 flex flex-col items-center gap-1">{children}</div>
         )}
       </div>
     );
   }
 
   return (
-    <div className="rounded-lg overflow-hidden">
+    <div className="rounded-lg overflow-hidden border border-border/30 bg-card/20">
       <div
         onClick={onToggle}
         role="button"
         tabIndex={0}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onToggle(); }}
         className={cn(
-          "w-full flex items-center gap-2 px-3 py-2.5 text-xs font-medium transition-colors rounded-lg cursor-pointer select-none",
-          expanded ? "bg-muted/40" : "hover:bg-muted/30",
+          "w-full flex items-center gap-2 px-3 py-2.5 text-xs font-medium transition-colors cursor-pointer select-none",
+          expanded 
+            ? "bg-gradient-to-r from-muted/50 to-transparent border-b border-border/30" 
+            : "hover:bg-muted/30",
           muted && "text-muted-foreground"
         )}
       >
-        {expanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-        <span className="text-muted-foreground">{icon}</span>
-        <span>{title}</span>
-        {warning && <AlertCircle className="w-3 h-3 text-warning ml-1" />}
-        {count && <span className="ml-auto text-[10px] text-muted-foreground font-mono">{count}</span>}
-        {onSelectAll && (
+        <span className={cn(
+          "transition-transform duration-200",
+          expanded && "rotate-0",
+          !expanded && "-rotate-90"
+        )}>
+          <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+        </span>
+        <span className={cn(expanded && "text-primary")}>{icon}</span>
+        <span className="font-semibold tracking-wide">{title}</span>
+        {warning && <AlertCircle className="w-3 h-3 text-amber-500 ml-1" />}
+        {count && (
+          <span className="ml-auto text-[10px] text-muted-foreground font-mono bg-muted/50 px-1.5 py-0.5 rounded">
+            {count}
+          </span>
+        )}
+        {onSelectAll && expanded && (
           <button
             onClick={(e) => { e.stopPropagation(); onSelectAll(); }}
-            className="text-[10px] text-muted-foreground hover:text-primary ml-1 px-1.5 py-0.5 rounded hover:bg-primary/10 transition-colors"
+            className="text-[10px] text-muted-foreground hover:text-primary px-1.5 py-0.5 rounded hover:bg-primary/10 transition-colors"
           >
             all
           </button>
@@ -619,7 +623,7 @@ function Section({ title, icon, expanded, onToggle, onSelectAll, count, muted, w
             transition={{ duration: 0.15 }}
             className="overflow-hidden"
           >
-            <div className="pl-3 py-1.5">{children}</div>
+            <div className="p-2 space-y-0.5">{children}</div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -646,7 +650,7 @@ function TreeItem({ label, selected, onToggle, mono, badge, badgeColor, disabled
     const parts = text.split(new RegExp(`(${query})`, 'gi'));
     return parts.map((part, i) =>
       part.toLowerCase() === query.toLowerCase()
-        ? <span key={i} className="search-match">{part}</span>
+        ? <span key={i} className="bg-primary/30 text-foreground rounded px-0.5">{part}</span>
         : part
     );
   };
@@ -674,20 +678,20 @@ function TreeItem({ label, selected, onToggle, mono, badge, badgeColor, disabled
       onClick={disabled ? undefined : onToggle}
       disabled={disabled}
       className={cn(
-        "w-full flex items-center gap-2.5 py-2 px-2.5 text-xs rounded-md transition-all",
+        "group w-full flex items-center gap-2.5 py-2 px-2.5 text-xs rounded-md transition-all duration-150",
         disabled && "opacity-40 cursor-not-allowed",
         !disabled && selected && "bg-primary/10 text-foreground border border-primary/20",
-        !disabled && !selected && "text-muted-foreground hover:text-foreground hover:bg-muted/30 border border-transparent"
+        !disabled && !selected && "text-muted-foreground hover:text-foreground hover:bg-muted/40 border border-transparent hover:border-border/50"
       )}
     >
-      {indicator && <div className={cn("w-1 h-4 rounded-full", indicator)} />}
+      {indicator && <div className={cn("w-1.5 h-4 rounded-full transition-all", indicator, selected && "scale-110")} />}
       <div className={cn(
         "w-4 h-4 rounded border flex items-center justify-center transition-all",
-        selected ? "bg-primary border-primary" : "border-border hover:border-muted-foreground/50"
+        selected ? "bg-primary border-primary" : "border-border group-hover:border-muted-foreground/50"
       )}>
         {selected && <Check className="w-3 h-3 text-primary-foreground" />}
       </div>
-      <span className={cn(mono && "font-mono")}>{highlightText(label, highlight || "")}</span>
+      <span className={cn(mono && "font-mono font-medium")}>{highlightText(label, highlight || "")}</span>
       {badge && (
         <span className={cn(
           "ml-auto text-[9px] px-1.5 py-0.5 rounded-md font-medium",
@@ -733,13 +737,13 @@ function CategoryItem({ label, icon, selected, onSelect, color, compact }: Categ
     <button
       onClick={onSelect}
       className={cn(
-        "w-full flex items-center gap-3 py-2 px-3 text-xs rounded-md transition-all",
+        "group w-full flex items-center gap-3 py-2.5 px-3 text-xs rounded-md transition-all",
         selected
           ? "bg-primary/10 text-foreground border border-primary/20"
-          : "text-muted-foreground hover:text-foreground hover:bg-muted/30 border border-transparent"
+          : "text-muted-foreground hover:text-foreground hover:bg-muted/40 border border-transparent hover:border-border/50"
       )}
     >
-      <div className={cn(selected ? "text-primary" : "text-muted-foreground", color)}>
+      <div className={cn(selected ? "text-primary" : "text-muted-foreground group-hover:text-foreground", color)}>
         {icon}
       </div>
       <span className="font-medium">{label}</span>
@@ -748,7 +752,7 @@ function CategoryItem({ label, icon, selected, onSelect, color, compact }: Categ
   );
 }
 
-// Visual Change Review Inline Component - Advanced UI for reviewing changes
+// Visual Change Review Inline Component - Uses AggregatedChangeReview for scalability
 function VisualChangeReviewInline({
   plan,
   onConfirm,
@@ -758,298 +762,12 @@ function VisualChangeReviewInline({
   onConfirm?: () => void;
   onCancel?: () => void;
 }) {
-  const [approvedIndices, setApprovedIndices] = useState<Set<number>>(() => new Set(plan.preview.map((_, i) => i)));
-  const [rejectedIndices, setRejectedIndices] = useState<Set<number>>(new Set());
-  const [showRiskDetails, setShowRiskDetails] = useState(false);
-
-  const totalChanges = plan.preview.length;
-  const approvedCount = approvedIndices.size;
-  const rejectedCount = rejectedIndices.size;
-  const pendingCount = totalChanges - approvedCount - rejectedCount;
-
-  const handleApprove = (index: number) => {
-    setApprovedIndices(prev => new Set([...prev, index]));
-    setRejectedIndices(prev => {
-      const next = new Set(prev);
-      next.delete(index);
-      return next;
-    });
-  };
-
-  const handleReject = (index: number) => {
-    setRejectedIndices(prev => new Set([...prev, index]));
-    setApprovedIndices(prev => {
-      const next = new Set(prev);
-      next.delete(index);
-      return next;
-    });
-  };
-
-  const handleApproveAll = () => {
-    setApprovedIndices(new Set(plan.preview.map((_, i) => i)));
-    setRejectedIndices(new Set());
-  };
-
-  const handleRejectAll = () => {
-    setRejectedIndices(new Set(plan.preview.map((_, i) => i)));
-    setApprovedIndices(new Set());
-  };
-
-  const getRiskColor = (level: string) => {
-    switch (level) {
-      case "critical": return "text-red-500 bg-red-500/10 border-red-500/20";
-      case "high": return "text-orange-500 bg-orange-500/10 border-orange-500/20";
-      case "medium": return "text-yellow-500 bg-yellow-500/10 border-yellow-500/20";
-      case "low": return "text-green-500 bg-green-500/10 border-green-500/20";
-      default: return "text-muted-foreground bg-muted border-border";
-    }
-  };
-
   return (
-    <div className="space-y-3">
-      {/* Header with Stats */}
-      <div className="flex items-center justify-between p-3 rounded-lg border border-border/60 bg-card/50">
-        <div className="flex items-center gap-3">
-          <Sparkles className="w-4 h-4 text-amber-500" />
-          <div>
-            <div className="text-xs font-semibold">Review Changes</div>
-            <div className="text-[10px] text-muted-foreground">
-              {approvedCount} accepted · {rejectedCount} rejected · {pendingCount} pending
-            </div>
-          </div>
-        </div>
-        
-        {/* Risk Badge */}
-        <button
-          onClick={() => setShowRiskDetails(!showRiskDetails)}
-          className={cn(
-            "flex items-center gap-1.5 px-2 py-1 rounded border text-[10px] font-medium transition-colors",
-            getRiskColor(plan.risk.level)
-          )}
-        >
-          <AlertTriangle className="w-3 h-3" />
-          {plan.risk.level.toUpperCase()} RISK
-        </button>
-      </div>
-
-      {/* Risk Details */}
-      <AnimatePresence>
-        {showRiskDetails && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden"
-          >
-            <div className={cn(
-              "p-3 rounded-lg border space-y-2",
-              getRiskColor(plan.risk.level)
-            )}>
-              <div className="text-[10px] font-medium">Risk Score: {plan.risk.score}/100</div>
-              {plan.risk.reasons.length > 0 && (
-                <ul className="text-[10px] space-y-1 list-disc list-inside">
-                  {plan.risk.reasons.map((reason, i) => (
-                    <li key={i}>{reason}</li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Bulk Actions */}
-      <div className="flex items-center gap-2">
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-8 text-[10px] gap-1.5"
-          onClick={handleApproveAll}
-        >
-          <CheckCheck className="w-3.5 h-3.5" />
-          Accept All
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-8 text-[10px] gap-1.5"
-          onClick={handleRejectAll}
-        >
-          <XOctagon className="w-3.5 h-3.5" />
-          Reject All
-        </Button>
-      </div>
-
-      {/* Change Cards */}
-      <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
-        <AnimatePresence mode="popLayout">
-          {plan.preview.map((change, index) => (
-            <VisualChangeCard
-              key={`${change.engine}-${change.group}-${change.field}-${index}`}
-              change={change}
-              index={index}
-              isApproved={approvedIndices.has(index) ? true : rejectedIndices.has(index) ? false : null}
-              onApprove={() => handleApprove(index)}
-              onReject={() => handleReject(index)}
-            />
-          ))}
-        </AnimatePresence>
-      </div>
-
-      {/* Footer Actions */}
-      <div className="flex items-center justify-between pt-2 border-t border-border/60">
-        <Button
-          size="sm"
-          variant="ghost"
-          className="h-8 text-[10px]"
-          onClick={onCancel}
-        >
-          Cancel
-        </Button>
-        <Button
-          size="sm"
-          className="h-8 text-[10px] gap-1.5 bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-400 hover:to-emerald-400"
-          onClick={onConfirm}
-          disabled={approvedCount === 0}
-        >
-          <Check className="w-3.5 h-3.5" />
-          Apply {approvedCount} Changes
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-// Visual Change Card Component
-function VisualChangeCard({
-  change,
-  index,
-  isApproved,
-  onApprove,
-  onReject
-}: {
-  change: ChangePreview;
-  index: number;
-  isApproved: boolean | null;
-  onApprove: () => void;
-  onReject: () => void;
-}) {
-  const delta = change.delta || 0;
-  const deltaPercent = change.deltaPercent || 0;
-  const isIncrease = delta > 0;
-  const isDecrease = delta < 0;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: 20 }}
-      className={cn(
-        "relative rounded-lg border p-3 transition-all",
-        isApproved === true && "border-green-500/50 bg-green-500/5",
-        isApproved === false && "border-red-500/50 bg-red-500/5 opacity-60",
-        isApproved === null && "border-border/60 bg-card/40 hover:border-border"
-      )}
-    >
-      {/* Header */}
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <span className="flex items-center gap-1 text-[10px] font-mono text-muted-foreground">
-            <Hash className="w-3 h-3" />
-            {index + 1}
-          </span>
-          <div className="flex items-center gap-1.5">
-            <Target className="w-3 h-3 text-primary" />
-            <span className="text-xs font-medium">{change.logic}</span>
-            <span className="text-[10px] text-muted-foreground">G{change.group}</span>
-          </div>
-        </div>
-        
-        {/* Status Badge */}
-        {isApproved === true && (
-          <span className="flex items-center gap-1 text-[10px] text-green-500 font-medium">
-            <Check className="w-3 h-3" /> Accepted
-          </span>
-        )}
-        {isApproved === false && (
-          <span className="flex items-center gap-1 text-[10px] text-red-500 font-medium">
-            <X className="w-3 h-3" /> Rejected
-          </span>
-        )}
-      </div>
-
-      {/* Change Display */}
-      <div className="flex items-center gap-3 py-2">
-        {/* Old Value */}
-        <div className="flex-1 min-w-0">
-          <div className="text-[9px] text-muted-foreground uppercase tracking-wide mb-1">Current</div>
-          <div className="text-sm font-mono text-muted-foreground line-through decoration-red-400/50">
-            {change.currentValue}
-          </div>
-        </div>
-
-        {/* Arrow & Delta */}
-        <div className="flex flex-col items-center">
-          <ArrowRightLeft className="w-4 h-4 text-muted-foreground/50" />
-          {(isIncrease || isDecrease) && (
-            <div className={cn(
-              "flex items-center gap-0.5 text-[9px] font-medium mt-1",
-              isIncrease ? "text-green-500" : "text-red-500"
-            )}>
-              {isIncrease ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-              {Math.abs(deltaPercent).toFixed(1)}%
-            </div>
-          )}
-        </div>
-
-        {/* New Value */}
-        <div className="flex-1 min-w-0">
-          <div className="text-[9px] text-primary uppercase tracking-wide mb-1">New</div>
-          <div className="text-sm font-mono text-foreground">
-            {change.newValue}
-          </div>
-        </div>
-      </div>
-
-      {/* Field Label */}
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] text-muted-foreground font-medium bg-muted/30 px-2 py-0.5 rounded">
-          {change.field}
-        </span>
-        
-        {/* Action Buttons */}
-        {isApproved === null && (
-          <div className="flex items-center gap-1">
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-7 w-7 hover:bg-green-500/10 hover:text-green-500"
-              onClick={onApprove}
-            >
-              <Check className="w-4 h-4" />
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-7 w-7 hover:bg-red-500/10 hover:text-red-500"
-              onClick={onReject}
-            >
-              <X className="w-4 h-4" />
-            </Button>
-          </div>
-        )}
-        
-        {isApproved !== null && (
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-7 text-[10px]"
-            onClick={() => isApproved === true ? onReject() : onApprove()}
-          >
-            {isApproved === true ? "Undo Accept" : "Undo Reject"}
-          </Button>
-        )}
-      </div>
-    </motion.div>
+    <AggregatedChangeReview
+      plan={plan}
+      onConfirm={onConfirm || (() => {})}
+      onCancel={onCancel}
+      aggregationThreshold={50}
+    />
   );
 }

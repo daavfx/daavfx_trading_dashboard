@@ -192,6 +192,28 @@ function Index() {
     groups: string[];
     logics: string[];
   }>({ engines: [], groups: [], logics: [] });
+
+  // Command history for sidebar-chat integration
+  const [commandHistory, setCommandHistory] = useState<Array<{
+    id: string;
+    command: string;
+    timestamp: Date;
+    status: 'pending' | 'applied' | 'cancelled' | 'error';
+    changesCount?: number;
+  }>>([]);
+
+  // Stats for sidebar
+  const [chatStats, setChatStats] = useState<{
+    totalChangesApplied: number;
+    commandsToday: number;
+    snapshotsCount: number;
+    lastCommandAt: Date | null;
+  }>({
+    totalChangesApplied: 0,
+    commandsToday: 0,
+    snapshotsCount: 0,
+    lastCommandAt: null,
+  });
   const [vaultSaveDraft, setVaultSaveDraft] = useState<{
     name: string;
     category: string;
@@ -908,12 +930,47 @@ function Index() {
                   });
                   handleSaveConfig(newConfig);
                   setChatLastAppliedPreview(chatPendingPlan.preview);
+                  
+                  // Add to command history
+                  const newHistoryItem = {
+                    id: `cmd-${Date.now()}`,
+                    command: chatPendingPlan.description || 'Apply changes',
+                    timestamp: new Date(),
+                    status: 'applied' as const,
+                    changesCount: chatPendingPlan.preview.length,
+                  };
+                  setCommandHistory(prev => [...prev, newHistoryItem].slice(-50));
+                  
+                  // Update stats
+                  setChatStats(prev => ({
+                    totalChangesApplied: prev.totalChangesApplied + chatPendingPlan.preview.length,
+                    commandsToday: prev.commandsToday + 1,
+                    snapshotsCount: prev.snapshotsCount,
+                    lastCommandAt: new Date(),
+                  }));
+                  
                   setChatPendingPlan(null);
                   toast.success(`Applied ${chatPendingPlan.preview.length} changes`);
                 }
               }}
               onCancelPlan={() => {
+                if (chatPendingPlan) {
+                  // Add to command history as cancelled
+                  const newHistoryItem = {
+                    id: `cmd-${Date.now()}`,
+                    command: chatPendingPlan.description || 'Apply changes',
+                    timestamp: new Date(),
+                    status: 'cancelled' as const,
+                  };
+                  setCommandHistory(prev => [...prev, newHistoryItem].slice(-50));
+                }
                 setChatPendingPlan(null);
+              }}
+              commandHistory={commandHistory}
+              stats={chatStats}
+              onCommandClick={(command) => {
+                // Push the command to the chat input
+                pushChatCommand(command);
               }}
             />
           </ResizablePanel>
@@ -932,7 +989,7 @@ function Index() {
               viewMode === "grouping" ||
               viewMode === "collaboration"
                 ? 82
-                : viewMode === "batch"
+                : viewMode === "chat"
                   ? 50
                   : 62
             }
@@ -1133,7 +1190,7 @@ function Index() {
                         </div>
                       )}
 
-                      {viewMode === "batch" && (
+                      {viewMode === "chat" && (
                         <div className="mt-4">
                           <BatchEditTab
                             platform={platform}
@@ -1219,7 +1276,7 @@ function Index() {
             )}
           </ResizablePanel>
 
-          {viewMode !== "batch" &&
+          {viewMode !== "chat" &&
             viewMode !== "save_config" &&
             viewMode !== "vault" &&
             viewMode !== "version-control" &&
@@ -1227,7 +1284,7 @@ function Index() {
             viewMode !== "undo-redo" &&
             viewMode !== "memory" &&
             viewMode !== "grouping" &&
-            viewMode !== "collaboration" && viewMode !== "batch" && (
+            viewMode !== "collaboration" && viewMode !== "chat" && (
               <>
                 <ResizableHandle withHandle />
 
@@ -1257,8 +1314,8 @@ function Index() {
               </>
             )}
 
-          {/* Quick Changes Sidebar for Chat/Batch mode - Advanced change review UI */}
-          {viewMode === "batch" && (
+          {/* Quick Changes Sidebar for Chat mode - Advanced change review UI */}
+          {viewMode === "chat" && (
             <>
               <ResizableHandle withHandle />
               
