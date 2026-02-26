@@ -1,0 +1,67 @@
+---
+source: tests/semantic_tests.rs
+assertion_line: 22
+expression: result
+---
+{
+  "input": "50% more aggressive for group 1",
+  "parsed": {
+    "command_type": "semantic",
+    "target": {
+      "groups": [
+        1
+      ]
+    },
+    "params": {},
+    "semantic": {
+      "description": "Increase aggressiveness by 50%",
+      "operations": [
+        {
+          "field": "multiplier",
+          "op": "scale",
+          "factor": 1.5
+        },
+        {
+          "field": "initial_lot",
+          "op": "scale",
+          "factor": 1.5
+        },
+        {
+          "field": "grid",
+          "op": "scale",
+          "factor": 0.6666666666666666
+        }
+      ]
+    }
+  },
+  "result": {
+    "success": true,
+    "message": "[SEMANTIC PREVIEW] Increase aggressiveness by 50%",
+    "preview": {
+      "description": "Increase aggressiveness by 50%",
+      "operations": [
+        {
+          "factor": 1.5,
+          "field": "multiplier",
+          "op": "scale"
+        },
+        {
+          "factor": 1.5,
+          "field": "initial_lot",
+          "op": "scale"
+        },
+        {
+          "factor": 0.6666666666666666,
+          "field": "grid",
+          "op": "scale"
+        }
+      ],
+      "target": {
+        "groups": [
+          1
+        ]
+      }
+    }
+  },
+  "status": "pass"
+}

@@ -1,0 +1,25 @@
+---
+source: tests/semantic_tests.rs
+assertion_line: 172
+expression: result
+---
+{
+  "input": "enable reverse for group 1",
+  "parsed": {
+    "command_type": "set",
+    "target": {
+      "groups": [
+        1
+      ],
+      "field": "reverse_enabled"
+    },
+    "params": {
+      "value": true
+    }
+  },
+  "result": {
+    "success": true,
+    "message": "Set Some(\"reverse_enabled\") = Some(Bool(true))"
+  },
+  "status": "pass"
+}

@@ -1,0 +1,67 @@
+---
+source: tests/semantic_tests.rs
+assertion_line: 96
+expression: result
+---
+{
+  "input": "play it safe for group 1",
+  "parsed": {
+    "command_type": "semantic",
+    "target": {
+      "groups": [
+        1
+      ]
+    },
+    "params": {},
+    "semantic": {
+      "description": "Apply conservative preset (-30% mult, -20% lot, +40% grid)",
+      "operations": [
+        {
+          "field": "multiplier",
+          "op": "scale",
+          "factor": 0.7
+        },
+        {
+          "field": "initial_lot",
+          "op": "scale",
+          "factor": 0.8
+        },
+        {
+          "field": "grid",
+          "op": "scale",
+          "factor": 1.4
+        }
+      ]
+    }
+  },
+  "result": {
+    "success": true,
+    "message": "[SEMANTIC PREVIEW] Apply conservative preset (-30% mult, -20% lot, +40% grid)",
+    "preview": {
+      "description": "Apply conservative preset (-30% mult, -20% lot, +40% grid)",
+      "operations": [
+        {
+          "factor": 0.7,
+          "field": "multiplier",
+          "op": "scale"
+        },
+        {
+          "factor": 0.8,
+          "field": "initial_lot",
+          "op": "scale"
+        },
+        {
+          "factor": 1.4,
+          "field": "grid",
+          "op": "scale"
+        }
+      ],
+      "target": {
+        "groups": [
+          1
+        ]
+      }
+    }
+  },
+  "status": "pass"
+}

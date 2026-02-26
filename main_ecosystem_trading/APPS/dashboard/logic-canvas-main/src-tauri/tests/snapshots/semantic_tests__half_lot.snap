@@ -1,0 +1,43 @@
+---
+source: tests/semantic_tests.rs
+assertion_line: 62
+expression: result
+---
+{
+  "input": "half the lot",
+  "parsed": {
+    "command_type": "semantic",
+    "target": {
+      "field": "initial_lot"
+    },
+    "params": {},
+    "semantic": {
+      "description": "Halve initial_lot",
+      "operations": [
+        {
+          "field": "initial_lot",
+          "op": "scale",
+          "factor": 0.5
+        }
+      ]
+    }
+  },
+  "result": {
+    "success": true,
+    "message": "[SEMANTIC PREVIEW] Halve initial_lot",
+    "preview": {
+      "description": "Halve initial_lot",
+      "operations": [
+        {
+          "factor": 0.5,
+          "field": "initial_lot",
+          "op": "scale"
+        }
+      ],
+      "target": {
+        "field": "initial_lot"
+      }
+    }
+  },
+  "status": "pass"
+}

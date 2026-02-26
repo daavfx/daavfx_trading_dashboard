@@ -1,0 +1,57 @@
+---
+source: tests/semantic_tests.rs
+assertion_line: 68
+expression: result
+---
+{
+  "input": "halve the grid for group 1-5",
+  "parsed": {
+    "command_type": "semantic",
+    "target": {
+      "groups": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "field": "grid"
+    },
+    "params": {},
+    "semantic": {
+      "description": "Halve grid",
+      "operations": [
+        {
+          "field": "grid",
+          "op": "scale",
+          "factor": 0.5
+        }
+      ]
+    }
+  },
+  "result": {
+    "success": true,
+    "message": "[SEMANTIC PREVIEW] Halve grid",
+    "preview": {
+      "description": "Halve grid",
+      "operations": [
+        {
+          "factor": 0.5,
+          "field": "grid",
+          "op": "scale"
+        }
+      ],
+      "target": {
+        "field": "grid",
+        "groups": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      }
+    }
+  },
+  "status": "pass"
+}
