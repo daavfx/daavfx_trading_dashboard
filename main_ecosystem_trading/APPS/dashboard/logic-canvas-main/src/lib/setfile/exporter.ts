@@ -172,9 +172,20 @@ function breakevenModeToInt(mode: string): number {
 
 // Resolve logic suffix based on engine and logic name
 function getLogicSuffix(engineId: "A" | "B" | "C", logicName: string): string {
-  const key = engineId === "A" ? logicName : (engineId + logicName) as keyof typeof LOGIC_SUFFIX_MAP;
+  // Normalize: "BPOWER" -> "BPower", "BREPOWER" -> "BRepower" etc.
+  let normalizedLogic = logicName;
+  if (engineId !== "A") {
+    const prefix = engineId; // "B" or "C"
+    // Check if already prefixed (e.g., "BPOWER") and convert to camelCase ("BPower")
+    if (logicName.startsWith(prefix)) {
+      // "BPOWER" -> "BPower", "BREPOWER" -> "BRepower"
+      const rest = logicName.slice(1);
+      normalizedLogic = prefix + rest.charAt(0).toUpperCase() + rest.slice(1).toLowerCase();
+    }
+  }
+  const key = engineId === "A" ? normalizedLogic : (engineId + normalizedLogic);
   const mapped = (LOGIC_SUFFIX_MAP as any)[key];
-  return mapped?.suffix || (LOGIC_SUFFIX_MAP[logicName]?.suffix ?? "AP");
+  return mapped?.suffix || (LOGIC_SUFFIX_MAP[normalizedLogic]?.suffix ?? "AP");
 }
 
 // Export logic config to setfile entries

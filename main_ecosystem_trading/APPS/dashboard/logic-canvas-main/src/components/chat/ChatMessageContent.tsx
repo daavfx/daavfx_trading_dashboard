@@ -2,7 +2,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   ChevronDown, ChevronRight, Copy, Check, ArrowRight, Eye, Pencil, Sparkles, Zap, AlertTriangle,
-  Search, Sliders, TrendingUp, ShieldAlert, Terminal, Command, FileJson, FileText, X
+  Search, Sliders, TrendingUp, ShieldAlert, Terminal, Command, FileJson, FileText, X, Camera
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -64,6 +64,12 @@ export function ChatMessageContent({ message, onSend, onNavigate, onCompose }: C
     return <SemanticPreviewRenderer content={message.content} onSend={onSend} />;
   }
 
+  // Handle help message - must check BEFORE Transaction Plan
+  // because help message contains "Transaction Plan" text in the "apply / cancel" line
+  if (message.content.includes("Command guide:")) {
+    return <HelpRenderer content={message.content} />;
+  }
+
   // Handle plan previews or other structured content if added later
   // For now, check if content looks like a plan (heuristic)
   if (message.content.includes("Transaction Plan")) {
@@ -75,10 +81,7 @@ export function ChatMessageContent({ message, onSend, onNavigate, onCompose }: C
     return <SnapshotRenderer content={message.content} />;
   }
 
-  // Handle help message
-  if (message.content.includes("Command guide:")) {
-    return <HelpRenderer content={message.content} />;
-  }
+  // Handle help message (legacy check, kept for backwards compatibility)
 
   // Handle error/vague messages
   if (message.content.includes("Target too vague") || message.content.includes("Missing field") || message.content.startsWith("Error:")) {
@@ -121,10 +124,7 @@ function ChangesRenderer({ result }: { result: CommandResult }) {
     <div className="space-y-3 w-full max-w-full overflow-hidden">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <ResultStatus type="success" />
-          <span className="text-xs font-semibold">
-            {count} change{count !== 1 ? 's' : ''} applied
-          </span>
+          <ResultStatus success={true} message={`${count} change${count !== 1 ? 's' : ''} applied`} />
         </div>
         {count > 5 && (
           <button
@@ -422,8 +422,7 @@ function SemanticPreviewRenderer({ content, onSend }: { content: string, onSend?
     <div className="space-y-4 w-full max-w-full overflow-hidden">
       <SemanticPreviewPanel
         description={description.replace(/\*\*/g, '')}
-        confidence={85}
-        previewItems={[]}
+        operations={[]}
       />
 
       {onSend && (

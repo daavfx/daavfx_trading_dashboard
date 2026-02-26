@@ -54,6 +54,10 @@ export interface SettingsState {
   showParameterTooltips: boolean;
   gridLines: boolean;
   
+  // Favorites
+  favoriteFields: string[];
+  checkedFavorites: string[];
+  
   // Chat & Transactions
   autoApproveTransactions: boolean;
   
@@ -120,6 +124,10 @@ export const defaultSettings: SettingsState = {
   compactLogicView: false,
   showParameterTooltips: true,
   gridLines: true,
+  
+  // Favorites
+  favoriteFields: [],
+  checkedFavorites: [],
   
   // Chat & Transactions
   autoApproveTransactions: false,

@@ -204,6 +204,12 @@ export function Sidebar({
       "h-full border-r border-border bg-sidebar flex flex-col border-l-2 transition-all duration-200",
       sidebarBorderClass
     )}>
+      {/* LEFT SIDEBAR TITLE - Navigation & Changes Panel */}
+      <div className="px-4 py-3 border-b border-border bg-gradient-to-r from-sidebar/50 to-sidebar">
+        <span className="text-xs font-bold text-foreground tracking-wide">LEFT PANEL</span>
+        <span className="text-[10px] text-muted-foreground ml-2">Navigation</span>
+      </div>
+
       {/* View Mode Toggle - Pill Style */}
       <div className={cn("p-3 border-b border-border", isCompact && "p-2")}>
         <div className={cn(
@@ -277,7 +283,6 @@ export function Sidebar({
       {/* Collapse/Expand All */}
       {!isCompact && viewMode !== "chat" && viewMode !== "general" && (
         <div className="px-3 py-2 border-b border-border/50 flex items-center justify-between">
-          <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Navigation</span>
           <div className="flex gap-1">
             <button
               onClick={expandAll}

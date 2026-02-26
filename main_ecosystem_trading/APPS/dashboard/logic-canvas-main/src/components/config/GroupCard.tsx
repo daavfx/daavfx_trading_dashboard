@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronRight, Layers } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -35,6 +35,17 @@ export function GroupCard({
     ? allLogics.filter((l) => selectedLogics.includes(l))
     : allLogics;
 
+  // Prefix logic names with B or C for Engine B and C
+  const enginePrefix = engine === "Engine B" ? "B" : engine === "Engine C" ? "C" : "";
+  const prefixedLogics = enginePrefix
+    ? logics.map(l => enginePrefix + l)
+    : logics;
+
+  // Initialize expandedLogics with prefixed names
+  useEffect(() => {
+    setExpandedLogics(prefixedLogics);
+  }, [engine]);
+
   const [expanded, setExpanded] = useState(true);
   const [expandedLogics, setExpandedLogics] = useState<string[]>([...logics]);
   const groupNum = parseInt(group.replace("Group ", ""));
@@ -46,7 +57,7 @@ export function GroupCard({
     );
   };
 
-  const expandAllLogics = () => setExpandedLogics([...logics]);
+  const expandAllLogics = () => setExpandedLogics([...prefixedLogics]);
   const collapseAllLogics = () => setExpandedLogics([]);
 
   const prefix = engine.replace("Engine ", "").toLowerCase();
@@ -86,7 +97,7 @@ export function GroupCard({
         </div>
         <div className="flex items-center gap-2">
           <span className="text-[10px] text-muted-foreground">
-            {logics.length} logic{logics.length > 1 ? "s" : ""}
+            {prefixedLogics.length} logic{prefixedLogics.length > 1 ? "s" : ""}
           </span>
           <Layers className="w-3.5 h-3.5 text-muted-foreground" />
         </div>
@@ -104,7 +115,7 @@ export function GroupCard({
             <div className="px-4 pb-4 space-y-2">
               <div className="flex items-center justify-between py-2 border-b border-border/40">
                 <span className="text-[10px] text-muted-foreground">
-                  {expandedLogics.length}/{logics.length} logics expanded
+                  {expandedLogics.length}/{prefixedLogics.length} logics expanded
                 </span>
                 <div className="flex gap-1">
                   <button
@@ -122,7 +133,7 @@ export function GroupCard({
                 </div>
               </div>
 
-              {logics.map((logic) => {
+              {prefixedLogics.map((logic) => {
                 const foundLogicConfig = engineData?.groups
                   ?.find((g: any) => g.group_number === groupNum)
                   ?.logics.find((l: any) => l.logic_name?.toUpperCase() === logic);

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronRight, Copy, RotateCcw, GitCompare, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -55,13 +55,24 @@ export function EngineCard({
       ? allLogics.filter((l) => selectedLogics.includes(l))
       : allLogics;
 
+  // Prefix logic names with B or C for Engine B and C
+  const enginePrefix = engine === "Engine B" ? "B" : engine === "Engine C" ? "C" : "";
+  const prefixedLogics = enginePrefix
+    ? logics.map(l => enginePrefix + l)
+    : logics;
+
+  // Initialize expandedLogics with prefixed names
+  useEffect(() => {
+    setExpandedLogics(prefixedLogics);
+  }, [engine]);
+
   const toggleLogic = (logic: string) => {
     setExpandedLogics((prev) =>
       prev.includes(logic) ? prev.filter((l) => l !== logic) : [...prev, logic],
     );
   };
 
-  const expandAllLogics = () => setExpandedLogics([...logics]);
+  const expandAllLogics = () => setExpandedLogics([...prefixedLogics]);
   const collapseAllLogics = () => setExpandedLogics([]);
 
   const isEngineA = engine === "Engine A";
@@ -146,7 +157,7 @@ export function EngineCard({
                 {groups.map((group) => {
                   const groupNum = parseInt(group.replace("Group ", ""));
                   
-                  return logics.map((logic) => {
+                  return prefixedLogics.map((logic) => {
                     const foundLogicConfig = engineData?.groups
                       .find((g: any) => g.group_number === groupNum)
                       ?.logics.find(

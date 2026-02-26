@@ -32,6 +32,7 @@ interface LogicConfig {
   logic_name: string;
   initial_lot: number;
   last_lot?: number;
+  start_level?: number;
   multiplier: number;
   grid: number;
   trail_method?: string;
@@ -418,6 +419,36 @@ const CounterTrendAndReverseUI = ({
               className="bg-background/50"
             />
           </LabeledField>
+          {localConfig.logic_name && !localConfig.logic_name.toUpperCase().includes("POWER") && (
+            <LabeledField label="Start Level" hint="Order count to start">
+              <Input
+                type="number"
+                value={localConfig.start_level || 0}
+                onChange={(e) =>
+                  handleChange("start_level", parseInt(e.target.value) || 0)
+                }
+                step={1}
+                min={0}
+                max={20}
+                className="bg-background/50"
+              />
+            </LabeledField>
+          )}
+          {(localConfig.logic_name && localConfig.logic_name.toUpperCase().includes("POWER") && localConfig.engine && localConfig.engine.toUpperCase() !== "A") && (
+            <LabeledField label="Start Level" hint="Order count to start">
+              <Input
+                type="number"
+                value={localConfig.start_level || 0}
+                onChange={(e) =>
+                  handleChange("start_level", parseInt(e.target.value) || 0)
+                }
+                step={1}
+                min={0}
+                max={20}
+                className="bg-background/50"
+              />
+            </LabeledField>
+          )}
           <LabeledField label="Multiplier">
             <Input
               type="number"

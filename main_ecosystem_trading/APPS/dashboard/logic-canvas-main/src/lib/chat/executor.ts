@@ -9,7 +9,7 @@ import type {
   ProgressionType,
   TransactionPlan
 } from "./types";
-import type { MTConfig, EngineConfig, GroupConfig, LogicConfig, TrailMethod, TrailStepMethod, TrailStepMode, TPSLMode, PartialMode, PartialBalance, LogicReference } from "@/types/mt-config";
+import type { MTConfig, MTConfigComplete, EngineConfig, GroupConfig, LogicConfig, TrailMethod, TrailStepMethod, TrailStepMode, TPSLMode, PartialMode, PartialBalance, LogicReference, GeneralConfig } from "@/types/mt-config";
 import {
   createProgressionPlan,
   createSetPlan,
@@ -20,6 +20,7 @@ import { computeSetChanges, applySetContent, diffSetContents } from "@/lib/setfi
 import { exportToSetFileWithDirections } from "@/lib/setfile/exporter";
 import { calculateProgression, validateForMT4 } from "./math";
 import { applyOperation, clampToBounds, type SemanticCommand } from "./semanticEngine";
+import { resolveValue, getValidSemanticValues, fieldAcceptsSemantic } from "./semantic-resolver";
 import { getVersionControlManager } from "@/lib/version-control/manager";
 import { getUndoRedoManager } from "@/lib/undo-redo/manager";
 import { getMemorySystemManager } from "@/lib/memory-system/manager";
@@ -49,7 +50,7 @@ export class CommandExecutor {
       return { success: false, message: "Missing .set content. Include it between triple backticks (``` ... ```)." };
     }
 
-    const previews = computeSetChanges(this.config, content);
+    const previews = computeSetChanges(this.config as MTConfigComplete, content);
     if (previews.length === 0) {
       return { success: false, message: "No differences detected between current config and provided .set content" };
     }
@@ -77,7 +78,7 @@ export class CommandExecutor {
     };
 
     // Round-trip verification
-    const simulated = applySetContent(this.config, content);
+    const simulated = applySetContent(this.config as MTConfigComplete, content);
     const regenerated = exportToSetFileWithDirections(simulated);
     const roundTrip = diffSetContents(content, regenerated);
 
@@ -219,7 +220,6 @@ export class CommandExecutor {
           before: change.oldValue,
           after: change.newValue,
           description: `${change.field}: ${change.oldValue} → ${change.newValue} (${change.logic} G${change.group})`,
-          timestamp: Date.now(),
         });
       } catch (e) {
         console.warn("[UndoRedo] Failed to record operation:", e);
@@ -241,10 +241,7 @@ export class CommandExecutor {
             logicName: c.logic,
           })),
           {
-            commandType: plan.type,
             description: plan.description,
-            changeCount: changes.length,
-            riskLevel: plan.risk?.level,
           }
         );
       } catch (e) {
@@ -281,6 +278,9 @@ export class CommandExecutor {
       magic_number_buy: 777,
       magic_number_sell: 8988,
       max_slippage_points: 30,
+      reverse_magic_base: 1000,
+      hedge_magic_base: 2000,
+      hedge_magic_independent: false,
       risk_management: {
         spread_filter_enabled: false,
         max_spread_points: 25,
@@ -377,10 +377,10 @@ export class CommandExecutor {
 
           const withLogicSpecific: LogicConfig = {
             ...base,
-            ...(isPower
+            ...(isPower && engineId === "A"
               ? {}
               : {
-                start_level: 4,
+                start_level: isPower ? 5 : 4,
                 last_lot: 0.12,
               }),
             ...(g === 1
@@ -925,12 +925,27 @@ export class CommandExecutor {
       };
     }
 
-    const numValue = typeof value === "number" ? value : parseFloat(value);
+    // Use semantic resolver for INVARIANT GUARD
+    // This prevents type errors and provides clear error messages
+    let numValue: number;
+    try {
+      numValue = resolveValue(value, field);
+    } catch (error: any) {
+      // Provide helpful suggestions
+      const validSemantics = getValidSemanticValues(field);
+      const suggestion = validSemantics.length > 0 
+        ? `\n\n💡 Try: ${validSemantics.slice(0, 5).join(', ')}${validSemantics.length > 5 ? '...' : ''} or a number`
+        : "\n\n💡 Use a numeric value.";
+      return { 
+        success: false, 
+        message: `❌ ${error.message}${suggestion}`
+      };
+    }
 
     try {
       const plan = createSetPlan(this.config!, {
         field,
-        value: isNaN(numValue) ? value : numValue,
+        value: numValue,
         engines,
         groups,
         logics

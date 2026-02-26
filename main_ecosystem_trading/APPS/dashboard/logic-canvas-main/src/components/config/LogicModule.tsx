@@ -327,6 +327,15 @@ export function LogicModule({
 
   // State for field values to handle UI interactions
   const [fieldValues, setFieldValues] = useState<Record<string, any>>({});
+  
+  // Track active direction for Mode 1 (buy/sell/both)
+  const [activeDirection, setActiveDirection] = useState<'buy' | 'sell' | 'both'>('buy');
+
+  // Fields that have directional _b/_s variants
+  const directionalFields = [
+    'initial_lot', 'multiplier', 'grid', 'trail_method', 
+    'trail_value', 'trail_start', 'trail_step'
+  ];
 
   // Initialize field values only once using useRef to store initial values
   const initialFieldsRef = useRef<any[]>([]);
@@ -335,6 +344,11 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
   const initializedRef = useRef<string | null>(null);
   
   useEffect(() => {
+    // Skip if already initialized with same config (prevents reset on field changes)
+    if (initializedRef.current === logicConfigKey && Object.keys(fieldValues).length > 0) {
+      return;
+    }
+
     // Re-initialize when logicConfig changes (e.g., when loading a new setfile)
     initializedRef.current = logicConfigKey;
 
@@ -389,6 +403,30 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [logicConfig, logicConfigKey, groups, nameSafe]);
 
+  // Initialize activeDirection based on mode and allow flags
+  const initializedDirRef = useRef(false);
+  useEffect(() => {
+    if (initializedDirRef.current) return;
+    if (Object.keys(fieldValues).length === 0) return;
+    initializedDirRef.current = true;
+    
+    if (mode === 2) {
+      setActiveDirection('both');
+    } else {
+      const buyOn = fieldValues["allow_buy"] === "ON" || fieldValues["allow_buy"] === true;
+      const sellOn = fieldValues["allow_sell"] === "ON" || fieldValues["allow_sell"] === true;
+      if (buyOn && sellOn) {
+        setActiveDirection('buy'); // Default to buy in mode 1
+      } else if (buyOn) {
+        setActiveDirection('buy');
+      } else if (sellOn) {
+        setActiveDirection('sell');
+      } else {
+        setActiveDirection('buy');
+      }
+    }
+  }, [fieldValues, mode]);
+
   const prevModeRef = useRef(mode);
   
   useEffect(() => {
@@ -425,6 +463,32 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 
+  // Load direction-specific values when activeDirection changes (Mode 1)
+  const prevDirectionRef = useRef(activeDirection);
+  useEffect(() => {
+    if (prevDirectionRef.current === activeDirection) return;
+    if (Object.keys(fieldValues).length === 0) return;
+    if (mode === 2) return; // Mode 2 uses unified values
+    
+    prevDirectionRef.current = activeDirection;
+    
+    const config = logicConfig || {};
+    const dirSuffix = activeDirection === 'buy' ? '_b' : (activeDirection === 'sell' ? '_s' : '');
+    
+    // Load direction-specific values into fieldValues
+    const dirUpdates: Record<string, any> = {};
+    directionalFields.forEach(field => {
+      const dirValue = dirSuffix ? config[field + dirSuffix] : config[field];
+      if (dirValue !== undefined) {
+        dirUpdates[field] = dirValue;
+      }
+    });
+    
+    if (Object.keys(dirUpdates).length > 0) {
+      setFieldValues(prev => ({ ...prev, ...dirUpdates }));
+    }
+  }, [activeDirection, mode]);
+
   if (!engineSafe || !nameSafe) {
     return null;
   }
@@ -446,9 +510,15 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
       }
     }
 
+    // Mode 1: Save directional fields to _b or _s variants
+    if (mode === 1 && directionalFields.includes(id) && activeDirection !== 'both') {
+      const dirSuffix = activeDirection === 'buy' ? '_b' : '_s';
+      updates[id + dirSuffix] = value;
+    }
+
     setFieldValues((prev) => ({ ...prev, ...updates }));
 
-    // Propagate changes to parent component
+    // Propagate changes to parent component (both base and directional variants)
     Object.entries(updates).forEach(([fieldId, fieldValue]) => {
       onUpdate?.(fieldId, fieldValue);
     });
@@ -615,6 +685,7 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
               {tradingMode === "Hedge" && (
                 <LogicConfigPanel
                   mode="hedge"
+                  engine={engine}
                   config={{
                     enabled:
                       fieldValues["enabled"] === "ON" ||
@@ -653,6 +724,7 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
                     partial_close:
                       fieldValues["partial_close"] === "ON" ||
                       fieldValues["partial_close"] === true,
+                    start_level: parseInt(fieldValues["start_level"]) || 0,
                   }}
                   onChange={(field, value) => {
                     // Map LogicConfigPanel field names to LogicModule field names
@@ -676,6 +748,7 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
                       trigger_pips: "trigger_pips",
                       grid_behavior: "grid_behavior",
                       partial_close: "partial_close",
+                      start_level: "start_level",
                     };
 
                     const mappedField = fieldMapping[field] || field;
@@ -931,35 +1004,23 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
                             <ToggleGroup
                               type="single"
                               value={
-                                mode === 2
-                                  ? "both"
-                                  : (fieldValues["allow_buy"] === "ON" ||
-                                        fieldValues["allow_buy"] === true) &&
-                                      (fieldValues["allow_sell"] === "ON" ||
-                                        fieldValues["allow_sell"] === true)
-                                    ? "both"
-                                    : fieldValues["allow_buy"] === "ON" ||
-                                        fieldValues["allow_buy"] === true
-                                      ? "buy"
-                                      : fieldValues["allow_sell"] === "ON" ||
-                                          fieldValues["allow_sell"] === true
-                                        ? "sell"
-                                        : mode === 1
-                                          ? "buy"
-                                          : "both"
+                                fieldValues["allow_buy"] === "ON" ||
+                                fieldValues["allow_buy"] === true
+                                  ? "buy"
+                                  : "sell"
                               }
                               onValueChange={(val) => {
                                 if (!val) return;
-                                // Mode 2: Only allow "both"
-                                if (mode === 2 && val !== "both") return;
-                                // Mode 1: Only allow "buy" or "sell"
-                                if (mode === 1 && val === "both") return;
+                                // Always only allow buy or sell
+                                if (val === "both") return;
+
+                                // Update active direction state
+                                if (val === "buy" || val === "sell") {
+                                  setActiveDirection(val);
+                                }
 
                                 const updates: Record<string, any> = {};
-                                if (val === "both") {
-                                  updates["allow_buy"] = "ON";
-                                  updates["allow_sell"] = "ON";
-                                } else if (val === "buy") {
+                                if (val === "buy") {
                                   updates["allow_buy"] = "ON";
                                   updates["allow_sell"] = "OFF";
                                 } else if (val === "sell") {
@@ -1000,17 +1061,6 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
                                 )}
                               >
                                 Sell
-                              </ToggleGroupItem>
-                              <ToggleGroupItem
-                                value="both"
-                                disabled={mode === 1}
-                                className={cn(
-                                  "flex-1 h-8 px-3 text-xs",
-                                  mode === 1 && "opacity-40 cursor-not-allowed",
-                                  "data-[state=on]:bg-blue-500/20 data-[state=on]:text-blue-500 border border-border/50 data-[state=on]:border-blue-500/30",
-                                )}
-                              >
-                                Both Sides
                               </ToggleGroupItem>
                             </ToggleGroup>
                           </div>

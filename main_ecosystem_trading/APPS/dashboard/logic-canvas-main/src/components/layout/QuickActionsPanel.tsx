@@ -29,16 +29,20 @@ import {
   Edit3,
   ChevronDown,
   ChevronUp,
-  XOctagon
+  XOctagon,
+  Star,
+  Filter
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import type { MTConfig } from "@/types/mt-config";
 import { useVersionControl } from "@/hooks/useVersionControl";
 import { ViewMode } from "@/components/layout/Sidebar";
 import type { TransactionPlan, FieldChange, ChangePreview } from "@/lib/chat/types";
+import { getFieldDisplayName } from "@/utils/input-search";
 
 interface QuickActionsPanelProps {
   config?: MTConfig | null;
@@ -54,6 +58,13 @@ interface QuickActionsPanelProps {
   onConfirmPlan?: () => void;
   onCancelPlan?: () => void;
   onUndoChanges?: () => void;
+  // Favorites props
+  favoritesOnly?: boolean;
+  onFavoritesOnlyChange?: (value: boolean) => void;
+  favoriteFields?: string[];
+  onToggleFavorite?: (fieldId: string) => void;
+  checkedFavorites?: string[];
+  onCheckedFavoritesChange?: (checked: string[]) => void;
 }
 
 export function QuickActionsPanel({
@@ -68,7 +79,13 @@ export function QuickActionsPanel({
   recentChanges = [],
   onConfirmPlan,
   onCancelPlan,
-  onUndoChanges
+  onUndoChanges,
+  favoritesOnly = false,
+  onFavoritesOnlyChange,
+  favoriteFields = [],
+  onToggleFavorite,
+  checkedFavorites = [],
+  onCheckedFavoritesChange
 }: QuickActionsPanelProps) {
   const { state, createSnapshot, restoreFromSnapshot } = useVersionControl(config || undefined);
   const snapshots = state.snapshots;
@@ -77,7 +94,8 @@ export function QuickActionsPanel({
     changes: true,
     version: true,
     vault: false,
-    history: false
+    history: false,
+    favorites: true
   });
   const [showAllChanges, setShowAllChanges] = useState(false);
 
@@ -170,6 +188,11 @@ export function QuickActionsPanel({
   if (isCollapsed) {
     return (
       <div className="h-full flex flex-col items-center py-3 gap-2 bg-background/80 backdrop-blur-xl border-l border-border/30">
+        {/* Collapsed Title */}
+        <div className="flex flex-col items-center gap-1">
+          <span className="text-[8px] font-bold text-muted-foreground tracking-wider">RIGHT</span>
+          <span className="text-[8px] text-muted-foreground">PANEL</span>
+        </div>
         <button
           onClick={onToggleCollapse}
           className="p-1.5 rounded-lg hover:bg-muted/50 transition-all duration-200 text-muted-foreground hover:text-foreground"
@@ -185,6 +208,18 @@ export function QuickActionsPanel({
               </div>
             </div>
           )}
+          <button
+            onClick={() => onFavoritesOnlyChange?.(!favoritesOnly)}
+            className={cn(
+              "p-2 rounded-lg transition-all duration-200",
+              favoritesOnly 
+                ? "bg-yellow-500/20 text-yellow-500" 
+                : "hover:bg-muted/50 text-muted-foreground hover:text-foreground"
+            )}
+            title={favoritesOnly ? "Show all (favorites filter ON)" : "Show favorites only"}
+          >
+            <Star className={cn("w-4 h-4", favoritesOnly && "fill-current")} />
+          </button>
           <button
             onClick={handleCreateSnapshot}
             disabled={!config || isCreating}
@@ -214,6 +249,12 @@ export function QuickActionsPanel({
 
   return (
     <div className="h-full flex flex-col bg-background/80 backdrop-blur-xl border-l border-border/30">
+      {/* RIGHT SIDEBAR TITLE - Quick Actions Panel */}
+      <div className="px-4 py-3 border-b border-border bg-gradient-to-l from-background/50 to-transparent">
+        <span className="text-xs font-bold text-foreground tracking-wide">RIGHT PANEL</span>
+        <span className="text-[10px] text-muted-foreground ml-2">Actions</span>
+      </div>
+
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border/30 bg-gradient-to-r from-background/50 to-transparent">
         <div className="flex items-center gap-2">
@@ -432,6 +473,109 @@ export function QuickActionsPanel({
               </div>
             </div>
           )}
+
+          {/* Favorites Section */}
+          <Section
+            title="Favorites"
+            icon={Star}
+            expanded={expandedSections.favorites}
+            onToggle={() => toggleSection("favorites")}
+          >
+            <div className="space-y-2">
+              {/* Favorites Filter Toggle */}
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/20 border border-border/30">
+                <Checkbox 
+                  id="favorites-filter"
+                  checked={favoritesOnly}
+                  onCheckedChange={(checked) => onFavoritesOnlyChange?.(checked === true)}
+                />
+                <label 
+                  htmlFor="favorites-filter" 
+                  className="text-xs font-medium cursor-pointer flex-1"
+                >
+                  Show favorites only
+                </label>
+                <Star className={cn(
+                  "w-3.5 h-3.5",
+                  favoritesOnly ? "fill-yellow-500 text-yellow-500" : "text-muted-foreground"
+                )} />
+              </div>
+
+              {/* Favorites Count */}
+              <div className="text-[10px] text-muted-foreground px-1 flex items-center justify-between">
+                <span>{favoriteFields.length} favorite{favoriteFields.length !== 1 ? 's' : ''} saved</span>
+                {favoriteFields.length > 0 && (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => onCheckedFavoritesChange?.([...favoriteFields])}
+                      className="text-[10px] text-primary hover:underline"
+                    >
+                      Check all
+                    </button>
+                    <button
+                      onClick={() => onCheckedFavoritesChange?.([])}
+                      className="text-[10px] text-muted-foreground hover:underline"
+                    >
+                      Uncheck all
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Favorites List */}
+              {favoriteFields.length === 0 ? (
+                <div className="text-xs text-muted-foreground/60 px-2 py-3 text-center bg-muted/10 rounded-lg">
+                  No favorites yet.<br />
+                  <span className="text-[10px]">Star fields in search to add favorites.</span>
+                </div>
+              ) : (
+                <div className="space-y-1 max-h-40 overflow-y-auto border border-border/30 rounded-lg p-1">
+                  {favoriteFields.map(fieldId => (
+                    <div
+                      key={fieldId}
+                      className={cn(
+                        "flex items-center gap-2 text-xs px-2 py-1.5 rounded transition-colors cursor-pointer",
+                        checkedFavorites?.includes(fieldId) 
+                          ? "bg-yellow-500/10 border border-yellow-500/30" 
+                          : "hover:bg-muted/30"
+                      )}
+                      onClick={() => {
+                        const current = checkedFavorites || [];
+                        const newChecked = current.includes(fieldId)
+                          ? current.filter(f => f !== fieldId)
+                          : [...current, fieldId];
+                        onCheckedFavoritesChange?.(newChecked);
+                      }}
+                    >
+                      <Checkbox 
+                        checked={checkedFavorites?.includes(fieldId) || false}
+                        onCheckedChange={(checked) => {
+                          const current = checkedFavorites || [];
+                          if (checked) {
+                            onCheckedFavoritesChange?.([...current, fieldId]);
+                          } else {
+                            onCheckedFavoritesChange?.(current.filter(f => f !== fieldId));
+                          }
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <span className="truncate font-mono text-[10px] flex-1">{fieldId}</span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleFavorite?.(fieldId);
+                        }}
+                        className="p-1 hover:bg-muted rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Remove from favorites"
+                      >
+                        <X className="w-3 h-3 text-muted-foreground hover:text-red-400" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </Section>
         </div>
       </ScrollArea>
     </div>

@@ -12,7 +12,7 @@ import { GroupCard } from "@/components/config/GroupCard";
 import { GeneralCategories } from "@/components/config/GeneralCategories";
 import { GroupThresholdsCard } from "@/components/config/GroupThresholdsCard";
 import { MultiEditIndicator } from "@/components/config/MultiEditIndicator";
-import { SelectionDashboard } from "@/components/config/SelectionDashboard";
+import { CLITerminal } from "@/components/config/CLITerminal";
 import { EmptyState } from "@/components/config/EmptyState";
 import { FooterRibbon } from "@/components/config/FooterRibbon";
 import {
@@ -158,12 +158,14 @@ const platformToMT = (p: Platform): MTPlatform => {
 };
 
 function Index() {
-  const { settings } = useSettings();
+  const { settings, updateSetting, saveSettings } = useSettings();
   const [selectedEngines, setSelectedEngines] = useState<string[]>([]);
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
   const [selectedLogics, setSelectedLogics] = useState<string[]>([]);
   const [selectedFields, setSelectedFields] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [checkedFavorites, setCheckedFavorites] = useState<string[]>([]);
   const [vaultModalOpen, setVaultModalOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
@@ -172,7 +174,6 @@ function Index() {
   const [previousViewMode, setPreviousViewMode] = useState<ViewMode>("logics");
   const [selectedGeneralCategory, setSelectedGeneralCategory] =
     useState<string>("risk");
-  const [mode, setMode] = useState<1 | 2>(1);
 
   const [isChatCollapsed, setIsChatCollapsed] = useState(false);
   const [isQuickActionsCollapsed, setIsQuickActionsCollapsed] = useState(false);
@@ -236,13 +237,28 @@ function Index() {
   }, []);
 
   const filteredFields = useMemo(() => {
-    if (!searchQuery.trim()) return selectedFields;
-    const matchingIds = getMatchingFieldIds(searchQuery);
-    if (selectedFields.length > 0) {
-      return selectedFields.filter(f => matchingIds.includes(f));
+    let fields = selectedFields;
+    
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const matchingIds = getMatchingFieldIds(searchQuery);
+      if (fields.length > 0) {
+        fields = fields.filter(f => matchingIds.includes(f));
+      } else {
+        fields = matchingIds;
+      }
     }
-    return matchingIds;
-  }, [searchQuery, selectedFields]);
+    
+    // Apply favorites filter - use checked favorites
+    if (favoritesOnly && checkedFavorites.length > 0) {
+      fields = fields.filter(f => checkedFavorites.includes(f));
+    } else if (favoritesOnly && checkedFavorites.length === 0 && settings.favoriteFields.length > 0) {
+      // If favoritesOnly is true but no checked favorites, show nothing
+      fields = [];
+    }
+    
+    return fields;
+  }, [searchQuery, selectedFields, favoritesOnly, checkedFavorites, settings.favoriteFields]);
 
   const pushChatCommand = (command: string) => {
     setExternalCommand(command);
@@ -381,6 +397,21 @@ function Index() {
     }
 
     return changes;
+  };
+
+  const handleToggleFavorite = (fieldId: string) => {
+    const currentFavorites = settings.favoriteFields || [];
+    const newFavorites = currentFavorites.includes(fieldId)
+      ? currentFavorites.filter(f => f !== fieldId)
+      : [...currentFavorites, fieldId];
+    updateSetting("favoriteFields", newFavorites);
+    
+    // Also remove from checkedFavorites if un-favorited
+    if (currentFavorites.includes(fieldId)) {
+      setCheckedFavorites(prev => prev.filter(f => f !== fieldId));
+    }
+    
+    saveSettings();
   };
 
   const handleGeneralUpdate = async (updates: Partial<GeneralConfig>) => {
@@ -646,13 +677,18 @@ function Index() {
             group.logics?.forEach((logic: any) => {
               logic.allow_buy = true;
               logic.allow_sell = true;
-              // Copy Buy values to Sell suffix
-              if (logic.initial_lot) logic.initial_lot_b = logic.initial_lot;
-              if (logic.multiplier) logic.multiplier_b = logic.multiplier;
-              if (logic.grid) logic.grid_b = logic.grid;
-              if (logic.trail_value) logic.trail_value_b = logic.trail_value;
-              if (logic.trail_start) logic.trail_start_b = logic.trail_start;
-              if (logic.trail_step) logic.trail_step_b = logic.trail_step;
+              // Copy Buy values to Sell suffix (but respect Mode 1 separate values)
+              const directionalFields = ['initial_lot', 'multiplier', 'grid', 'trail_value', 'trail_start', 'trail_step'];
+              directionalFields.forEach(field => {
+                const bVal = logic[field + '_b'];
+                if (bVal !== undefined) {
+                  logic[field + '_b'] = bVal;
+                  logic[field + '_s'] = bVal;
+                } else if (logic[field] !== undefined) {
+                  logic[field + '_b'] = logic[field];
+                  logic[field + '_s'] = logic[field];
+                }
+              });
             });
           });
         });
@@ -665,13 +701,18 @@ function Index() {
             group.logics?.forEach((logic: any) => {
               logic.allow_buy = true;
               logic.allow_sell = true;
-              // Copy Sell suffix values to base
-              if (logic.initial_lot_s) logic.initial_lot = logic.initial_lot_s;
-              if (logic.multiplier_s) logic.multiplier = logic.multiplier_s;
-              if (logic.grid_s) logic.grid = logic.grid_s;
-              if (logic.trail_value_s) logic.trail_value = logic.trail_value_s;
-              if (logic.trail_start_s) logic.trail_start = logic.trail_start_s;
-              if (logic.trail_step_s) logic.trail_step = logic.trail_step_s;
+              // Copy Sell suffix values to Buy (but respect Mode 1 separate values)
+              const directionalFields = ['initial_lot', 'multiplier', 'grid', 'trail_value', 'trail_start', 'trail_step'];
+              directionalFields.forEach(field => {
+                const sVal = logic[field + '_s'];
+                if (sVal !== undefined) {
+                  logic[field + '_b'] = sVal;
+                  logic[field + '_s'] = sVal;
+                } else if (logic[field] !== undefined) {
+                  logic[field + '_b'] = logic[field];
+                  logic[field + '_s'] = logic[field];
+                }
+              });
             });
           });
         });
@@ -684,31 +725,27 @@ function Index() {
             group.logics?.forEach((logic: any) => {
               logic.allow_buy = true;
               logic.allow_sell = true;
-              // Sync base values to both suffixes for export
-              if (logic.initial_lot) {
-                logic.initial_lot_b = logic.initial_lot;
-                logic.initial_lot_s = logic.initial_lot;
-              }
-              if (logic.multiplier) {
-                logic.multiplier_b = logic.multiplier;
-                logic.multiplier_s = logic.multiplier;
-              }
-              if (logic.grid) {
-                logic.grid_b = logic.grid;
-                logic.grid_s = logic.grid;
-              }
-              if (logic.trail_value) {
-                logic.trail_value_b = logic.trail_value;
-                logic.trail_value_s = logic.trail_value;
-              }
-              if (logic.trail_start) {
-                logic.trail_start_b = logic.trail_start;
-                logic.trail_start_s = logic.trail_start;
-              }
-              if (logic.trail_step) {
-                logic.trail_step_b = logic.trail_step;
-                logic.trail_step_s = logic.trail_step;
-              }
+              
+              // Detect Mode 1 vs Mode 2 based on directional values
+              // If _b and _s are different → Mode 1 was used (keep separate values)
+              // If _b and _s are same/empty → Mode 2 was used (use base and copy to both)
+              const directionalFields = ['initial_lot', 'multiplier', 'grid', 'trail_value', 'trail_start', 'trail_step'];
+              
+              directionalFields.forEach(field => {
+                const bVal = logic[field + '_b'];
+                const sVal = logic[field + '_s'];
+                const baseVal = logic[field];
+                
+                // If _b and _s are different, keep them (Mode 1)
+                // If _b and _s are same or empty, use base (Mode 2)
+                if (bVal !== undefined && sVal !== undefined && bVal !== sVal) {
+                  // Mode 1: Keep directional values as-is
+                } else if (baseVal !== undefined) {
+                  // Mode 2: Copy base to both directions
+                  logic[field + '_b'] = baseVal;
+                  logic[field + '_s'] = baseVal;
+                }
+              });
             });
           });
         });
@@ -734,13 +771,14 @@ function Index() {
           configToExport.general.allow_buy = true;
           configToExport.general.allow_sell = true;
         }
-        // Also force all logic allow_buy/allow_sell to true
+        // Also force all logic allow_buy/allow_sell/Enabled to true for both directions
         if (configToExport.engines) {
           configToExport.engines.forEach((engine: any) => {
             engine.groups?.forEach((group: any) => {
               group.logics?.forEach((logic: any) => {
                 logic.allow_buy = true;
                 logic.allow_sell = true;
+                logic.enabled = true;
               });
             });
           });
@@ -860,8 +898,6 @@ function Index() {
         onMagicNumberChange={(val) =>
           handleGeneralUpdate({ magic_number: val })
         }
-        mode={mode}
-        onModeChange={setMode}
         onLoadConfig={(c) => {
           handleSaveConfig(c);
           setHasStarted(true);
@@ -873,6 +909,12 @@ function Index() {
         }}
         searchQuery={searchQuery}
         onSearchQueryChange={setSearchQuery}
+        favoritesOnly={favoritesOnly}
+        onFavoritesOnlyChange={setFavoritesOnly}
+        favoriteFields={settings.favoriteFields || []}
+        onToggleFavorite={handleToggleFavorite}
+        checkedFavorites={checkedFavorites}
+        onCheckedFavoritesChange={setCheckedFavorites}
         onSearchSelect={(item) => {
           if (item.type === "field") {
             setSelectedFields([item.id]);
@@ -924,6 +966,13 @@ function Index() {
                         const logic = group.logics?.find(l => l.logic_name === change.logic);
                         if (logic && change.field in logic) {
                           (logic as any)[change.field] = change.newValue;
+                          
+                          // Also sync to directional fields for Buy/Sell UI
+                          const directionalFields = ['initial_lot', 'multiplier', 'grid', 'trail_value', 'trail_start', 'trail_step'];
+                          if (directionalFields.includes(change.field)) {
+                            (logic as any)[change.field + '_b'] = change.newValue;
+                            (logic as any)[change.field + '_s'] = change.newValue;
+                          }
                         }
                       }
                     }
@@ -1069,24 +1118,9 @@ function Index() {
 
                       {viewMode === "logics" && (
                         <div className="space-y-3">
-                          <SelectionDashboard
-                            config={config}
-                            selectedEngines={selectedEngines}
-                            selectedGroups={selectedGroups}
-                            selectedLogics={selectedLogics}
-                            selectedFields={filteredFields || []}
-                            isMultiEdit={isMultiEdit}
-                            chatActive={chatActive}
-                            pendingPlan={chatPendingPlan}
-                            lastAppliedPreview={chatLastAppliedPreview}
-                            onFocusField={(field) => {
-                              setSelectedFields([field]);
-                              setHasStarted(true);
-                              setViewMode("logics");
-                            }}
-                            onSendToChat={(cmd) => pushChatCommand(cmd)}
-                            onOpenVaultSave={(draft) => openVaultSave(draft)}
-                            onClearSelection={clearSelection}
+                          <CLITerminal
+                            onExecuteCommand={(cmd) => pushChatCommand(cmd)}
+                            placeholder="Type: set grid power a 600, set lot 0.02, enable reverse..."
                           />
                         </div>
                       )}
@@ -1134,7 +1168,7 @@ function Index() {
                                       engineData={engineConfig.engineData}
                                       selectedLogics={selectedLogics}
                                       selectedFields={filteredFields || []}
-                                      mode={mode}
+                                      mode={1}
                                       platform={platform}
                                       config={config}
                                       onUpdateLogic={(logic, field, value, groupNum) => {
@@ -1196,7 +1230,7 @@ function Index() {
                             platform={platform}
                             generalConfig={config?.general || mockGeneralConfig}
                             mtPlatform={platform}
-                            mode={mode}
+                            mode={1}
                             selectedCategory={selectedGeneralCategory}
                             onConfigChange={(newGeneralConfig) => {
                               if (config) {
@@ -1346,39 +1380,51 @@ function Index() {
                       setViewMode("save_config");
                       setHasStarted(true);
                     }}
+                    favoritesOnly={favoritesOnly}
+                    onFavoritesOnlyChange={setFavoritesOnly}
+                    favoriteFields={settings.favoriteFields || []}
+                    onToggleFavorite={handleToggleFavorite}
+                    checkedFavorites={checkedFavorites}
+                    onCheckedFavoritesChange={setCheckedFavorites}
                   />
                 </ResizablePanel>
               </>
             )}
 
-          {/* Quick Changes Sidebar for Chat mode - Advanced change review UI */}
-          {viewMode === "chat" && (
-            <>
-              <ResizableHandle withHandle />
-              
-              <ResizablePanel
-                id="quick-changes-panel"
-                order={3}
-                defaultSize={28}
-                minSize={20}
-                maxSize={40}
-                collapsible={true}
-                collapsedSize={4}
-              >
-                <QuickActionsPanel
-                  config={config}
-                  onConfigChange={handleSaveConfig}
-                  onViewModeChange={handleViewModeChange}
-                  isCollapsed={isQuickActionsCollapsed}
-                  onToggleCollapse={() => setIsQuickActionsCollapsed(!isQuickActionsCollapsed)}
-                  onOpenVaultSave={(draft) => {
-                    setVaultSaveDraft(draft || null);
-                    setPreviousViewMode(viewMode);
-                    setViewMode("save_config");
-                    setHasStarted(true);
-                  }}
-                  viewMode={viewMode}
-                  pendingPlan={chatPendingPlan}
+            {/* Quick Changes Sidebar for Chat mode - Advanced change review UI */}
+            {viewMode === "chat" && (
+              <>
+                <ResizableHandle withHandle />
+                
+                <ResizablePanel
+                  id="quick-changes-panel"
+                  order={3}
+                  defaultSize={28}
+                  minSize={20}
+                  maxSize={40}
+                  collapsible={true}
+                  collapsedSize={4}
+                >
+                  <QuickActionsPanel
+                    config={config}
+                    onConfigChange={handleSaveConfig}
+                    onViewModeChange={handleViewModeChange}
+                    isCollapsed={isQuickActionsCollapsed}
+                    onToggleCollapse={() => setIsQuickActionsCollapsed(!isQuickActionsCollapsed)}
+                    onOpenVaultSave={(draft) => {
+                      setVaultSaveDraft(draft || null);
+                      setPreviousViewMode(viewMode);
+                      setViewMode("save_config");
+                      setHasStarted(true);
+                    }}
+                    viewMode={viewMode}
+                    pendingPlan={chatPendingPlan}
+                    favoritesOnly={favoritesOnly}
+                    onFavoritesOnlyChange={setFavoritesOnly}
+                    favoriteFields={settings.favoriteFields || []}
+                    onToggleFavorite={handleToggleFavorite}
+                    checkedFavorites={checkedFavorites}
+                    onCheckedFavoritesChange={setCheckedFavorites}
                   recentChanges={chatLastAppliedPreview?.map(p => ({
                     engine: p.engine,
                     group: p.group,
@@ -1398,6 +1444,13 @@ function Index() {
                             const logic = group.logics?.find(l => l.logic_name === change.logic);
                             if (logic && change.field in logic) {
                               (logic as any)[change.field] = change.newValue;
+                              
+                              // Also sync to directional fields for Buy/Sell UI
+                              const directionalFields = ['initial_lot', 'multiplier', 'grid', 'trail_value', 'trail_start', 'trail_step'];
+                              if (directionalFields.includes(change.field)) {
+                                (logic as any)[change.field + '_b'] = change.newValue;
+                                (logic as any)[change.field + '_s'] = change.newValue;
+                              }
                             }
                           }
                         }

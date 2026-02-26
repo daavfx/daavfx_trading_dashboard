@@ -1,5 +1,5 @@
 
-import { Search, Download, Upload, FileDown, Save, Undo, Redo, Settings, HelpCircle, Hash, FolderOpen, GitBranch, BarChart3, Users, RotateCcw, Brain, Tags, MoreHorizontal, Sparkles, Plus, X, Settings2, Layers, Box, Circle, Filter } from "lucide-react";
+import { Search, Download, Upload, FileDown, Save, Undo, Redo, Settings, HelpCircle, Hash, FolderOpen, GitBranch, BarChart3, Users, RotateCcw, Brain, Tags, MoreHorizontal, Sparkles, Plus, X, Settings2, Layers, Box, Circle, Filter, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -19,6 +19,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { useMTFileOps } from "@/hooks/useMTFileOps";
 import { useNavigate } from "react-router-dom";
@@ -39,14 +40,16 @@ interface TopBarProps {
   currentConfig: any;
   magicNumber?: number;
   onMagicNumberChange?: (value: number) => void;
-  mode?: 1 | 2;
-  onModeChange?: (mode: 1 | 2) => void;
   platform?: Platform;
   onPlatformChange?: (p: Platform) => void;
   onLoadConfig?: (config: MTConfig) => void;
   searchQuery?: string;
   onSearchQueryChange?: (query: string) => void;
   onSearchSelect?: (item: SearchableItem) => void;
+  favoritesOnly?: boolean;
+  onFavoritesOnlyChange?: (value: boolean) => void;
+  favoriteFields?: string[];
+  onToggleFavorite?: (fieldId: string) => void;
 }
 
  
@@ -62,14 +65,16 @@ export function TopBar({
   currentConfig,
   magicNumber,
   onMagicNumberChange,
-  mode = 1,
-  onModeChange,
   platform,
   onPlatformChange,
   onLoadConfig,
   searchQuery = "",
   onSearchQueryChange,
   onSearchSelect,
+  favoritesOnly = false,
+  onFavoritesOnlyChange,
+  favoriteFields = [],
+  onToggleFavorite,
 }: TopBarProps) {
   const mtPlatform = platform === "mt5" ? "MT5" : "MT4";
   const { exportSetFile, importSetFile, exportJsonFile, importJsonFile } = useMTFileOps(mtPlatform, currentConfig, onLoadConfig);
@@ -216,34 +221,8 @@ export function TopBar({
         </DropdownMenu>
       </div>
 
-      {/* Global Controls: Magic Number & Mode Selector */}
+      {/* Global Controls: Magic Number */}
       <div className="flex items-center gap-4">
-        {/* Mode Selector */}
-        <div className="flex items-center bg-background rounded border border-border/60">
-          <button
-            onClick={() => onModeChange?.(1)}
-            className={cn(
-              "px-3 py-1.5 text-[10px] font-medium transition-colors rounded-l",
-              mode === 1
-                ? "bg-primary/15 text-primary border-r border-primary/20"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-            )}
-          >
-            Mode 1
-          </button>
-          <button
-            onClick={() => onModeChange?.(2)}
-            className={cn(
-              "px-3 py-1.5 text-[10px] font-medium transition-colors rounded-r",
-              mode === 2
-                ? "bg-primary/15 text-primary"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-            )}
-          >
-            Mode 2
-          </button>
-        </div>
-
         {/* Magic Number */}
         <div className="flex items-center gap-2 px-4 py-1.5 rounded-full border-[0.5px] bg-background/30 border-border/30">
           <div className="flex items-center gap-1.5 text-primary">
@@ -265,31 +244,94 @@ export function TopBar({
 
       {/* Search */}
       <div className="flex-1 max-w-xs relative">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-          <Input
-            ref={searchInputRef}
-            placeholder="Search inputs..."
-            value={searchQuery}
-            onChange={(e) => onSearchQueryChange?.(e.target.value)}
-            onFocus={() => {
-              if (searchQuery.trim() && searchResults.length > 0) {
-                setSearchOpen(true);
-              }
-            }}
-            className="pl-9 pr-8 h-8 text-sm input-refined"
-          />
-          {searchQuery && (
-            <button
-              onMouseDown={(e) => {
-                e.preventDefault();
-                handleSearchClear();
+        <div className="relative flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+            <Input
+              ref={searchInputRef}
+              placeholder="Search inputs..."
+              value={searchQuery}
+              onChange={(e) => onSearchQueryChange?.(e.target.value)}
+              onFocus={() => {
+                if (searchQuery.trim() && searchResults.length > 0) {
+                  setSearchOpen(true);
+                }
               }}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
+              className="pl-9 pr-8 h-8 text-sm input-refined"
+            />
+            {searchQuery && (
+              <button
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  handleSearchClear();
+                }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+          
+          {/* Favorites Toggle */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant={favoritesOnly ? "default" : "ghost"}
+                size="sm"
+                className={cn(
+                  "h-8 px-2.5 shrink-0 transition-colors",
+                  favoritesOnly 
+                    ? "bg-yellow-500/20 text-yellow-500 hover:bg-yellow-500/30 border border-yellow-500/30" 
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+                title={favoritesOnly ? "Show all inputs" : "Show favorites only"}
+              >
+                <Star className={cn("w-3.5 h-3.5", favoritesOnly && "fill-yellow-500 text-yellow-500")} />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-3" align="start">
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-2">
+                  <Checkbox 
+                    id="favorites-only"
+                    checked={favoritesOnly}
+                    onCheckedChange={(checked) => onFavoritesOnlyChange?.(checked === true)}
+                  />
+                  <label 
+                    htmlFor="favorites-only" 
+                    className="text-xs font-medium cursor-pointer"
+                  >
+                    Show favorites only
+                  </label>
+                </div>
+                <div className="text-[10px] text-muted-foreground">
+                  {favoriteFields.length} favorite{favoriteFields.length !== 1 ? 's' : ''} saved
+                </div>
+                {favoriteFields.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {favoriteFields.slice(0, 5).map(fieldId => (
+                      <button
+                        key={fieldId}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          onSearchQueryChange?.(fieldId);
+                          setSearchOpen(true);
+                        }}
+                        className="text-[10px] px-1.5 py-0.5 rounded bg-muted hover:bg-muted/80 transition-colors"
+                      >
+                        {fieldId}
+                      </button>
+                    ))}
+                    {favoriteFields.length > 5 && (
+                      <span className="text-[10px] text-muted-foreground self-center">
+                        +{favoriteFields.length - 5} more
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
         
         {searchOpen && searchResults.length > 0 && (
@@ -320,6 +362,25 @@ export function TopBar({
                       )}
                     </div>
                   </div>
+                  {item.type === "field" && (
+                    <button
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onToggleFavorite?.(item.id);
+                      }}
+                      className="p-1 hover:bg-muted rounded transition-colors"
+                    >
+                      <Star 
+                        className={cn(
+                          "w-3.5 h-3.5",
+                          favoriteFields.includes(item.id)
+                            ? "fill-yellow-500 text-yellow-500"
+                            : "text-muted-foreground hover:text-yellow-500"
+                        )} 
+                      />
+                    </button>
+                  )}
                 </button>
               ))}
             </div>
