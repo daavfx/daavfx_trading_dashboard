@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import {
   ChevronDown, ChevronRight, Copy, Check, ArrowRight, Eye, Pencil, Sparkles, Zap, AlertTriangle,
@@ -32,9 +32,19 @@ interface ChatMessageContentProps {
   onSend?: (text: string) => void;
   onNavigate?: (target: { engines?: string[]; groups?: number[]; logics?: string[]; fields?: string[] }) => void;
   onCompose?: (text: string) => void;
+  onShowPanel?: (panel: string) => void; // Callback to show panel
 }
 
-export function ChatMessageContent({ message, onSend, onNavigate, onCompose }: ChatMessageContentProps) {
+export function ChatMessageContent({ message, onSend, onNavigate, onCompose, onShowPanel }: ChatMessageContentProps) {
+  // Handle showPanel from message result (e.g., help panel trigger)
+  useEffect(() => {
+    if (message.showPanel && onShowPanel) {
+      onShowPanel(message.showPanel);
+    }
+    if (message.result?.showPanel && onShowPanel) {
+      onShowPanel(message.result.showPanel);
+    }
+  }, [message.showPanel, message.result?.showPanel, onShowPanel]);
   // Welcome message - use premium component
   if (message.id === "welcome") {
     return <WelcomeMessage onCompose={onCompose} />;
@@ -155,6 +165,13 @@ function ChangesRenderer({ result }: { result: CommandResult }) {
 function QueryResultsRenderer({ result, onNavigate, onCompose }: { result: QueryResult; onNavigate?: ChatMessageContentProps['onNavigate']; onCompose?: ChatMessageContentProps['onCompose'] }) {
   return (
     <div className="space-y-4 w-full max-w-full overflow-hidden">
+      {result.fieldExplanation && (
+        <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-xs text-blue-200">
+          {result.fieldExplanation.split('\n').map((line, i) => (
+            <div key={i}>{line}</div>
+          ))}
+        </div>
+      )}
       <SectionHeader
         icon={Search}
         title="Query Results"

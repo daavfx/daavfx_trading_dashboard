@@ -428,3 +428,6 @@ export const LOGIC_SUFFIX_MAP: Record<string, string> = {
   // Engine C
   "CPower": "CP", "CRepower": "CR", "CScalper": "CS", "CStopper": "CST", "CSTO": "CSTO", "CSCA": "CSCA", "CRPO": "CRPO"
 };
+
+// Re-export MTConfigComplete from the complete types file (using 'export type' for isolatedModules)
+export type { MTConfigComplete } from "./mt-config-complete";

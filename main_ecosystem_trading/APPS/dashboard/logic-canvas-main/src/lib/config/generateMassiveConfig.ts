@@ -44,7 +44,7 @@ export function generateMassiveCompleteConfig(
     const groups = [];
 
     for (let groupNum = 1; groupNum <= 15; groupNum++) {
-      const groupLogics = [];
+      const groupLogics: any[] = [];
 
       // Generate 7 logics × 2 directions = 14 logic-directions per group
       logicTypes.forEach((logicType, logicIndex) => {
@@ -88,10 +88,18 @@ export function generateMassiveCompleteConfig(
                   : "Step_Pips",
 
             // LOGIC-SPECIFIC (Power has fewer fields)
+            // Start level: 0 for A-Power, 4 for B-Power/C-Power (based on engine)
+            // Engine IDs: A=0, B=1, C=2
+            // Power logics: A-Power = 0, B-Power = 4, C-Power = 4
+            // Non-Power logics: B/C engines = 4, others = calculated
             ...(isPower
-              ? {}
+              ? {
+                  // Power logics: A=0, B/C=4
+                  start_level: engineIndex > 0 ? 4 : 0,
+                }
               : {
-                  start_level: 100 + logicIndex * 50 + groupNum * 25,
+                  // Non-Power logics: default to 1 (start after 1 order from reference)
+                  start_level: 1,
                   last_lot: 0.01 + logicIndex * 0.005,
                 }),
 
@@ -229,7 +237,7 @@ export function generateMassiveCompleteConfig(
         group_power_start: groupNum === 1 ? undefined : (groupNum - 1) * 3,
         reverse_mode: groupNum % 3 === 0,
         hedge_mode: groupNum % 3 === 1,
-        hedge_reference: `Logic_${engineId}_Power`,
+        hedge_reference: `Logic_${engineId}_Power` as any,
         entry_delay_bars: groupNum % 5,
         logics: groupLogics,
       };
@@ -246,13 +254,13 @@ export function generateMassiveCompleteConfig(
   });
 
   // Calculate magic numbers: 3 engines × 7 logics × 2 directions = 42
-  const magicNumbers = [];
-  const magicNumbersSell = [];
+  const magicNumbers: number[][] = [];
+  const magicNumbersSell: number[][] = [];
   const baseMagic = 12345;
 
   engines.forEach((engineId, engineIdx) => {
-    const engineBuyMagics = [];
-    const engineSellMagics = [];
+    const engineBuyMagics: number[] = [];
+    const engineSellMagics: number[] = [];
 
     logicTypes.forEach((logicType, logicIdx) => {
       // Buy magic numbers (even offsets)

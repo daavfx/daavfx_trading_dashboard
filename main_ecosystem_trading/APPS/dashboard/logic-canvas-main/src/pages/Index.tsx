@@ -666,86 +666,28 @@ function Index() {
       }
 
       // Apply strategy type logic
-      // ALWAYS export BOTH directions - dropdown controls editing mode only
-      // Buy = edit Buy values, Sell = edit Sell values, Both = edit both with same values
-      if (data.strategyType === "buy") {
-        configToSave.general.allow_buy = true;
+      // Strategy type now controls which directions are enabled on export.
+      // We do NOT overwrite buy/sell values anymore so they can stay independent.
+      if (data.strategyType === "sell") {
+        configToSave.general.allow_buy = false;
         configToSave.general.allow_sell = true;
-        // Buy mode - sync Buy values to Sell for export
         configToSave.engines?.forEach((engine: any) => {
           engine.groups?.forEach((group: any) => {
             group.logics?.forEach((logic: any) => {
-              logic.allow_buy = true;
+              logic.allow_buy = false;
               logic.allow_sell = true;
-              // Copy Buy values to Sell suffix (but respect Mode 1 separate values)
-              const directionalFields = ['initial_lot', 'multiplier', 'grid', 'trail_value', 'trail_start', 'trail_step'];
-              directionalFields.forEach(field => {
-                const bVal = logic[field + '_b'];
-                if (bVal !== undefined) {
-                  logic[field + '_b'] = bVal;
-                  logic[field + '_s'] = bVal;
-                } else if (logic[field] !== undefined) {
-                  logic[field + '_b'] = logic[field];
-                  logic[field + '_s'] = logic[field];
-                }
-              });
-            });
-          });
-        });
-      } else if (data.strategyType === "sell") {
-        configToSave.general.allow_buy = true;
-        configToSave.general.allow_sell = true;
-        // Sell mode - sync Sell values to Buy for export
-        configToSave.engines?.forEach((engine: any) => {
-          engine.groups?.forEach((group: any) => {
-            group.logics?.forEach((logic: any) => {
-              logic.allow_buy = true;
-              logic.allow_sell = true;
-              // Copy Sell suffix values to Buy (but respect Mode 1 separate values)
-              const directionalFields = ['initial_lot', 'multiplier', 'grid', 'trail_value', 'trail_start', 'trail_step'];
-              directionalFields.forEach(field => {
-                const sVal = logic[field + '_s'];
-                if (sVal !== undefined) {
-                  logic[field + '_b'] = sVal;
-                  logic[field + '_s'] = sVal;
-                } else if (logic[field] !== undefined) {
-                  logic[field + '_b'] = logic[field];
-                  logic[field + '_s'] = logic[field];
-                }
-              });
             });
           });
         });
       } else {
-        // Both Sides mode - ensure both directions have values
+        // Default/fallback to BUY-only scope for save/export intent.
         configToSave.general.allow_buy = true;
-        configToSave.general.allow_sell = true;
+        configToSave.general.allow_sell = false;
         configToSave.engines?.forEach((engine: any) => {
           engine.groups?.forEach((group: any) => {
             group.logics?.forEach((logic: any) => {
               logic.allow_buy = true;
-              logic.allow_sell = true;
-              
-              // Detect Mode 1 vs Mode 2 based on directional values
-              // If _b and _s are different → Mode 1 was used (keep separate values)
-              // If _b and _s are same/empty → Mode 2 was used (use base and copy to both)
-              const directionalFields = ['initial_lot', 'multiplier', 'grid', 'trail_value', 'trail_start', 'trail_step'];
-              
-              directionalFields.forEach(field => {
-                const bVal = logic[field + '_b'];
-                const sVal = logic[field + '_s'];
-                const baseVal = logic[field];
-                
-                // If _b and _s are different, keep them (Mode 1)
-                // If _b and _s are same or empty, use base (Mode 2)
-                if (bVal !== undefined && sVal !== undefined && bVal !== sVal) {
-                  // Mode 1: Keep directional values as-is
-                } else if (baseVal !== undefined) {
-                  // Mode 2: Copy base to both directions
-                  logic[field + '_b'] = baseVal;
-                  logic[field + '_s'] = baseVal;
-                }
-              });
+              logic.allow_sell = false;
             });
           });
         });
@@ -765,25 +707,6 @@ function Index() {
 
         const configToExport = withUseDirectPriceGrid(configToSave, settings);
 
-        // ALWAYS export with AllowBuy=1 and AllowSell=1 regardless of strategyType
-        // User controls actual trading in MT4/MT5 terminal directly
-        if (configToExport.general) {
-          configToExport.general.allow_buy = true;
-          configToExport.general.allow_sell = true;
-        }
-        // Also force all logic allow_buy/allow_sell/Enabled to true for both directions
-        if (configToExport.engines) {
-          configToExport.engines.forEach((engine: any) => {
-            engine.groups?.forEach((group: any) => {
-              group.logics?.forEach((logic: any) => {
-                logic.allow_buy = true;
-                logic.allow_sell = true;
-                logic.enabled = true;
-              });
-            });
-          });
-        }
-
         if (data.format === "json") {
           await invoke("export_json_file", {
             config: normalizeConfigForExport(configToExport),
@@ -792,18 +715,6 @@ function Index() {
             comments: data.comments,
           });
         } else {
-          // Debug: Log grid values before export
-          console.log("DEBUG_EXPORT: Config before export:");
-          configToExport.engines?.forEach((engine: any, ei: number) => {
-            engine.groups?.forEach((group: any, gi: number) => {
-              group.logics?.forEach((logic: any, li: number) => {
-                if (logic.logic_name === "Power" && gi === 0) {
-                  console.log(`DEBUG_EXPORT: Engine ${ei} Group ${gi} Power: grid=${logic.grid}, grid_b=${logic.grid_b}, grid_s=${logic.grid_s}`);
-                }
-              });
-            });
-          });
-          
           await invoke("export_massive_v19_setfile", {
             config: normalizeConfigForExport(configToExport),
             filePath: fullPath,
@@ -966,13 +877,6 @@ function Index() {
                         const logic = group.logics?.find(l => l.logic_name === change.logic);
                         if (logic && change.field in logic) {
                           (logic as any)[change.field] = change.newValue;
-                          
-                          // Also sync to directional fields for Buy/Sell UI
-                          const directionalFields = ['initial_lot', 'multiplier', 'grid', 'trail_value', 'trail_start', 'trail_step'];
-                          if (directionalFields.includes(change.field)) {
-                            (logic as any)[change.field + '_b'] = change.newValue;
-                            (logic as any)[change.field + '_s'] = change.newValue;
-                          }
                         }
                       }
                     }
@@ -1171,13 +1075,13 @@ function Index() {
                                       mode={1}
                                       platform={platform}
                                       config={config}
-                                      onUpdateLogic={(logic, field, value, groupNum) => {
+                                      onUpdateLogic={(logic, field, value, groupNum, direction, targetLogicId) => {
                                         if (!config) return;
                                         let processedValue = value;
                                         if (
                                           typeof value === "string" &&
                                           (field.includes("enabled") ||
-                                            field.includes("allow_") ||
+                                            field.includes("allow") ||
                                             field === "close_partial")
                                         ) {
                                           processedValue =
@@ -1195,7 +1099,7 @@ function Index() {
                                         const newConfig: MTConfig = {
                                           ...config,
                                           engines: config.engines.map((e) => {
-                                            if (e.engine_id !== targetEngineId) return e;
+                                              if (e.engine_id !== targetEngineId) return e;
                                             return {
                                               ...e,
                                               groups: e.groups.map((g) => {
@@ -1203,11 +1107,61 @@ function Index() {
                                                 return {
                                                   ...g,
                                                   logics: g.logics.map((l) => {
-                                                    if (l.logic_name?.toUpperCase() !== logic.toUpperCase()) return l;
-                                                    return {
-                                                      ...l,
-                                                      [field]: processedValue as any,
-                                                    };
+                                                    // Strip engine prefix (B or C) from UI logic name to match config
+                                                    // "BPOWER" -> "Power", "BREPOWER" -> "Repower", etc.
+                                                    const logicBaseName = logic.replace(/^(B|C)/i, '');
+                                                    if (l.logic_name?.toUpperCase() !== logicBaseName.toUpperCase()) return l;
+
+                                                    const rowDirection = (() => {
+                                                      const dirRaw = String((l as any).direction || "").toUpperCase();
+                                                      if (dirRaw === "B" || dirRaw === "BUY") return "buy";
+                                                      if (dirRaw === "S" || dirRaw === "SELL") return "sell";
+                                                      const logicId = String((l as any).logic_id || "").toUpperCase();
+                                                      if (logicId.includes("_B_") || logicId.endsWith("_B")) return "buy";
+                                                      if (logicId.includes("_S_") || logicId.endsWith("_S")) return "sell";
+                                                      if ((l as any).allow_buy === true && (l as any).allow_sell !== true) return "buy";
+                                                      if ((l as any).allow_sell === true && (l as any).allow_buy !== true) return "sell";
+                                                      return null;
+                                                    })();
+
+                                                    const directionalFields = new Set([
+                                                      "initial_lot",
+                                                      "multiplier",
+                                                      "grid",
+                                                      "trail_value",
+                                                      "trail_start",
+                                                      "trail_step",
+                                                    ]);
+                                                    const isDirectionalField = directionalFields.has(field);
+                                                    const rowLogicId = String((l as any).logic_id || "");
+                                                    const wantsDirection = direction === "buy" || direction === "sell";
+                                                    const normalizedTargetLogicId = String(targetLogicId || "");
+
+                                                    // Primary targeting: explicit logic row id from active canvas side.
+                                                    if (
+                                                      normalizedTargetLogicId &&
+                                                      rowLogicId &&
+                                                      rowLogicId !== normalizedTargetLogicId
+                                                    ) {
+                                                      return l;
+                                                    }
+
+                                                    if (wantsDirection) {
+                                                      if (rowDirection && rowDirection !== direction) {
+                                                        return l;
+                                                      }
+
+                                                      // Single-row model: write only side-specific suffix field.
+                                                      if (!rowDirection && isDirectionalField) {
+                                                        const suffix = direction === "buy" ? "_b" : "_s";
+                                                        return {
+                                                          ...l,
+                                                          [`${field}${suffix}`]: processedValue,
+                                                        };
+                                                      }
+                                                    }
+
+                                                    return { ...l, [field]: processedValue };
                                                   }),
                                                 };
                                               }),
@@ -1444,13 +1398,6 @@ function Index() {
                             const logic = group.logics?.find(l => l.logic_name === change.logic);
                             if (logic && change.field in logic) {
                               (logic as any)[change.field] = change.newValue;
-                              
-                              // Also sync to directional fields for Buy/Sell UI
-                              const directionalFields = ['initial_lot', 'multiplier', 'grid', 'trail_value', 'trail_start', 'trail_step'];
-                              if (directionalFields.includes(change.field)) {
-                                (logic as any)[change.field + '_b'] = change.newValue;
-                                (logic as any)[change.field + '_s'] = change.newValue;
-                              }
                             }
                           }
                         }

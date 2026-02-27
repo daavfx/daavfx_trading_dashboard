@@ -181,6 +181,21 @@ const testScenarios = [
     expectedChanges: 0,
     description: "VAGUE: No target - should reject"
   },
+  {
+    command: "set invalid_field_xyz to 100",
+    expectedChanges: 0,
+    description: "INVALID FIELD: Should reject unknown field"
+  },
+  {
+    command: "set multiplier to 999",
+    expectedChanges: 0,
+    description: "OUT OF BOUNDS: Should reject value exceeding max (10.0)"
+  },
+  {
+    command: "set grid to -50",
+    expectedChanges: 0,
+    description: "NEGATIVE VALUE: Should reject negative grid"
+  },
 ];
 
 export function runExecutorTests(): { passed: number; failed: number; total: number; results: SimulationResult[] } {

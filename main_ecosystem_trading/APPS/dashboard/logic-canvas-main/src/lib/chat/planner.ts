@@ -1,5 +1,10 @@
 import type { MTConfig, EngineConfig, GroupConfig, LogicConfig } from "@/types/mt-config";
 import { calculateProgression, validateForMT4, type ProgressionType } from "./math";
+import {
+  validateFieldOperation,
+  getFieldEntity,
+  type FieldEntity,
+} from "./field-schema";
 import type {
   TransactionPlan,
   ChangePreview,
@@ -7,6 +12,23 @@ import type {
   RiskLevel,
   RiskAssessment
 } from "./types";
+
+function validatePlanFields(plan: TransactionPlan): void {
+  for (const p of plan.preview) {
+    const entity: FieldEntity = p.logic ? "logic" : (p.group ? "group" : "general");
+    
+    if (typeof p.newValue === "number") {
+      const result = validateFieldOperation(p.field, entity, p.newValue);
+      if (!result.valid) {
+        throw new Error(`Plan validation failed for ${p.field}: ${result.error}`);
+      }
+    }
+  }
+  
+  if (plan.validation && !plan.validation.isValid && plan.validation.errors.length > 0) {
+    throw new Error(`Plan validation failed: ${plan.validation.errors.join(", ")}`);
+  }
+}
 
 export interface ProgressionPlanParams {
   field: string;
@@ -276,6 +298,8 @@ export function applyTransactionPlan(
   config: MTConfig,
   plan: TransactionPlan
 ): MTConfig {
+  validatePlanFields(plan);
+  
   const newConfig = structuredClone(config);
 
   for (const change of plan.preview) {

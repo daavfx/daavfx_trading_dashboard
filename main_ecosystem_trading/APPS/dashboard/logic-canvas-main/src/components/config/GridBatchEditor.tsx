@@ -109,6 +109,45 @@ export function GridBatchEditor({
     return items;
   }, [selectedEngines, selectedGroups, selectedLogics]);
 
+  const safeEvalCustomFormula = (expr: string, rowIndex: number): number => {
+    const SAFE_FUNCS: Record<string, (...args: number[]) => number> = {
+      abs: Math.abs,
+      max: Math.max,
+      min: Math.min,
+      round: Math.round,
+      floor: Math.floor,
+      ceil: Math.ceil,
+      pow: Math.pow,
+      sqrt: Math.sqrt,
+      log: Math.log,
+      exp: Math.exp,
+    };
+
+    const sanitized = expr.replace(/[^-+/*%^()0-9., a-zA-Z_]/g, "");
+    const tokens = sanitized.split(/([^a-zA-Z0-9_]+)/).filter(Boolean);
+
+    const rebuilt = tokens
+      .map((t) => {
+        if (t === "row") return String(rowIndex);
+        if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(t)) {
+          if (t in SAFE_FUNCS) return `__f.${t}`;
+          if (t === "Math") return "";
+          return "";
+        }
+        return t;
+      })
+      .join("");
+
+    try {
+      // eslint-disable-next-line no-new-func
+      const fn = new Function("__row", "__f", `return (${rebuilt});`);
+      const result = fn(rowIndex, SAFE_FUNCS);
+      return typeof result === "number" && isFinite(result) ? result : 0;
+    } catch {
+      return 0;
+    }
+  };
+
   const calculatePreview = () => {
     const preset = FORMULA_PRESETS.find((p) => p.id === activeFormula);
     const newValues: Record<string, number> = {};
@@ -132,12 +171,7 @@ export function GridBatchEditor({
           value = Math.round(formulaParams.base * (1 + formulaParams.rate * index));
           break;
         case "custom":
-          try {
-            const row_num = index;
-            value = eval(formulaParams.custom.replace(/row/g, String(row_num)));
-          } catch {
-            value = 0;
-          }
+          value = safeEvalCustomFormula(formulaParams.custom, index);
           break;
       }
       // Ensure we don't get NaN or Infinity

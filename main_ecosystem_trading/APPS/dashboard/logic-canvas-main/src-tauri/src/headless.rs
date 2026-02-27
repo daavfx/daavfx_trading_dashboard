@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use regex::Regex;
 use std::collections::HashMap;
+use tinyllm_daavfx::parse_command as tiny_parse_command;
 
 /// Result of a headless command execution
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -372,6 +373,54 @@ pub fn parse_command(input: &str) -> ParsedCommand {
     } else {
         trimmed
     };
+
+    if let Ok(tiny) = tiny_parse_command(body) {
+        let mut target = CommandTarget::default();
+        if !tiny.engines.is_empty() {
+            target.engines = Some(tiny.engines.clone());
+        }
+        if !tiny.groups.is_empty() {
+            target.groups = Some(tiny.groups.iter().map(|g| *g as i32).collect());
+        }
+        if !tiny.logics.is_empty() {
+            target.logics = Some(tiny.logics.clone());
+        }
+        target.field = tiny.field.clone();
+
+        let mut params = HashMap::new();
+        if let Some(v) = tiny.value {
+            params.insert("value".to_string(), json!(v));
+        }
+
+        let mut cmd_type = match tiny.intent.as_str() {
+            "SET" => "set",
+            "QUERY" => "query",
+            "SEMANTIC" | "FORMULA" => "semantic",
+            "PROGRESSION" => "progression",
+            "COPY" => "copy",
+            "COMPARE" => "compare",
+            _ => "unknown",
+        };
+
+        let mut semantic = None;
+        if (cmd_type == "semantic"
+            || ((cmd_type == "set" || cmd_type == "unknown")
+                && (target.field.is_none() || !params.contains_key("value"))))
+            && parse_semantic_command(body).is_some()
+        {
+            semantic = parse_semantic_command(body);
+            cmd_type = "semantic";
+        }
+
+        if cmd_type != "unknown" || tiny.confidence >= 0.35 {
+            return ParsedCommand {
+                command_type: cmd_type.into(),
+                target,
+                params,
+                semantic,
+            };
+        }
+    }
     
     let mut cmd_type = detect_command_type(body);
     let target = extract_target(body);

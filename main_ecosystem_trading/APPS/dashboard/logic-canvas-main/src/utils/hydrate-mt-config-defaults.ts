@@ -135,22 +135,68 @@ function normalizeEngines(engines: EngineConfig[] | undefined): EngineConfig[] {
         }
 
         baseGroup.logics = baseGroup.logics.map((l: any) => {
-          const isPower =
-            String(l?.logic_name || "")
-              .trim()
-              .toLowerCase() === "power";
+          const logicName = String(l?.logic_name || "").trim();
+          const logicId = String(l?.logic_id || "").toUpperCase();
+          
+          // Check if this is Power logic by checking logic_name OR logic_id
+          // logic_id format: "A_Power_B_G1" or "B_Power_S_G2" etc. (note: no underscore between engine and Power)
+          const isPowerLogic = logicName.toLowerCase() === "power" || 
+            logicId.includes("_POWER_") || 
+            logicId.startsWith("A_POWER") || logicId.startsWith("A_Power") ||
+            logicId.startsWith("B_POWER") || logicId.startsWith("B_Power") ||
+            logicId.startsWith("C_POWER") || logicId.startsWith("C_Power");
+          
+          // B-Power: Power logic in Engine B (logic_id starts with "B_Power" or engine_id is "B")
+          // C-Power: Power logic in Engine C (logic_id starts with "C_Power" or engine_id is "C")
+          // A-Power: Power logic in Engine A (logic_id starts with "A_Power")
+          const isBPower = isPowerLogic && (logicId.startsWith("B_POWER") || logicId.startsWith("B_Power") || l?.engine_id === "B");
+          const isCPower = isPowerLogic && (logicId.startsWith("C_POWER") || logicId.startsWith("C_Power") || l?.engine_id === "C");
+          const isAPower = isPowerLogic && !isBPower && !isCPower;
+          
+          // Power A should be 0, B-Power/C-Power should be 4 (user expects 4), others should be 1
+          // For B-Power/C-Power: FORCE correct value (4) regardless of what's saved - 0 is ALWAYS wrong
+          // For A-Power: use 0
+          // For others: use 1 (default) or preserve user's value
+          let normalizedStartLevel = 1;
+          if (isAPower) {
+            normalizedStartLevel = 0;
+          } else if (isBPower || isCPower) {
+            normalizedStartLevel = 4; // User expects 4 for B-Power/C-Power - FORCE this!
+          }
 
-          const normalizedStartLevel = isPower ? 0 : 1;
+          // For B-Power/C-Power: ALWAYS use normalized value (4), never preserve wrong 0
+          // For others: preserve user's value if set, otherwise use default
+          const existingStartLevel = l.startLevel ?? l.start_level;
+          let userStartLevel: number;
+          
+          if (isBPower || isCPower) {
+            // FORCE correct value for B-Power/C-Power - 0 is always wrong
+            userStartLevel = normalizedStartLevel;
+          } else if (typeof existingStartLevel === 'number') {
+            // For other logics, preserve user's value if set
+            userStartLevel = existingStartLevel;
+          } else {
+            userStartLevel = normalizedStartLevel;
+          }
 
+          // Only apply Power logic defaults - for non-Power logics, preserve user's values
+          if (isPowerLogic) {
+            return {
+              ...l,
+              enabled: true,
+              trigger_type: "Trigger_Immediate",
+              trigger_bars: 0,
+              trigger_minutes: 0,
+              trigger_pips: 0,
+              order_count_reference: "Logic_Power",
+              startLevel: userStartLevel,
+            };
+          }
+
+          // For non-Power logics: preserve ALL user values, only fix startLevel if needed
           return {
             ...l,
-            enabled: true,
-              trigger_type: "Trigger_Immediate",
-            trigger_bars: 0,
-            trigger_minutes: 0,
-            trigger_pips: 0,
-            order_count_reference: "Logic_Power",
-            start_level: normalizedStartLevel,
+            startLevel: userStartLevel,
           };
         });
 

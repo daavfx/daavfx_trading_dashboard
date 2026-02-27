@@ -78,6 +78,19 @@ export interface CommandResult {
   changes?: FieldChange[];
   queryResult?: QueryResult;
   pendingPlan?: TransactionPlan;
+  isGreeting?: boolean;  // Flag for conversational responses
+  showPanel?: string;    // Panel to show: "help", "commands", "history"
+}
+
+// User feedback for online learning - captures corrections and approvals
+export interface UserFeedback {
+  id: string;
+  messageId: string;
+  originalInput: string;
+  predictedIntent: string;
+  correctIntent: string;
+  timestamp: number;
+  feedbackType: "correction" | "approval" | "rejection";
 }
 
 export interface FieldChange {
@@ -100,6 +113,7 @@ export interface QueryResult {
     fields?: string[];
   };
   isSnapshot?: boolean;
+  fieldExplanation?: string;
 }
 export interface QueryMatch {
   engine: string;
@@ -129,4 +143,5 @@ export interface ChatMessage {
   timestamp: number;
   command?: ParsedCommand;
   result?: CommandResult;
+  showPanel?: string; // Panel to display: "help", "history", etc.
 }

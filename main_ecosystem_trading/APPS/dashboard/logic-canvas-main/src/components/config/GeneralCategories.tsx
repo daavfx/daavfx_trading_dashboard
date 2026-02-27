@@ -65,17 +65,9 @@ export function GeneralCategories({
   mode = 1,
 }: GeneralCategoriesProps) {
   const [expandedCategories, setExpandedCategories] = useState<string[]>(["risk_management"]);
-  const [generalEditScope, setGeneralEditScope] = useState<"Buy" | "Sell" | "Both Sides">(
-    "Both Sides",
+  const [generalEditScope, setGeneralEditScope] = useState<"Buy" | "Sell">(
+    "Buy",
   );
-
-  useEffect(() => {
-    if (mode === 2) {
-      if (generalEditScope !== "Both Sides") setGeneralEditScope("Both Sides");
-    } else {
-      if (generalEditScope === "Both Sides") setGeneralEditScope("Buy");
-    }
-  }, [mode, generalEditScope]);
 
   const toggleCategory = (id: string) => {
     setExpandedCategories((prev) =>
@@ -103,32 +95,17 @@ export function GeneralCategories({
         } else if (value === "Sell Only") {
             newConfig.allow_buy = false;
             newConfig.allow_sell = true;
-        } else if (value === "Both") {
-            newConfig.allow_buy = true;
-            newConfig.allow_sell = true;
         } else {
             newConfig.allow_buy = false;
             newConfig.allow_sell = false;
         }
-    } else if (categoryId === "general" && fieldId === "magic_number_both") {
-        if (typeof value === "string") {
-          const n = parseInt(value, 10);
-          if (!Number.isNaN(n)) value = n;
-        }
-        newConfig.magic_number_buy = value;
-        newConfig.magic_number_sell = value;
     } else if (categoryId === "risk_management") {
         const setRisk = (key: "risk_management" | "risk_management_b" | "risk_management_s") => {
           if (!newConfig[key]) newConfig[key] = {};
           newConfig[key][fieldId] = value;
         };
         if (generalEditScope === "Buy") setRisk("risk_management_b");
-        else if (generalEditScope === "Sell") setRisk("risk_management_s");
-        else {
-          setRisk("risk_management");
-          setRisk("risk_management_b");
-          setRisk("risk_management_s");
-        }
+        else setRisk("risk_management_s");
     } else if (categoryId === "time") {
         const setTime = (key: "time_filters" | "time_filters_b" | "time_filters_s") => {
           if (!newConfig[key]) newConfig[key] = {};
@@ -147,24 +124,14 @@ export function GeneralCategories({
         };
 
         if (generalEditScope === "Buy") setTime("time_filters_b");
-        else if (generalEditScope === "Sell") setTime("time_filters_s");
-        else {
-          setTime("time_filters");
-          setTime("time_filters_b");
-          setTime("time_filters_s");
-        }
+        else setTime("time_filters_s");
     } else if (categoryId === "news") {
          const setNews = (key: "news_filter" | "news_filter_b" | "news_filter_s") => {
            if (!newConfig[key]) newConfig[key] = {};
            newConfig[key][fieldId] = value;
          };
          if (generalEditScope === "Buy") setNews("news_filter_b");
-         else if (generalEditScope === "Sell") setNews("news_filter_s");
-         else {
-           setNews("news_filter");
-           setNews("news_filter_b");
-           setNews("news_filter_s");
-         }
+         else setNews("news_filter_s");
     } else if (categoryId === "compounding") {
          newConfig[`compounding_${fieldId}`] = value;
     } else if (categoryId === "logs") {
@@ -178,41 +145,29 @@ export function GeneralCategories({
 
   const getScopedValue = <T,>(base: T | undefined, buy: T | undefined, sell: T | undefined): T | undefined => {
     if (generalEditScope === "Buy") return buy ?? base;
-    if (generalEditScope === "Sell") return sell ?? base;
-    return base;
+    return sell ?? base;
   };
 
   const renderModeSelectors = () => (
     <div className="mb-3 p-3 bg-muted/30 rounded-lg border border-border/50">
       <div className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-2">
         <ArrowLeftRight className="w-3 h-3" />
-        BuySellBoth Sides
+        Buy / Sell Edit Side
       </div>
       <ToggleGroup
         type="single"
-        value={
-          mode === 2
-            ? "both"
-            : generalEditScope === "Buy"
-              ? "buy"
-              : "sell"
-        }
+        value={generalEditScope === "Buy" ? "buy" : "sell"}
         onValueChange={(val) => {
           if (!val) return;
-          if (mode === 2 && val !== "both") return;
-          if (mode === 1 && val === "both") return;
           if (val === "buy") setGeneralEditScope("Buy");
           else if (val === "sell") setGeneralEditScope("Sell");
-          else setGeneralEditScope("Both Sides");
         }}
         className="flex flex-col sm:flex-row justify-start gap-2 w-full"
       >
         <ToggleGroupItem
           value="buy"
-          disabled={mode === 2}
           className={cn(
             "flex-1 h-8 px-3 text-xs",
-            mode === 2 && "opacity-40 cursor-not-allowed",
             "data-[state=on]:bg-emerald-500/20 data-[state=on]:text-emerald-500 border border-border/50 data-[state=on]:border-emerald-500/30",
           )}
         >
@@ -220,25 +175,12 @@ export function GeneralCategories({
         </ToggleGroupItem>
         <ToggleGroupItem
           value="sell"
-          disabled={mode === 2}
           className={cn(
             "flex-1 h-8 px-3 text-xs",
-            mode === 2 && "opacity-40 cursor-not-allowed",
             "data-[state=on]:bg-rose-500/20 data-[state=on]:text-rose-500 border border-border/50 data-[state=on]:border-rose-500/30",
           )}
         >
           Sell
-        </ToggleGroupItem>
-        <ToggleGroupItem
-          value="both"
-          disabled={mode === 1}
-          className={cn(
-            "flex-1 h-8 px-3 text-xs",
-            mode === 1 && "opacity-40 cursor-not-allowed",
-            "data-[state=on]:bg-blue-500/20 data-[state=on]:text-blue-500 border border-border/50 data-[state=on]:border-blue-500/30",
-          )}
-        >
-          Both Sides
         </ToggleGroupItem>
       </ToggleGroup>
     </div>
@@ -355,16 +297,7 @@ export function GeneralCategories({
               onChange: createHandler(field.id)
             }));
             
-        if (generalEditScope === "Both Sides") {
-          fields.unshift({
-            id: "magic_number_both",
-            label: "Magic Number (Both Sides)",
-            value: generalConfig.magic_number_buy,
-            type: "number" as const,
-            description: "Terminal-facing magic number for Buy/Sell cycles",
-            onChange: createHandler("magic_number_both"),
-          });
-        } else if (generalEditScope === "Sell") {
+        if (generalEditScope === "Sell") {
           fields.unshift({
             id: "magic_number_sell",
             label: "Magic Number (Sell)",
@@ -386,7 +319,7 @@ export function GeneralCategories({
 
         // Compute direction
         let direction = "Disabled";
-        if (generalConfig.allow_buy && generalConfig.allow_sell) direction = "Both";
+        if (generalConfig.allow_buy && generalConfig.allow_sell) direction = "Buy Only";
         else if (generalConfig.allow_buy) direction = "Buy Only";
         else if (generalConfig.allow_sell) direction = "Sell Only";
         
@@ -396,7 +329,7 @@ export function GeneralCategories({
             value: direction,
             type: "segmented" as any,
             description: "Control whether the EA can open Buy or Sell trades",
-            options: ["Buy Only", "Sell Only", "Both", "Disabled"],
+            options: ["Buy Only", "Sell Only", "Disabled"],
             onChange: createHandler("trading_direction")
         } as any);
         

@@ -51,7 +51,7 @@ export function useChatCommands({
       id: "welcome",
       role: "system",
       content:
-        'Welcome to Ryiuk! I can help you modify trading parameters.\n\nTry commands like:\n• "show grid for all groups"\n• "set grid to 600 for groups 1-8"\n• "create progression for grid fibonacci groups 1-8"',
+        "Hey! 👋 I'm Ryiuk. I can help you configure your trading grids, set lot sizes, adjust multipliers, and more.\n\nJust tell me what you need in natural language, like:\n• \"set grid to 600 for groups 1-8\"\n• \"make it more aggressive\"\n• \"show me the power settings\"\n\nOr just say hi — I'm here to chat too! 😎",
       timestamp: Date.now(),
     },
   ]);

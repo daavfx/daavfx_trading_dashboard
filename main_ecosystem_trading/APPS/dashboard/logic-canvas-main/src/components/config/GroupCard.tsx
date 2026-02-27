@@ -14,7 +14,14 @@ interface GroupCardProps {
   selectedFields: string[];
   mode: 1 | 2;
   platform?: Platform;
-  onUpdateLogic: (logic: string, field: string, value: any, groupNum: number) => void;
+  onUpdateLogic: (
+    logic: string,
+    field: string,
+    value: any,
+    groupNum: number,
+    direction?: "buy" | "sell",
+    targetLogicId?: string,
+  ) => void;
   config: MTConfig | null;
 }
 
@@ -50,6 +57,21 @@ export function GroupCard({
   const [expandedLogics, setExpandedLogics] = useState<string[]>([...logics]);
   const groupNum = parseInt(group.replace("Group ", ""));
   const isGroup1 = group === "Group 1";
+
+  const resolveLogicDirection = (logic: any): "buy" | "sell" | null => {
+    const direction = String(logic?.direction || "").toUpperCase();
+    if (direction === "B" || direction === "BUY") return "buy";
+    if (direction === "S" || direction === "SELL") return "sell";
+
+    const logicId = String(logic?.logic_id || "").toUpperCase();
+    if (logicId.includes("_B_") || logicId.endsWith("_B")) return "buy";
+    if (logicId.includes("_S_") || logicId.endsWith("_S")) return "sell";
+
+    if (logic?.allow_buy === true && logic?.allow_sell !== true) return "buy";
+    if (logic?.allow_sell === true && logic?.allow_buy !== true) return "sell";
+
+    return null;
+  };
 
   const toggleLogic = (logic: string) => {
     setExpandedLogics((prev) =>
@@ -134,9 +156,19 @@ export function GroupCard({
               </div>
 
               {prefixedLogics.map((logic) => {
-                const foundLogicConfig = engineData?.groups
-                  ?.find((g: any) => g.group_number === groupNum)
-                  ?.logics.find((l: any) => l.logic_name?.toUpperCase() === logic);
+                const logicBaseName = logic.replace(/^(B|C)/i, "");
+                const groupLogics =
+                  engineData?.groups?.find((g: any) => g.group_number === groupNum)
+                    ?.logics || [];
+                const matchingLogics = groupLogics.filter(
+                  (l: any) =>
+                    String(l?.logic_name || "").toUpperCase() ===
+                    logicBaseName.toUpperCase(),
+                );
+                const foundLogicConfig =
+                  matchingLogics.find(
+                    (l: any) => resolveLogicDirection(l) === "buy",
+                  ) || matchingLogics[0];
 
                 return (
                   <LogicModule
@@ -151,12 +183,19 @@ export function GroupCard({
                     engineData={engineData}
                     selectedFields={selectedFields}
                     mode={mode}
-                    onUpdate={(field, value) => {
+                    onUpdate={(field, value, direction, targetLogicId) => {
                       let processedValue = value;
                       if (typeof value === "string" && (value === "ON" || value === "OFF")) {
                         processedValue = value === "ON";
                       }
-                      onUpdateLogic(logic, field, processedValue, groupNum);
+                      onUpdateLogic(
+                        logic,
+                        field,
+                        processedValue,
+                        groupNum,
+                        direction,
+                        targetLogicId,
+                      );
                     }}
                   />
                 );

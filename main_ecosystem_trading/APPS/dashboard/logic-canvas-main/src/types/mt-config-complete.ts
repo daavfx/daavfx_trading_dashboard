@@ -55,18 +55,40 @@ export interface LogicConfig {
   allowBuy: boolean;
   allowSell: boolean;
   
-  // === ORDER PARAMETERS (5 fields) ===
+  // === ORDER PARAMETERS (5 fields) - BASE VALUES ===
   initialLot: number;
   lastLot: number;
   multiplier: number;
   grid: number;
   gridBehavior: GridBehavior;
   
-  // === TRAIL CONFIGURATION (4 fields) ===
+  // === ORDER PARAMETERS - BUY VALUES ===
+  initialLotBuy?: number;
+  lastLotBuy?: number;
+  multiplierBuy?: number;
+  gridBuy?: number;
+  
+  // === ORDER PARAMETERS - SELL VALUES ===
+  initialLotSell?: number;
+  lastLotSell?: number;
+  multiplierSell?: number;
+  gridSell?: number;
+  
+  // === TRAIL CONFIGURATION (4 fields) - BASE VALUES ===
   trailMethod: TrailMethod;
   trailValue: number;
   trailStart: number;
   trailStep: number; // Legacy, also sets trailSteps[0].step
+  
+  // === TRAIL CONFIGURATION - BUY VALUES ===
+  trailValueBuy?: number;
+  trailStartBuy?: number;
+  trailStepBuy?: number;
+  
+  // === TRAIL CONFIGURATION - SELL VALUES ===
+  trailValueSell?: number;
+  trailStartSell?: number;
+  trailStepSell?: number;
   
   // === TRAIL STEPS - 7 LEVELS (7 × 5 = 35 fields) ===
   trailSteps: TrailStepConfig[]; // Array of 7

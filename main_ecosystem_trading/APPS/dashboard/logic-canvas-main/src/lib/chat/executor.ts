@@ -25,6 +25,14 @@ import { getVersionControlManager } from "@/lib/version-control/manager";
 import { getUndoRedoManager } from "@/lib/undo-redo/manager";
 import { getMemorySystemManager } from "@/lib/memory-system/manager";
 import { resourceManager } from "@/lib/resource/BoundedResourceManager";
+import {
+  validateField,
+  validateFieldBounds,
+  validateFieldOperation,
+  getFieldEntity,
+  type FieldEntity,
+} from "./field-schema";
+import { getFieldExplanation, FIELD_DESCRIPTIONS } from "./field-descriptions";
 
 export class CommandExecutor {
   private config: MTConfig | null = null;
@@ -43,6 +51,40 @@ export class CommandExecutor {
     this.autoApproveTransactions = enabled;
   }
 
+  private validateFieldOp(
+    field: string,
+    entity: FieldEntity,
+    value: number
+  ): { valid: boolean; error?: string } {
+    const result = validateFieldOperation(field, entity, value);
+    if (!result.valid) {
+      return { valid: false, error: result.error };
+    }
+    return { valid: true };
+  }
+
+  private validatePlanIntegrity(plan: TransactionPlan): { valid: boolean; error?: string } {
+    if (!plan.id || !plan.type || !plan.preview) {
+      return { valid: false, error: "INVALID_PLAN: Missing required plan fields" };
+    }
+
+    for (const p of plan.preview) {
+      if (!p.engine || !p.group || !p.field) {
+        return { valid: false, error: "INVALID_PREVIEW: Malformed preview entry" };
+      }
+    }
+
+    return { valid: true };
+  }
+
+  private getEntityFromTarget(target: { type: string; engine?: string; group?: number; logic?: string }): FieldEntity {
+    if (target.type === "general") return "general";
+    if (target.type === "engine") return "engine";
+    if (target.type === "group") return "group";
+    if (target.type === "logic") return "logic";
+    return "logic";
+  }
+
   private executeImport(command: ParsedCommand): CommandResult {
     if (!this.config) return { success: false, message: "No config loaded" };
     const content: string | undefined = command.params.setContent;
@@ -50,7 +92,7 @@ export class CommandExecutor {
       return { success: false, message: "Missing .set content. Include it between triple backticks (``` ... ```)." };
     }
 
-    const previews = computeSetChanges(this.config as MTConfigComplete, content);
+    const previews = computeSetChanges(this.config as unknown as MTConfigComplete, content);
     if (previews.length === 0) {
       return { success: false, message: "No differences detected between current config and provided .set content" };
     }
@@ -78,7 +120,7 @@ export class CommandExecutor {
     };
 
     // Round-trip verification
-    const simulated = applySetContent(this.config as MTConfigComplete, content);
+    const simulated = applySetContent(this.config as unknown as MTConfigComplete, content);
     const regenerated = exportToSetFileWithDirections(simulated);
     const roundTrip = diffSetContents(content, regenerated);
 
@@ -117,6 +159,22 @@ export class CommandExecutor {
     this.redoStack = resourceManager.add('maxRedoStack', this.redoStack, plan);
   }
 
+  // Get concise help message for chat display (panel shows full docs)
+  private getShortHelpMessage(): string {
+    return [
+      "💡 Quick commands:",
+      "• set <field> to <value> — Update config",
+      "• show <target> — View settings",
+      "• find <query> — Search values",
+      "• copy / compare — Clone or diff",
+      "• fibonacci / linear — Create progressions",
+      "• apply / cancel — Confirm or reject changes",
+      "",
+      "📋 Full command reference → opened in panel",
+    ].join("\n");
+  }
+
+  // Full help message for panel display
   private getHelpMessage(): string {
     return [
       "Command guide:",
@@ -160,6 +218,48 @@ export class CommandExecutor {
     ].join("\n");
   }
 
+  // Greeting detection and response for conversational chat
+  private readonly GREETING_PATTERNS = [
+    /^hi\s*$/i,
+    /^hey\s*$/i,
+    /^hello\s*$/i,
+    /^yo\s*$/i,
+    /^what's\s*up\s*$/i,
+    /^wassup\s*$/i,
+    /^bro\s*$/i,
+    /^sup\s*$/i,
+    /^hi\s+there/i,
+    /^hey\s+there/i,
+  ];
+
+  private readonly GREETING_RESPONSES = [
+    "Hey! 👋 What's good? Ready to configure some grids?",
+    "Yo! Let's get it — what do you need?",
+    "What's good! I'm here to help with your trading config.",
+    "Hey boss! What are we adjusting today?",
+    "Hey! Ready to make some moves? Just tell me what you need.",
+    "Yo! Let's build some grids. What do you want to do?",
+    "What's up! Need help with your config?",
+    "Hey there! I can help you set grids, lot sizes, multipliers and more.",
+  ];
+
+  private isGreeting(input: string): boolean {
+    const trimmed = input.trim().toLowerCase();
+    // Also check for very short inputs that might be greetings
+    if (trimmed.length <= 5) {
+      return this.GREETING_PATTERNS.some(p => p.test(trimmed));
+    }
+    // Check first few words for greeting patterns
+    const firstFewWords = trimmed.split(/\s+/).slice(0, 2).join(" ");
+    return this.GREETING_PATTERNS.some(p => p.test(firstFewWords));
+  }
+
+  private getGreetingResponse(): string {
+    // Pick a random greeting response
+    const idx = Math.floor(Math.random() * this.GREETING_RESPONSES.length);
+    return this.GREETING_RESPONSES[idx];
+  }
+
   private createInversePlan(plan: TransactionPlan): TransactionPlan {
     return {
       ...structuredClone(plan),
@@ -179,6 +279,11 @@ export class CommandExecutor {
   }
 
   private applyPlan(plan: TransactionPlan): { newConfig: MTConfig; changes: FieldChange[]; appliedPlan: TransactionPlan } {
+    const planIntegrity = this.validatePlanIntegrity(plan);
+    if (!planIntegrity.valid) {
+      throw new Error(planIntegrity.error);
+    }
+
     const appliedPlan: TransactionPlan = structuredClone(plan);
     const newConfig = applyTransactionPlan(this.config!, appliedPlan);
     appliedPlan.status = "applied";
@@ -241,7 +346,7 @@ export class CommandExecutor {
             logicName: c.logic,
           })),
           {
-            description: plan.description,
+            marketConditions: plan.description,
           }
         );
       } catch (e) {
@@ -380,8 +485,8 @@ export class CommandExecutor {
             ...(isPower && engineId === "A"
               ? {}
               : {
-                start_level: isPower ? 5 : 4,
-                last_lot: 0.12,
+                startLevel: isPower ? 5 : 4,
+                lastLot: 0.12,
               }),
             ...(g === 1
               ? {
@@ -709,14 +814,17 @@ export class CommandExecutor {
     ) {
       return {
         success: true,
-        message: this.getHelpMessage(),
+        message: this.getShortHelpMessage(),
+        showPanel: "help",
       };
     }
 
-    if (["hi", "hello", "hey", "yo"].includes(rawLower)) {
+    // Check for greetings FIRST before unknown command
+    if (this.isGreeting(command.raw)) {
       return {
         success: true,
-        message: this.getHelpMessage(),
+        message: this.getGreetingResponse(),
+        isGreeting: true,
       };
     }
 
@@ -779,6 +887,14 @@ export class CommandExecutor {
       case "import":
         return this.executeImport(command);
       case "unknown":
+        // Check for greetings first - return conversational response instead of help
+        if (this.isGreeting(command.raw)) {
+          return {
+            success: true,
+            message: this.getGreetingResponse(),
+            isGreeting: true,
+          };
+        }
         return {
           success: false,
           message: `I didn't understand: "${command.raw}".\n\n${this.getHelpMessage()}`,
@@ -902,13 +1018,16 @@ export class CommandExecutor {
       fields: field ? [field] : undefined
     };
 
+    const fieldExplanation = field ? getFieldExplanation(field) : undefined;
+
     return {
       success: true,
-      message: `Found ${matches.length} matches`,
+      message: `Found ${matches.length} matches${fieldExplanation ? "" : ""}`,
       queryResult: {
         matches,
         summary: this.formatQuerySummary(matches, field),
-        navigationTargets: (engines || groups || logics) ? navigationTargets : undefined
+        navigationTargets: (engines || groups || logics) ? navigationTargets : undefined,
+        fieldExplanation: fieldExplanation || undefined
       }
     };
   }
@@ -1022,6 +1141,14 @@ export class CommandExecutor {
 
           if (typeof newValue === "number") {
             newValue = clampToBounds(op.field, newValue);
+
+            const fieldValidation = this.validateFieldOp(op.field, "logic", newValue);
+            if (!fieldValidation.valid) {
+              return {
+                success: false,
+                message: `Validation failed for ${op.field}: ${fieldValidation.error}`,
+              };
+            }
           }
 
           plannedChanges.push({

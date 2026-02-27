@@ -451,7 +451,7 @@ pub struct LogicConfig {
     pub trail_step_method: String,
 
     // ===== LOGIC-SPECIFIC (5 fields) =====
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(alias = "startLevel", skip_serializing_if = "Option::is_none")]
     pub start_level: Option<i32>, // Not for Power
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_lot: Option<f64>, // Not for Power
@@ -2152,9 +2152,6 @@ pub fn export_massive_v19_setfile(
         }
     };
 
-    let pick_dir_f64 =
-        |buy: bool, base: f64, b: Option<f64>, s: Option<f64>| -> f64 { if buy { b.unwrap_or(base) } else { s.unwrap_or(base) } };
-
     let logic_names = ["POWER", "REPOWER", "SCALP", "STOPPER", "STO", "SCA", "RPO"];
     let directions = ["Buy", "Sell"];
 
@@ -2176,15 +2173,67 @@ pub fn export_massive_v19_setfile(
             let group = engine.groups.iter().find(|g| g.group_number == group_num_u8);
 
             for logic_name in &logic_names {
-                let logic = group
-                    .and_then(|g| g.logics.iter().find(|l| l.logic_name.to_uppercase() == *logic_name))
+                let default_logic = create_default_logic(logic_name);
+                let matching_logics: Vec<LogicConfig> = group
+                    .map(|g| {
+                        g.logics
+                            .iter()
+                            .filter(|l| l.logic_name.to_uppercase() == *logic_name)
+                            .cloned()
+                            .collect()
+                    })
+                    .unwrap_or_default();
+
+                let infer_row_direction = |l: &LogicConfig| -> Option<&'static str> {
+                    let logic_id_upper = l.logic_id.to_uppercase();
+                    if logic_id_upper.contains("_B_") || logic_id_upper.ends_with("_B") {
+                        return Some("Buy");
+                    }
+                    if logic_id_upper.contains("_S_") || logic_id_upper.ends_with("_S") {
+                        return Some("Sell");
+                    }
+                    if l.allow_buy && !l.allow_sell {
+                        return Some("Buy");
+                    }
+                    if l.allow_sell && !l.allow_buy {
+                        return Some("Sell");
+                    }
+                    None
+                };
+
+                let base_logic = matching_logics
+                    .first()
                     .cloned()
-                    .unwrap_or_else(|| create_default_logic(logic_name));
+                    .unwrap_or_else(|| default_logic.clone());
+                let buy_logic = matching_logics
+                    .iter()
+                    .find(|l| infer_row_direction(l) == Some("Buy"))
+                    .cloned();
+                let sell_logic = matching_logics
+                    .iter()
+                    .find(|l| infer_row_direction(l) == Some("Sell"))
+                    .cloned();
 
                 let v19_suffix = get_v19_suffix(&engine.engine_id, logic_name);
 
+                let has_directional_rows = buy_logic.is_some() && sell_logic.is_some();
                 for direction in &directions {
                     let is_buy = *direction == "Buy";
+                    let logic = if is_buy {
+                        buy_logic.as_ref().unwrap_or(&base_logic)
+                    } else {
+                        sell_logic.as_ref().unwrap_or(&base_logic)
+                    };
+                    let pick_directional_value = |base: f64, b: Option<f64>, s: Option<f64>| -> f64 {
+                        if has_directional_rows {
+                            // Directional-row model: each row owns its own values, do not read suffix mirrors.
+                            base
+                        } else if is_buy {
+                            b.unwrap_or(base)
+                        } else {
+                            s.unwrap_or(base)
+                        }
+                    };
 
                     let enabled = if is_buy { logic.allow_buy } else { logic.allow_sell };
 
@@ -2219,7 +2268,7 @@ pub fn export_massive_v19_setfile(
                         group_num,
                         v19_suffix,
                         direction,
-                        pick_dir_f64(is_buy, logic.initial_lot, logic.initial_lot_b, logic.initial_lot_s)
+                        pick_directional_value(logic.initial_lot, logic.initial_lot_b, logic.initial_lot_s)
                     ));
 
                     lines.push(format!(
@@ -2235,13 +2284,10 @@ pub fn export_massive_v19_setfile(
                         group_num,
                         v19_suffix,
                         direction,
-                        pick_dir_f64(is_buy, logic.multiplier, logic.multiplier_b, logic.multiplier_s)
+                        pick_directional_value(logic.multiplier, logic.multiplier_b, logic.multiplier_s)
                     ));
 
-                    // Debug: Log grid value being exported
-                    let grid_value = pick_dir_f64(is_buy, logic.grid, logic.grid_b, logic.grid_s);
-                    println!("DEBUG_EXPORT: Group {} {} {} Grid: base={}, b={:?}, s={:?}, selected={}", 
-                        group_num, v19_suffix, direction, logic.grid, logic.grid_b, logic.grid_s, grid_value);
+                    let grid_value = pick_directional_value(logic.grid, logic.grid_b, logic.grid_s);
                     
                     lines.push(format!(
                         "gInput_{}_{}_{}_Grid={:.1}",
@@ -2269,7 +2315,7 @@ pub fn export_massive_v19_setfile(
                         group_num,
                         v19_suffix,
                         direction,
-                        pick_dir_f64(is_buy, logic.trail_start, logic.trail_start_b, logic.trail_start_s)
+                        pick_directional_value(logic.trail_start, logic.trail_start_b, logic.trail_start_s)
                     ));
 
                     lines.push(format!(
@@ -2277,7 +2323,7 @@ pub fn export_massive_v19_setfile(
                         group_num,
                         v19_suffix,
                         direction,
-                        pick_dir_f64(is_buy, logic.trail_step, logic.trail_step_b, logic.trail_step_s)
+                        pick_directional_value(logic.trail_step, logic.trail_step_b, logic.trail_step_s)
                     ));
                     lines.push(format!(
                         "gInput_{}_{}_{}_TrailStepMethod={}",
@@ -4700,8 +4746,12 @@ fn build_group_config(
 ) -> Result<GroupConfig, String> {
     let mut logics = Vec::new();
 
-    // Define logic order
-    let logic_order = vec!["Power", "Repower", "Scalp", "Stopper", "STO", "SCA", "RPO"];
+    // Define logic order based on engine_id
+    let logic_order = match engine_id {
+        "B" => vec!["BPower", "BRepower", "BScalp", "BStopper", "BSTO", "BSCA", "BRPO"],
+        "C" => vec!["CPower", "CRepower", "CScalp", "CStopper", "CSTO", "CSCA", "CRPO"],
+        _ => vec!["Power", "Repower", "Scalp", "Stopper", "STO", "SCA", "RPO"], // Engine A
+    };
 
     for logic_name in &logic_order {
         let empty_direction_data: std::collections::HashMap<
@@ -4716,9 +4766,14 @@ fn build_group_config(
         logics.push(logic_config);
     }
 
-    // Parse group-level settings
+    // Parse group-level settings - use engine-specific key prefix
     let group_power_start = if group_num > 1 {
-        let key = format!("gInput_GroupPowerStart_P{}", group_num);
+        let prefix = match engine_id {
+            "B" => "BP",
+            "C" => "CP",
+            _ => "P",
+        };
+        let key = format!("gInput_GroupPowerStart_{}{}", prefix, group_num);
         values.get(&key).and_then(|v| v.parse().ok())
     } else {
         None
@@ -5896,10 +5951,9 @@ pub async fn parse_massive_setfile(file_path: String) -> Result<MassiveSetfilePa
         config: None,
     };
 
-    // Parse key-value pairs
-    let mut parsed_params: Vec<(usize, String, String, usize, String, String, String, String, f64)> = Vec::new();
-
-    for (line_num, line) in content.lines().enumerate() {
+    // Parse directional gInput keys using the v19 parser.
+    let mut parsed_keys: Vec<ParsedV19Key> = Vec::new();
+    for (_line_num, line) in content.lines().enumerate() {
         let line = line.trim();
         if line.is_empty() || line.starts_with(';') {
             continue;
@@ -5907,47 +5961,19 @@ pub async fn parse_massive_setfile(file_path: String) -> Result<MassiveSetfilePa
 
         if let Some(pos) = line.find('=') {
             let key = line[..pos].trim().to_string();
-            let value_str = line[pos + 1..].trim().to_string();
+            let _value_str = line[pos + 1..].trim().to_string();
 
             // Only process gInput keys
             if !key.starts_with("gInput_") {
                 continue;
             }
 
-            // Parse the key format: gInput_{Group}_{Engine}{Logic}_{Direction}_{Param}
-            match parse_ginput_key(&key) {
-                Ok((group, engine, logic, direction, param_name)) => {
-                    let value = parse_param_value(&value_str);
-                    parsed_params.push((line_num, key, value_str, group, engine, logic, direction, param_name, value));
-                    result.total_inputs_parsed += 1;
-                }
-                Err(e) => {
-                    // Non-critical warning for unknown formats
-                    if !key.contains("gInput_GroupPowerStart")
-                        && !key.contains("gInput_Group")
-                        && !key.contains("gInput_License")
-                        && !key.contains("gInput_Magic")
-                        && !key.contains("gInput_Config")
-                        && !key.contains("gInput_Session")
-                        && !key.contains("gInput_News")
-                        && !key.contains("gInput_Use")
-                        && !key.contains("gInput_Max")
-                        && !key.contains("gInput_Enable")
-                        && !key.contains("gInput_Risk")
-                        && !key.contains("gInput_Input")
-                        && !key.contains("gInput_Grid")
-                        && !key.contains("gInput_Pip")
-                        && !key.contains("gInput_GroupMode")
-                    {
-                        result.warnings.push(format!("Line {}: Unknown format - {}", line_num, e));
-                    }
-                }
+            if let Some(parsed) = parse_v19_key(&key) {
+                parsed_keys.push(parsed);
+                result.total_inputs_parsed += 1;
             }
         }
     }
-
-    // Build MTConfig from parsed parameters
-    let mut config = create_default_mt_config();
 
     // Track found items
     let mut found_groups: Vec<u8> = Vec::new();
@@ -5955,67 +5981,24 @@ pub async fn parse_massive_setfile(file_path: String) -> Result<MassiveSetfilePa
     let mut found_logics: Vec<String> = Vec::new();
     let mut found_logic_directions: std::collections::HashSet<(u8, String, String, String)> = std::collections::HashSet::new();
 
-    for (_line_num, _key, _value_str, group, engine, logic, direction, param_name, value) in parsed_params {
-        // Track unique combinations
-        found_groups.push(group as u8);
-        found_engines.push(engine.clone());
-        found_logics.push(logic.clone());
-        found_logic_directions.insert((group as u8, engine.clone(), logic.clone(), direction.clone()));
-
-        // Map engine letter to config engine_id
-        let engine_id = match engine.as_str() {
-            "A" => "A",
-            "B" => "B",
-            "C" => "C",
-            _ => {
-                result.errors.push(format!("Unknown engine: {}", engine));
-                continue;
-            }
-        };
-
-        // Ensure engine exists in config
-        if !config.engines.iter().any(|e| e.engine_id == engine_id) {
-            config.engines.push(EngineConfig {
-                engine_id: engine_id.to_string(),
-                engine_name: format!("Engine {}", engine_id),
-                max_power_orders: 10,
-                groups: Vec::new(),
-            });
-        }
-
-        // Find or create group
-        let engine_config = config.engines.iter_mut().find(|e| e.engine_id == engine_id).unwrap();
-        let group_u8 = group as u8;
-
-        if let Some(group_config) = engine_config.groups.iter_mut().find(|g| g.group_number == group_u8) {
-            // Group exists, add logic if needed
-            if !group_config.logics.iter().any(|l| l.logic_name.to_uppercase() == logic.to_uppercase()) {
-                let mut new_logic = create_default_logic_config(&logic);
-                new_logic.enabled = true;
-                group_config.logics.push(new_logic);
-            }
-        } else {
-            // Create new group with this logic
-            let mut new_group = GroupConfig {
-                group_number: group_u8,
-                enabled: true,
-                group_power_start: None,
-                reverse_mode: false,
-                hedge_mode: false,
-                hedge_reference: "Logic_None".to_string(),
-                entry_delay_bars: 0,
-                logics: Vec::new(),
-            };
-
-            let mut new_logic = create_default_logic_config(&logic);
-            new_logic.enabled = true;
-            new_group.logics.push(new_logic);
-            engine_config.groups.push(new_group);
-        }
-
-        // Apply parameter to the correct logic
-        apply_param_to_config(&mut config, group, engine_id, &logic, &direction, &param_name, value);
+    for parsed in &parsed_keys {
+        found_groups.push(parsed.group as u8);
+        found_engines.push(parsed.engine.to_string());
+        let logic_name = logic_code_to_name(parsed.logic)
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| parsed.logic.to_string());
+        found_logics.push(logic_name.clone());
+        found_logic_directions.insert((
+            parsed.group as u8,
+            parsed.engine.to_string(),
+            logic_name,
+            parsed.direction.clone(),
+        ));
     }
+
+    // Build config from the authoritative v19 parser.
+    // This preserves independent Buy/Sell rows and avoids collapsing values.
+    let mut config = build_config_from_v19_setfile(&content)?;
 
     // Deduplicate and sort
     found_groups.sort();
@@ -6629,7 +6612,19 @@ fn create_full_v19_config() -> MTConfig {
             };
 
             for logic_name in &logics {
-                group.logics.push(create_default_logic_config(logic_name));
+                // Build distinct Buy/Sell rows so directional values stay fully independent.
+                let mut buy_logic = create_default_logic_config(logic_name);
+                buy_logic.logic_id = format!("{}_{}_B_G{}", engine_id, logic_name, group_num);
+                buy_logic.allow_buy = true;
+                buy_logic.allow_sell = false;
+
+                let mut sell_logic = create_default_logic_config(logic_name);
+                sell_logic.logic_id = format!("{}_{}_S_G{}", engine_id, logic_name, group_num);
+                sell_logic.allow_buy = false;
+                sell_logic.allow_sell = true;
+
+                group.logics.push(buy_logic);
+                group.logics.push(sell_logic);
             }
             engine.groups.push(group);
         }
@@ -6913,7 +6908,18 @@ fn build_config_from_v19_setfile(content: &str) -> Result<MTConfig, String> {
 
             if let Some(engine) = config.engines.iter_mut().find(|e| e.engine_id == engine_id) {
                 if let Some(group) = engine.groups.iter_mut().find(|g| g.group_number == group_u8) {
-                    if let Some(logic) = group.logics.iter_mut().find(|l| l.logic_name.to_uppercase() == logic_name.to_uppercase()) {
+                    let dir_token = if is_buy { "_B_" } else { "_S_" };
+                    let mut maybe_logic = group.logics.iter_mut().find(|l| {
+                        l.logic_name.to_uppercase() == logic_name.to_uppercase()
+                            && l.logic_id.to_uppercase().contains(dir_token)
+                    });
+                    if maybe_logic.is_none() {
+                        maybe_logic = group
+                            .logics
+                            .iter_mut()
+                            .find(|l| l.logic_name.to_uppercase() == logic_name.to_uppercase());
+                    }
+                    if let Some(logic) = maybe_logic {
                         apply_v19_param_to_logic(logic, is_buy, &parsed_key.param, raw_val);
                     }
                 }
@@ -6937,6 +6943,7 @@ pub fn get_v19_magic_number(base: i32, engine_idx: usize, logic_idx: usize, dire
 #[cfg(test)]
 mod v19_tests {
     use super::*;
+    use std::fs;
 
     #[test]
     fn test_parse_v19_key_basic() {
@@ -7023,5 +7030,148 @@ gInput_Global_MagicNumber=777
         let setfile = parse_v19_setfile(content);
         assert!(setfile.inputs.len() >= 5);
         assert_eq!(setfile.validation.logic_directions, 5);
+    }
+
+    #[test]
+    fn test_create_full_v19_config_has_directional_rows() {
+        let config = create_full_v19_config();
+        let engine_a = config.engines.iter().find(|e| e.engine_id == "A").unwrap();
+        let group_1 = engine_a.groups.iter().find(|g| g.group_number == 1).unwrap();
+
+        // 7 logic names x 2 directional rows each.
+        assert_eq!(group_1.logics.len(), 14);
+        assert!(group_1.logics.iter().any(|l| l.logic_name == "POWER" && l.logic_id.contains("_B_")));
+        assert!(group_1.logics.iter().any(|l| l.logic_name == "POWER" && l.logic_id.contains("_S_")));
+    }
+
+    #[test]
+    fn test_export_and_import_keep_buy_sell_independent() {
+        let mut config = create_full_v19_config();
+        let engine = config.engines.iter_mut().find(|e| e.engine_id == "A").unwrap();
+        let group = engine.groups.iter_mut().find(|g| g.group_number == 1).unwrap();
+
+        let buy_logic = group
+            .logics
+            .iter_mut()
+            .find(|l| l.logic_name == "POWER" && l.logic_id.contains("_B_"))
+            .unwrap();
+        buy_logic.initial_lot = 0.11;
+        buy_logic.grid = 111.0;
+        buy_logic.tp_value = 123.0;
+        buy_logic.allow_buy = true;
+        buy_logic.allow_sell = false;
+
+        let sell_logic = group
+            .logics
+            .iter_mut()
+            .find(|l| l.logic_name == "POWER" && l.logic_id.contains("_S_"))
+            .unwrap();
+        sell_logic.initial_lot = 0.22;
+        sell_logic.grid = 222.0;
+        sell_logic.tp_value = 456.0;
+        sell_logic.allow_buy = false;
+        sell_logic.allow_sell = true;
+
+        let tmp_path = std::env::temp_dir().join(format!(
+            "daavfx_v19_directional_{}_{}.set",
+            std::process::id(),
+            chrono::Local::now().timestamp_nanos_opt().unwrap_or_default()
+        ));
+        let tmp_str = tmp_path.to_string_lossy().to_string();
+        let _ = fs::remove_file(&tmp_path);
+
+        export_massive_v19_setfile(config, tmp_str.clone(), "MT5".to_string(), Some(false))
+            .expect("export should succeed");
+
+        let content = fs::read_to_string(&tmp_path).expect("should read exported setfile");
+        assert!(content.contains("gInput_1_AP_Buy_InitialLot=0.11"));
+        assert!(content.contains("gInput_1_AP_Sell_InitialLot=0.22"));
+        assert!(content.contains("gInput_1_AP_Buy_Grid=111.0"));
+        assert!(content.contains("gInput_1_AP_Sell_Grid=222.0"));
+        assert!(content.contains("gInput_1_AP_Buy_TPValue=123.0"));
+        assert!(content.contains("gInput_1_AP_Sell_TPValue=456.0"));
+
+        let imported = build_config_from_v19_setfile(&content).expect("import should succeed");
+        let imported_engine = imported.engines.iter().find(|e| e.engine_id == "A").unwrap();
+        let imported_group = imported_engine.groups.iter().find(|g| g.group_number == 1).unwrap();
+        let imported_buy = imported_group
+            .logics
+            .iter()
+            .find(|l| l.logic_name == "POWER" && l.logic_id.contains("_B_"))
+            .unwrap();
+        let imported_sell = imported_group
+            .logics
+            .iter()
+            .find(|l| l.logic_name == "POWER" && l.logic_id.contains("_S_"))
+            .unwrap();
+
+        assert_eq!(imported_buy.initial_lot, 0.11);
+        assert_eq!(imported_sell.initial_lot, 0.22);
+        assert_eq!(imported_buy.grid, 111.0);
+        assert_eq!(imported_sell.grid, 222.0);
+        assert_eq!(imported_buy.tp_value, 123.0);
+        assert_eq!(imported_sell.tp_value, 456.0);
+
+        let _ = fs::remove_file(&tmp_path);
+    }
+
+    #[tokio::test]
+    async fn test_parse_massive_setfile_keeps_directional_values_independent() {
+        let mut config = create_full_v19_config();
+        let engine = config.engines.iter_mut().find(|e| e.engine_id == "A").unwrap();
+        let group = engine.groups.iter_mut().find(|g| g.group_number == 1).unwrap();
+
+        let buy_logic = group
+            .logics
+            .iter_mut()
+            .find(|l| l.logic_name == "POWER" && l.logic_id.contains("_B_"))
+            .unwrap();
+        buy_logic.initial_lot = 0.11;
+        buy_logic.grid = 111.0;
+
+        let sell_logic = group
+            .logics
+            .iter_mut()
+            .find(|l| l.logic_name == "POWER" && l.logic_id.contains("_S_"))
+            .unwrap();
+        sell_logic.initial_lot = 0.22;
+        sell_logic.grid = 222.0;
+
+        let tmp_path = std::env::temp_dir().join(format!(
+            "daavfx_massive_parse_directional_{}_{}.set",
+            std::process::id(),
+            chrono::Local::now().timestamp_nanos_opt().unwrap_or_default()
+        ));
+        let tmp_str = tmp_path.to_string_lossy().to_string();
+
+        let _ = fs::remove_file(&tmp_path);
+        export_massive_v19_setfile(config, tmp_str.clone(), "MT5".to_string(), Some(false))
+            .expect("export should succeed");
+
+        let parsed = parse_massive_setfile(tmp_str.clone())
+            .await
+            .expect("parse_massive_setfile should succeed");
+        assert!(parsed.success, "parser returned errors: {:?}", parsed.errors);
+
+        let config = parsed.config.expect("config should be present");
+        let engine = config.engines.iter().find(|e| e.engine_id == "A").unwrap();
+        let group = engine.groups.iter().find(|g| g.group_number == 1).unwrap();
+        let buy_logic = group
+            .logics
+            .iter()
+            .find(|l| l.logic_name == "POWER" && l.logic_id.contains("_B_"))
+            .unwrap();
+        let sell_logic = group
+            .logics
+            .iter()
+            .find(|l| l.logic_name == "POWER" && l.logic_id.contains("_S_"))
+            .unwrap();
+
+        assert_eq!(buy_logic.initial_lot, 0.11);
+        assert_eq!(sell_logic.initial_lot, 0.22);
+        assert_eq!(buy_logic.grid, 111.0);
+        assert_eq!(sell_logic.grid, 222.0);
+
+        let _ = fs::remove_file(&tmp_path);
     }
 }
