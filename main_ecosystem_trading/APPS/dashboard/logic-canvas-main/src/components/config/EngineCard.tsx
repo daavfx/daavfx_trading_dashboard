@@ -16,7 +16,14 @@ interface EngineCardProps {
   mtConfig?: any;
   selectedLogics: string[];
   selectedFields?: string[];
-  onUpdateLogic?: (logic: string, field: string, value: any, groupNumber: number) => void;
+  onUpdateLogic?: (
+    logic: string,
+    field: string,
+    value: any,
+    groupNumber: number,
+    direction?: "buy" | "sell",
+    targetLogicId?: string,
+  ) => void;
   mode?: 1 | 2;
   platform?: Platform;
 }
@@ -166,7 +173,7 @@ export function EngineCard({
                         engineData={engineData}
                         selectedFields={selectedFields || []}
                         mode={mode}
-                        onUpdate={(field, value) => {
+                        onUpdate={(field, value, direction, targetLogicId) => {
                           let processedValue = value;
                           if (
                             typeof value === "string" &&
@@ -174,7 +181,14 @@ export function EngineCard({
                           ) {
                             processedValue = value === "ON";
                           }
-                          onUpdateLogic?.(logic, field, processedValue, groupNum);
+                          onUpdateLogic?.(
+                            logic,
+                            field,
+                            processedValue,
+                            groupNum,
+                            direction,
+                            targetLogicId,
+                          );
                         }}
                       />
                     );

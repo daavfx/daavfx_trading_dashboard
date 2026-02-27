@@ -55,8 +55,16 @@ function findDirectionalLogic(config: MTConfigComplete, engineId: "A" | "B" | "C
   if (!engine) return undefined;
   const group = engine.groups.find(g => g.group_number === groupNum);
   if (!group) return undefined;
-  // Find logic by name - direction is handled via _b/_s suffixed fields, not allow_buy/allow_sell
-  return group.logics.find(l => l.logic_name === logicName);
+  // Direction is represented by separate logic rows in the dashboard model.
+  return group.logics.find(l =>
+    l.logic_name === logicName &&
+    (
+      (dir === "B" && l.allowBuy && !l.allowSell) ||
+      (dir === "S" && l.allowSell && !l.allowBuy) ||
+      (dir === "B" && l.allowBuy && l.allowSell) ||
+      (dir === "S" && l.allowBuy && l.allowSell)
+    )
+  );
 }
 
 export function computeSetChanges(config: MTConfigComplete, content: string): ChangePreview[] {
@@ -81,35 +89,45 @@ export function computeSetChanges(config: MTConfigComplete, content: string): Ch
       const valNum = Number(raw);
       let field: string | null = null;
       let newValue: any = raw;
+      
+      // In this schema, buy/sell are separate logic rows, so directional params map to base fields.
+      const addDirSuffix = (baseField: string): string => baseField;
+      
       switch (param) {
-        case "Start": field = "enabled"; newValue = raw === "1"; break;
+        case "Start":
+        case "Enabled":
+          field = "enabled"; newValue = raw === "1"; break;
         case "AllowBuy": /* skip - handled globally */ continue;
         case "AllowSell": /* skip - handled globally */ continue;
-        case "Initial_loT": field = "initialLot"; newValue = valNum; break;
-        case "LastLot": field = "lastLot"; newValue = valNum; break;
-        case "LastLotPower": field = "lastLot"; newValue = valNum; break;
-        case "Mult": field = "multiplier"; newValue = valNum; break;
-        case "Grid": field = "grid"; newValue = valNum; break;
-        case "GridBehavior": field = "gridBehavior"; newValue = invGridBehavior(valNum); break;
-        case "Trail": field = "trailMethod"; newValue = invTrailMethod(valNum); break;
-        case "TrailValue": field = "trailValue"; newValue = valNum; break;
-        case "Trail_Start": field = "trailStart"; newValue = valNum; break;
-        case "TrailStep": field = "trailStep"; newValue = valNum; break;
-        case "TPMode": field = "tpMode"; newValue = invTPSLMode(valNum); break;
-        case "SLMode": field = "slMode"; newValue = invTPSLMode(valNum); break;
-        case "UseTP": field = "useTP"; newValue = raw === "1"; break;
-        case "UseSL": field = "useSL"; newValue = raw === "1"; break;
-        case "TPValue": field = "takeProfit"; newValue = valNum; break;
-        case "SLValue": field = "stopLoss"; newValue = valNum; break;
-        case "BreakEvenMode": field = "breakEvenMode"; newValue = invBreakevenMode(valNum); break;
-        case "BreakEvenActivation": field = "breakEvenActivation"; newValue = valNum; break;
-        case "BreakEvenLock": field = "breakEvenLock"; newValue = valNum; break;
-        case "BreakEvenTrail": field = "breakEvenTrail"; newValue = raw === "1"; break;
-        case "ProfitTrailEnabled": field = "profitTrailEnabled"; newValue = raw === "1"; break;
-        case "ProfitTrailPeakDropPercent": field = "profitTrailPeakDropPercent"; newValue = valNum; break;
-        case "ProfitTrailLockPercent": field = "profitTrailLockPercent"; newValue = valNum; break;
-        case "ProfitTrailCloseOnTrigger": field = "profitTrailCloseOnTrigger"; newValue = raw === "1"; break;
-        case "ProfitTrailUseBreakEven": field = "profitTrailUseBreakEven"; newValue = raw === "1"; break;
+        case "Initial_loT":
+        case "InitialLot":
+          field = addDirSuffix("initialLot"); newValue = valNum; break;
+        case "LastLot": field = addDirSuffix("lastLot"); newValue = valNum; break;
+        case "LastLotPower": field = addDirSuffix("lastLot"); newValue = valNum; break;
+        case "Mult": field = addDirSuffix("multiplier"); newValue = valNum; break;
+        case "Grid": field = addDirSuffix("grid"); newValue = valNum; break;
+        case "GridBehavior": field = addDirSuffix("gridBehavior"); newValue = invGridBehavior(valNum); break;
+        case "Trail": field = addDirSuffix("trailMethod"); newValue = invTrailMethod(valNum); break;
+        case "TrailValue": field = addDirSuffix("trailValue"); newValue = valNum; break;
+        case "Trail_Start":
+        case "TrailStart":
+          field = addDirSuffix("trailStart"); newValue = valNum; break;
+        case "TrailStep": field = addDirSuffix("trailStep"); newValue = valNum; break;
+        case "TPMode": field = addDirSuffix("tpMode"); newValue = invTPSLMode(valNum); break;
+        case "SLMode": field = addDirSuffix("slMode"); newValue = invTPSLMode(valNum); break;
+        case "UseTP": field = addDirSuffix("useTP"); newValue = raw === "1"; break;
+        case "UseSL": field = addDirSuffix("useSL"); newValue = raw === "1"; break;
+        case "TPValue": field = addDirSuffix("takeProfit"); newValue = valNum; break;
+        case "SLValue": field = addDirSuffix("stopLoss"); newValue = valNum; break;
+        case "BreakEvenMode": field = addDirSuffix("breakEvenMode"); newValue = invBreakevenMode(valNum); break;
+        case "BreakEvenActivation": field = addDirSuffix("breakEvenActivation"); newValue = valNum; break;
+        case "BreakEvenLock": field = addDirSuffix("breakEvenLock"); newValue = valNum; break;
+        case "BreakEvenTrail": field = addDirSuffix("breakEvenTrail"); newValue = raw === "1"; break;
+        case "ProfitTrailEnabled": field = addDirSuffix("profitTrailEnabled"); newValue = raw === "1"; break;
+        case "ProfitTrailPeakDropPercent": field = addDirSuffix("profitTrailPeakDropPercent"); newValue = valNum; break;
+        case "ProfitTrailLockPercent": field = addDirSuffix("profitTrailLockPercent"); newValue = valNum; break;
+        case "ProfitTrailCloseOnTrigger": field = addDirSuffix("profitTrailCloseOnTrigger"); newValue = raw === "1"; break;
+        case "ProfitTrailUseBreakEven": field = addDirSuffix("profitTrailUseBreakEven"); newValue = raw === "1"; break;
         case "TriggerType": field = "triggerType"; newValue = invEntryTrigger(valNum); break;
         case "TriggerBars": field = "triggerBars"; newValue = valNum; break;
         case "TriggerMinutes": field = "triggerMinutes"; newValue = valNum; break;
@@ -124,8 +142,8 @@ export function computeSetChanges(config: MTConfigComplete, content: string): Ch
         case "OrderCountReference": field = "orderCountReferenceLogic"; newValue = ("Logic_" + raw); break;
         case "MaxPowerOrders": field = "maxOrderCap"; newValue = valNum; break;
         case "CloseTargets": field = "closeTargets"; newValue = raw; break;
-        case "StartLevel": field = "startLevel"; newValue = valNum; break;
-        case "ResetLotOnRestart": field = "resetLotOnRestart"; newValue = raw === "1"; break;
+        case "StartLevel": field = addDirSuffix("startLevel"); newValue = valNum; break;
+        case "ResetLotOnRestart": field = addDirSuffix("resetLotOnRestart"); newValue = raw === "1"; break;
         case "RestartPolicy": field = "restartPolicy"; newValue = invRestartPolicy(valNum); break;
         default: {
           const ts = param.match(/^TrailStep(Method|Cycle|Balance|Mode)?(\d?)$/);
@@ -141,7 +159,7 @@ export function computeSetChanges(config: MTConfigComplete, content: string): Ch
             else if (kind === "Balance") { field = `trailSteps_${i}_balance`; newValue = valNum; }
             else if (kind === "Mode") { field = `trailSteps_${i}_mode`; newValue = invTrailStepMode(valNum); }
           } else {
-            const pc = param.match(/^ClosePartial(Trigger|Cycle|Mode|Balance|TrailMode|ProfitThreshold|Hours)?(\d?)$/);
+            const pc = param.match(/^ClosePartial(Trigger|Cycle|Mode|Balance|TrailMode|ProfitThreshold|Percent|Hours)?(\d?)$/);
             if (pc) {
               const kind = pc[1] || "";
               const idx = pc[2] ? parseInt(pc[2], 10) - 1 : 0;
@@ -154,7 +172,7 @@ export function computeSetChanges(config: MTConfigComplete, content: string): Ch
               else if (kind === "Balance") { field = `partials_${i}_balance`; newValue = invPartialBalance(valNum); }
               else if (kind === "TrailMode") { field = `partials_${i}_trailMode`; newValue = invTrailStepMode(valNum); }
               else if (kind === "Trigger") { field = `partials_${i}_trigger`; newValue = invPartialTrigger(valNum); }
-              else if (kind === "ProfitThreshold") { field = `partials_${i}_profitThreshold`; newValue = valNum; }
+              else if (kind === "ProfitThreshold" || kind === "Percent") { field = `partials_${i}_profitThreshold`; newValue = valNum; }
               else if (kind === "Hours") { field = `partials_${i}_hours`; newValue = valNum; }
             }
           }
@@ -222,42 +240,48 @@ export function applySetContent(config: MTConfigComplete, content: string): MTCo
     const logic = findDirectionalLogic(newConfig, engineId, logicName, dir, group);
     if (!logic) continue;
 
-    // Direction suffix for fields (Sell uses _s suffix in dashboard)
-    const dirSuffix = dir === "S" ? "_s" : "";
+    // In this schema, buy/sell are separate logic rows, so directional params map to base fields.
+    const addDirSuffix = (baseField: string): string => baseField;
 
     for (const [param, raw] of map.entries()) {
       const valNum = Number(raw);
       let field: string | null = null;
       let newValue: any = raw;
       switch (param) {
-        case "Start": field = "enabled"; newValue = raw === "1"; break;
+        case "Start":
+        case "Enabled":
+          field = "enabled"; newValue = raw === "1"; break;
         case "AllowBuy": /* skip - handled globally */ continue;
         case "AllowSell": /* skip - handled globally */ continue;
-        case "Initial_loT": field = `initialLot`; newValue = valNum; break;
-        case "LastLot": field = `lastLot`; newValue = valNum; break;
-        case "LastLotPower": field = `lastLot`; newValue = valNum; break;
-        case "Mult": field = `multiplier`; newValue = valNum; break;
-        case "Grid": field = `grid`; newValue = valNum; break;
-        case "GridBehavior": field = "gridBehavior"; newValue = invGridBehavior(valNum); break;
-        case "Trail": field = "trailMethod"; newValue = invTrailMethod(valNum); break;
-        case "TrailValue": field = "trailValue"; newValue = valNum; break;
-        case "Trail_Start": field = "trailStart"; newValue = valNum; break;
-        case "TrailStep": field = "trailStep"; newValue = valNum; break;
-        case "TPMode": field = "tpMode"; newValue = invTPSLMode(valNum); break;
-        case "SLMode": field = "slMode"; newValue = invTPSLMode(valNum); break;
-        case "UseTP": field = "useTP"; newValue = raw === "1"; break;
-        case "UseSL": field = "useSL"; newValue = raw === "1"; break;
-        case "TPValue": field = "takeProfit"; newValue = valNum; break;
-        case "SLValue": field = "stopLoss"; newValue = valNum; break;
-        case "BreakEvenMode": field = "breakEvenMode"; newValue = invBreakevenMode(valNum); break;
-        case "BreakEvenActivation": field = "breakEvenActivation"; newValue = valNum; break;
-        case "BreakEvenLock": field = "breakEvenLock"; newValue = valNum; break;
-        case "BreakEvenTrail": field = "breakEvenTrail"; newValue = raw === "1"; break;
-        case "ProfitTrailEnabled": field = "profitTrailEnabled"; newValue = raw === "1"; break;
-        case "ProfitTrailPeakDropPercent": field = "profitTrailPeakDropPercent"; newValue = valNum; break;
-        case "ProfitTrailLockPercent": field = "profitTrailLockPercent"; newValue = valNum; break;
-        case "ProfitTrailCloseOnTrigger": field = "profitTrailCloseOnTrigger"; newValue = raw === "1"; break;
-        case "ProfitTrailUseBreakEven": field = "profitTrailUseBreakEven"; newValue = raw === "1"; break;
+        case "Initial_loT":
+        case "InitialLot":
+          field = addDirSuffix("initialLot"); newValue = valNum; break;
+        case "LastLot": field = addDirSuffix("lastLot"); newValue = valNum; break;
+        case "LastLotPower": field = addDirSuffix("lastLot"); newValue = valNum; break;
+        case "Mult": field = addDirSuffix("multiplier"); newValue = valNum; break;
+        case "Grid": field = addDirSuffix("grid"); newValue = valNum; break;
+        case "GridBehavior": field = addDirSuffix("gridBehavior"); newValue = invGridBehavior(valNum); break;
+        case "Trail": field = addDirSuffix("trailMethod"); newValue = invTrailMethod(valNum); break;
+        case "TrailValue": field = addDirSuffix("trailValue"); newValue = valNum; break;
+        case "Trail_Start":
+        case "TrailStart":
+          field = addDirSuffix("trailStart"); newValue = valNum; break;
+        case "TrailStep": field = addDirSuffix("trailStep"); newValue = valNum; break;
+        case "TPMode": field = addDirSuffix("tpMode"); newValue = invTPSLMode(valNum); break;
+        case "SLMode": field = addDirSuffix("slMode"); newValue = invTPSLMode(valNum); break;
+        case "UseTP": field = addDirSuffix("useTP"); newValue = raw === "1"; break;
+        case "UseSL": field = addDirSuffix("useSL"); newValue = raw === "1"; break;
+        case "TPValue": field = addDirSuffix("takeProfit"); newValue = valNum; break;
+        case "SLValue": field = addDirSuffix("stopLoss"); newValue = valNum; break;
+        case "BreakEvenMode": field = addDirSuffix("breakEvenMode"); newValue = invBreakevenMode(valNum); break;
+        case "BreakEvenActivation": field = addDirSuffix("breakEvenActivation"); newValue = valNum; break;
+        case "BreakEvenLock": field = addDirSuffix("breakEvenLock"); newValue = valNum; break;
+        case "BreakEvenTrail": field = addDirSuffix("breakEvenTrail"); newValue = raw === "1"; break;
+        case "ProfitTrailEnabled": field = addDirSuffix("profitTrailEnabled"); newValue = raw === "1"; break;
+        case "ProfitTrailPeakDropPercent": field = addDirSuffix("profitTrailPeakDropPercent"); newValue = valNum; break;
+        case "ProfitTrailLockPercent": field = addDirSuffix("profitTrailLockPercent"); newValue = valNum; break;
+        case "ProfitTrailCloseOnTrigger": field = addDirSuffix("profitTrailCloseOnTrigger"); newValue = raw === "1"; break;
+        case "ProfitTrailUseBreakEven": field = addDirSuffix("profitTrailUseBreakEven"); newValue = raw === "1"; break;
         case "TriggerType": field = "triggerType"; newValue = invEntryTrigger(valNum); break;
         case "TriggerBars": field = "triggerBars"; newValue = valNum; break;
         case "TriggerMinutes": field = "triggerMinutes"; newValue = valNum; break;
@@ -272,8 +296,8 @@ export function applySetContent(config: MTConfigComplete, content: string): MTCo
         case "OrderCountReference": field = "orderCountReferenceLogic"; newValue = ("Logic_" + raw); break;
         case "MaxPowerOrders": field = "maxOrderCap"; newValue = valNum; break;
         case "CloseTargets": field = "closeTargets"; newValue = raw; break;
-        case "StartLevel": field = "startLevel"; newValue = valNum; break;
-        case "ResetLotOnRestart": field = "resetLotOnRestart"; newValue = raw === "1"; break;
+        case "StartLevel": field = addDirSuffix("startLevel"); newValue = valNum; break;
+        case "ResetLotOnRestart": field = addDirSuffix("resetLotOnRestart"); newValue = raw === "1"; break;
         case "RestartPolicy": field = "restartPolicy"; newValue = invRestartPolicy(valNum); break;
         default: {
           const ts = param.match(/^TrailStep(Method|Cycle|Balance|Mode)?(\d?)$/);
@@ -290,7 +314,7 @@ export function applySetContent(config: MTConfigComplete, content: string): MTCo
             else if (kind === "Mode") { (t as any).mode = invTrailStepMode(valNum); }
             continue;
           } else {
-            const pc = param.match(/^ClosePartial(Trigger|Cycle|Mode|Balance|TrailMode|ProfitThreshold|Hours)?(\d?)$/);
+            const pc = param.match(/^ClosePartial(Trigger|Cycle|Mode|Balance|TrailMode|ProfitThreshold|Percent|Hours)?(\d?)$/);
             if (pc) {
               const kind = pc[1] || "";
               const idx = pc[2] ? parseInt(pc[2], 10) - 1 : 0;
@@ -303,7 +327,7 @@ export function applySetContent(config: MTConfigComplete, content: string): MTCo
               else if (kind === "Balance") { (p as any).balance = invPartialBalance(valNum); }
               else if (kind === "TrailMode") { (p as any).trailMode = invTrailStepMode(valNum); }
               else if (kind === "Trigger") { (p as any).trigger = invPartialTrigger(valNum); }
-              else if (kind === "ProfitThreshold") { (p as any).profitThreshold = valNum; }
+              else if (kind === "ProfitThreshold" || kind === "Percent") { (p as any).profitThreshold = valNum; }
               else if (kind === "Hours") { (p as any).hours = valNum; }
               continue;
             }

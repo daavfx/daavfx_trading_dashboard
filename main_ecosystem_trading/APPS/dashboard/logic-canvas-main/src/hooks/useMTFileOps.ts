@@ -132,8 +132,43 @@ export function useMTFileOps(
         });
         if (!filePath) return;
 
+        // Deep clone and convert camelCase to snake_case for Rust backend
+        const configToRust = JSON.parse(JSON.stringify(ensuredTradable));
+        for (const engine of configToRust.engines || []) {
+          for (const group of engine.groups || []) {
+            for (const logic of group.logics || []) {
+              // Convert camelCase to snake_case for all directional fields
+              const fieldConversions: Record<string, string> = {
+                'startLevel': 'start_level',
+                'lastLot': 'last_lot',
+                'initialLotBuy': 'initial_lot_b',
+                'initialLotSell': 'initial_lot_s',
+                'lastLotBuy': 'last_lot_b',
+                'lastLotSell': 'last_lot_s',
+                'multiplierBuy': 'multiplier_b',
+                'multiplierSell': 'multiplier_s',
+                'gridBuy': 'grid_b',
+                'gridSell': 'grid_s',
+                'trailValueBuy': 'trail_value_b',
+                'trailValueSell': 'trail_value_s',
+                'trailStartBuy': 'trail_start_b',
+                'trailStartSell': 'trail_start_s',
+                'trailStepBuy': 'trail_step_b',
+                'trailStepSell': 'trail_step_s',
+              };
+              
+              for (const [camelKey, snakeKey] of Object.entries(fieldConversions)) {
+                if (camelKey in logic) {
+                  logic[snakeKey] = logic[camelKey];
+                  delete logic[camelKey];
+                }
+              }
+            }
+          }
+        }
+
         await invoke("export_massive_v19_setfile", {
-          config: normalizeConfigForExport(ensuredTradable),
+          config: normalizeConfigForExport(configToRust),
           filePath,
           platform: mtPlatform,
         });

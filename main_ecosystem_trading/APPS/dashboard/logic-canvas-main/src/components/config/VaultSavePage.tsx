@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 export interface VaultSaveData {
   name: string;
   category: string;
-  strategyType: "buy" | "sell" | "both";
+  strategyType: "buy" | "sell";
   magicNumber: number;
   tags: string[];
   comments: string;
@@ -54,7 +54,7 @@ export function VaultSavePage({
 }: VaultSavePageProps) {
   const [name, setName] = useState(defaultName);
   const [category, setCategory] = useState(defaultCategory);
-  const [strategyType, setStrategyType] = useState<"buy" | "sell" | "both">("both");
+  const [strategyType, setStrategyType] = useState<"buy" | "sell">("buy");
   const [magicNumber, setMagicNumber] = useState(defaultMagicNumber);
   const [tags, setTags] = useState(defaultTags.join(", "));
   const [comments, setComments] = useState(defaultComments);
@@ -225,7 +225,7 @@ export function VaultSavePage({
             {/* Strategy Type Toggle */}
             <div className="p-4 bg-muted/30 rounded-lg border border-border/40">
               <Label className="text-xs text-muted-foreground mb-3 block font-medium uppercase tracking-wider">Strategy Direction</Label>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={() => setStrategyType("buy")}
                   className={cn(
@@ -249,18 +249,6 @@ export function VaultSavePage({
                 >
                   Sell
                   {strategyType === "sell" && <Check className="w-4 h-4" />}
-                </button>
-                <button
-                  onClick={() => setStrategyType("both")}
-                  className={cn(
-                    "px-4 py-3 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2",
-                    strategyType === "both" 
-                      ? "bg-blue-500/10 text-blue-500 border border-blue-500/20 shadow-sm" 
-                      : "bg-background hover:bg-muted text-muted-foreground border border-transparent"
-                  )}
-                >
-                  Both
-                  {strategyType === "both" && <Check className="w-4 h-4" />}
                 </button>
               </div>
             </div>

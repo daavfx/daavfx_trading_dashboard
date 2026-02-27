@@ -186,103 +186,106 @@ function exportLogicConfig(
   entries: Map<string, string>
 ): void {
   const suffix = getLogicSuffix(engineId, logic.logic_name);
-
-  const direction: "B" | "S" = (logic.allowBuy && !logic.allowSell) ? "B" : ((logic.allowSell && !logic.allowBuy) ? "S" : "B");
-
-  // Helper to add entry
-  const add = (param: string, value: any) => {
+  const add = (direction: "B" | "S", param: string, value: any) => {
     const key = formatKey(param, suffix, group, direction);
     entries.set(key, formatValue(value));
   };
 
-  // Base controls (3 fields)
-  add("Start", logic.enabled);
-  add("AllowBuy", direction === "B");
-  add("AllowSell", direction === "S");
+  const directions: Array<"B" | "S"> = [];
+  if (logic.allowBuy) directions.push("B");
+  if (logic.allowSell) directions.push("S");
+  if (directions.length === 0) return;
 
-  // Order params (5 fields) - Export both BUY and SELL versions
-  add("Initial_loT", logic.initialLot);
-  add("LastLotPower", logic.lastLot);
-  add("LastLot", logic.lastLot);
-  add("Mult", logic.multiplier);
-  add("Grid", logic.grid);
-  add("MaxPowerOrders", engineMaxPower);
-  add("GridBehavior", gridBehaviorToInt(logic.gridBehavior));
+  directions.forEach((direction) => {
+    // Base controls (3 fields)
+    add(direction, "Enabled", logic.enabled);
+    if (direction === "B") add(direction, "AllowBuy", true);
+    if (direction === "S") add(direction, "AllowSell", true);
 
-  // Trail config (4 fields) - Export both BUY and SELL versions
-  add("Trail", trailMethodToInt(logic.trailMethod));
-  add("TrailValue", logic.trailValue);
-  add("Trail_Start", logic.trailStart);
-  add("TrailStep", logic.trailStep);
+    // Order params
+    add(direction, "InitialLot", logic.initialLot);
+    add(direction, "LastLotPower", logic.lastLot);
+    add(direction, "LastLot", logic.lastLot);
+    add(direction, "Mult", logic.multiplier);
+    add(direction, "Grid", logic.grid);
+    add(direction, "MaxPowerOrders", engineMaxPower);
+    add(direction, "GridBehavior", gridBehaviorToInt(logic.gridBehavior));
 
-  // Trail steps - 7 levels (35 fields)
-  const stepSuffixes = ["", "2", "3", "4", "5", "6", "7"];
-  logic.trailSteps.forEach((step, idx) => {
-    const s = stepSuffixes[idx];
-    add(`TrailStep${s}`, step.step);
-    add(`TrailStepMethod${s}`, trailStepMethodToInt(step.method));
-    add(`TrailStepCycle${s}`, step.cycle);
-    add(`TrailStepBalance${s}`, step.balance);
-    add(`TrailStepMode${s}`, trailStepModeToInt(step.mode));
+    // Trail config
+    add(direction, "Trail", trailMethodToInt(logic.trailMethod));
+    add(direction, "TrailValue", logic.trailValue);
+    add(direction, "TrailStart", logic.trailStart);
+    add(direction, "TrailStep", logic.trailStep);
+
+    // Trail steps - 7 levels
+    const stepSuffixes = ["", "2", "3", "4", "5", "6", "7"];
+    logic.trailSteps.forEach((step, idx) => {
+      const s = stepSuffixes[idx];
+      add(direction, `TrailStep${s}`, step.step);
+      add(direction, `TrailStepMethod${s}`, trailStepMethodToInt(step.method));
+      add(direction, `TrailStepCycle${s}`, step.cycle);
+      add(direction, `TrailStepBalance${s}`, step.balance);
+      add(direction, `TrailStepMode${s}`, trailStepModeToInt(step.mode));
+    });
+
+    // Partial close - 4 levels
+    const partialSuffixes = ["", "2", "3", "4"];
+    logic.partials.forEach((partial, idx) => {
+      const s = partialSuffixes[idx];
+      add(direction, `ClosePartial${s}`, partial.enabled);
+      add(direction, `ClosePartialCycle${s}`, partial.cycle);
+      add(direction, `ClosePartialMode${s}`, partialModeToInt(partial.mode));
+      add(direction, `ClosePartialBalance${s}`, partialBalanceToInt(partial.balance));
+      add(direction, `ClosePartialTrailMode${s}`, trailStepModeToInt(partial.trailMode));
+      add(direction, `ClosePartialTrigger${s}`, partialTriggerToInt(partial.trigger));
+      add(direction, `ClosePartialProfitThreshold${s}`, partial.profitThreshold);
+      // Keep legacy alias used by existing setfiles.
+      add(direction, `ClosePartialPercent${s}`, partial.profitThreshold);
+      add(direction, `ClosePartialHours${s}`, partial.hours);
+    });
+
+    // TP/SL
+    add(direction, "UseTP", logic.useTP);
+    add(direction, "TPMode", tpslModeToInt(logic.tpMode));
+    add(direction, "TPValue", logic.takeProfit);
+    add(direction, "UseSL", logic.useSL);
+    add(direction, "SLMode", tpslModeToInt(logic.slMode));
+    add(direction, "SLValue", logic.stopLoss);
+
+    // Break-even
+    add(direction, "BreakEvenMode", breakevenModeToInt(logic.breakEvenMode));
+    add(direction, "BreakEvenActivation", logic.breakEvenActivation);
+    add(direction, "BreakEvenLock", logic.breakEvenLock);
+    add(direction, "BreakEvenTrail", logic.breakEvenTrail);
+
+    // Profit trail
+    add(direction, "ProfitTrailEnabled", logic.profitTrailEnabled);
+    add(direction, "ProfitTrailPeakDropPercent", logic.profitTrailPeakDropPercent);
+    add(direction, "ProfitTrailLockPercent", logic.profitTrailLockPercent);
+    add(direction, "ProfitTrailCloseOnTrigger", logic.profitTrailCloseOnTrigger);
+    add(direction, "ProfitTrailUseBreakEven", logic.profitTrailUseBreakEven);
+
+    // Triggers
+    add(direction, "TriggerType", entryTriggerToInt(logic.triggerType));
+    add(direction, "TriggerBars", logic.triggerBars);
+    add(direction, "TriggerMinutes", logic.triggerMinutes);
+    add(direction, "TriggerPips", logic.triggerPips);
+
+    // Cross-logic
+    add(direction, "ReverseEnabled", logic.reverseEnabled);
+    add(direction, "ReverseReference", logicReferenceToString(logic.reverseReference));
+    add(direction, "ReverseScale", logic.reverseScale);
+    add(direction, "HedgeEnabled", logic.hedgeEnabled);
+    add(direction, "HedgeReference", logicReferenceToString(logic.hedgeReference));
+    add(direction, "HedgeScale", logic.hedgeScale);
+    add(direction, "OrderCountReferenceLogic", logicReferenceToString(logic.orderCountReferenceLogic));
+    add(direction, "CloseTargets", logic.closeTargets);
+
+    // Engine-specific
+    add(direction, "StartLevel", logic.startLevel);
+    add(direction, "ResetLotOnRestart", logic.resetLotOnRestart);
+    add(direction, "RestartPolicy", restartPolicyToInt(logic.restartPolicy));
   });
-
-  // Partial close - 4 levels (32 fields)
-  const partialSuffixes = ["", "2", "3", "4"];
-  logic.partials.forEach((partial, idx) => {
-    const s = partialSuffixes[idx];
-    add(`ClosePartial${s}`, partial.enabled);
-    add(`ClosePartialCycle${s}`, partial.cycle);
-    add(`ClosePartialMode${s}`, partialModeToInt(partial.mode));
-    add(`ClosePartialBalance${s}`, partialBalanceToInt(partial.balance));
-    add(`ClosePartialTrailMode${s}`, trailStepModeToInt(partial.trailMode));
-    add(`ClosePartialTrigger${s}`, partialTriggerToInt(partial.trigger));
-    add(`ClosePartialProfitThreshold${s}`, partial.profitThreshold);
-    add(`ClosePartialHours${s}`, partial.hours);
-    // Note: trailMode, trigger, profitThreshold, hours not in standard setfile format
-    // but we can add them if Loader supports them
-  });
-
-  // TP/SL - Dummy/Backup (6 fields)
-  add("UseTP", logic.useTP);
-  add("TPMode", tpslModeToInt(logic.tpMode));
-  add("TPValue", logic.takeProfit);
-  add("UseSL", logic.useSL);
-  add("SLMode", tpslModeToInt(logic.slMode));
-  add("SLValue", logic.stopLoss);
-
-  // Break-even (4 fields)
-  add("BreakEvenMode", breakevenModeToInt(logic.breakEvenMode));
-  add("BreakEvenActivation", logic.breakEvenActivation);
-  add("BreakEvenLock", logic.breakEvenLock);
-  add("BreakEvenTrail", logic.breakEvenTrail);
-
-  // Profit trail (5 fields)
-  add("ProfitTrailEnabled", logic.profitTrailEnabled);
-  add("ProfitTrailPeakDropPercent", logic.profitTrailPeakDropPercent);
-  add("ProfitTrailLockPercent", logic.profitTrailLockPercent);
-  add("ProfitTrailCloseOnTrigger", logic.profitTrailCloseOnTrigger);
-  add("ProfitTrailUseBreakEven", logic.profitTrailUseBreakEven);
-
-  // Triggers (4 fields)
-  add("TriggerType", entryTriggerToInt(logic.triggerType));
-  add("TriggerBars", logic.triggerBars);
-  add("TriggerMinutes", logic.triggerMinutes);
-  add("TriggerPips", logic.triggerPips);
-
-  // Cross-logic (8 fields)
-  add("ReverseEnabled", logic.reverseEnabled);
-  add("ReverseReference", logicReferenceToString(logic.reverseReference));
-  add("ReverseScale", logic.reverseScale);
-  add("HedgeEnabled", logic.hedgeEnabled);
-  add("HedgeReference", logicReferenceToString(logic.hedgeReference));
-  add("HedgeScale", logic.hedgeScale);
-  add("OrderCountReferenceLogic", logicReferenceToString(logic.orderCountReferenceLogic));
-  add("CloseTargets", logic.closeTargets);
-
-  // Engine-specific (4 fields)
-  add("StartLevel", logic.startLevel);
-  add("ResetLotOnRestart", logic.resetLotOnRestart);
-  add("RestartPolicy", restartPolicyToInt(logic.restartPolicy));
 }
 
 // Export global config

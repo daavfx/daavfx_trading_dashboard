@@ -329,14 +329,46 @@ export function applyFormula(
         value = (params.base || 0) * (1 + (params.rate || 0) * row);
         break;
       case "custom":
-        try {
-           // Simplified evaluation for custom formula
-           // This is a basic implementation, replacing 'row' with index
-           if (params.custom) {
-             const customFn = new Function('row', `return ${params.custom}`);
-             value = customFn(row);
-           }
-        } catch { value = 0; }
+        if (params.custom) {
+          const SAFE_FUNCS: Record<string, (...args: number[]) => number> = {
+            abs: Math.abs,
+            max: Math.max,
+            min: Math.min,
+            round: Math.round,
+            floor: Math.floor,
+            ceil: Math.ceil,
+            pow: Math.pow,
+            sqrt: Math.sqrt,
+            log: Math.log,
+            exp: Math.exp,
+          };
+
+          const sanitized = params.custom.replace(/[^-+/*%^()0-9., a-zA-Z_]/g, "");
+          const tokens = sanitized.split(/([^a-zA-Z0-9_]+)/).filter(Boolean);
+
+          const rebuilt = tokens
+            .map((t) => {
+              if (t === "row") return String(row);
+              if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(t)) {
+                if (t in SAFE_FUNCS) return `__f.${t}`;
+                if (t === "Math") return "";
+                return "";
+              }
+              return t;
+            })
+            .join("");
+
+          try {
+            // eslint-disable-next-line no-new-func
+            const fn = new Function("__row", "__f", `return (${rebuilt});`);
+            const result = fn(row, SAFE_FUNCS);
+            value = typeof result === "number" && isFinite(result) ? result : 0;
+          } catch {
+            value = 0;
+          }
+        } else {
+          value = 0;
+        }
         break;
     }
     

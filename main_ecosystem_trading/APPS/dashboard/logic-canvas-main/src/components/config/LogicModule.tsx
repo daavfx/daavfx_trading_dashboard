@@ -23,7 +23,6 @@ import {
   TooltipTrigger,
   TooltipProvider,
 } from "@/components/ui/tooltip";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { LogicConfig, EngineConfig } from "@/types/mt-config";
 import {
   logicInputs,
@@ -43,7 +42,12 @@ interface LogicModuleProps {
   groups?: string[];
   engineData?: EngineConfig | null;
   selectedFields?: string[];
-  onUpdate?: (field: string, value: any) => void;
+  onUpdate?: (
+    field: string,
+    value: any,
+    direction: "buy" | "sell",
+    targetLogicId?: string,
+  ) => void;
   mode?: 1 | 2;
 }
 
@@ -325,16 +329,108 @@ export function LogicModule({
   const logicSuffix = suffixMap[baseName] || baseName || "";
   const currentLogicId = `Logic_${engineLetter}_${logicSuffix}`;
 
-  // State for field values to handle UI interactions
-  const [fieldValues, setFieldValues] = useState<Record<string, any>>({});
+  type SideValues = Record<string, any>;
+  const [fieldValuesBySide, setFieldValuesBySide] = useState<{
+    buy: SideValues;
+    sell: SideValues;
+  }>({ buy: {}, sell: {} });
+  
+  // Active edit direction (single-side editing only)
+  const [activeDirection, setActiveDirection] = useState<"buy" | "sell">("buy");
+  const fieldValues = fieldValuesBySide[activeDirection] || {};
+  const directionalFields = new Set([
+    "initial_lot",
+    "multiplier",
+    "grid",
+    "trail_value",
+    "trail_start",
+    "trail_step",
+  ]);
 
   // Initialize field values only once using useRef to store initial values
   const initialFieldsRef = useRef<any[]>([]);
 
 const logicConfigKey = logicConfig?.logic_id || 'no-config';
   const initializedRef = useRef<string | null>(null);
+
+  const updateSideValues = (
+    side: "buy" | "sell",
+    updater: SideValues | ((prev: SideValues) => SideValues),
+  ) => {
+    setFieldValuesBySide((prev) => {
+      const prevSide = prev[side] || {};
+      const nextSide =
+        typeof updater === "function"
+          ? (updater as (prev: SideValues) => SideValues)(prevSide)
+          : { ...prevSide, ...updater };
+      return { ...prev, [side]: nextSide };
+    });
+  };
+
+  const updateActiveSideValues = (
+    updater: SideValues | ((prev: SideValues) => SideValues),
+  ) => {
+    updateSideValues(activeDirection, updater);
+  };
+
+  const resolveLogicDirection = (logic: any): "buy" | "sell" | null => {
+    const dir = String(logic?.direction || "").toUpperCase();
+    if (dir === "B" || dir === "BUY") return "buy";
+    if (dir === "S" || dir === "SELL") return "sell";
+
+    const logicId = String(logic?.logic_id || "").toUpperCase();
+    if (logicId.includes("_B_") || logicId.endsWith("_B")) return "buy";
+    if (logicId.includes("_S_") || logicId.endsWith("_S")) return "sell";
+
+    if (logic?.allow_buy === true && logic?.allow_sell !== true) return "buy";
+    if (logic?.allow_sell === true && logic?.allow_buy !== true) return "sell";
+    return null;
+  };
+
+  const findDirectionalLogic = (targetDirection: "buy" | "sell") => {
+    const groupNum = group
+      ? parseInt(String(group).replace("Group ", ""), 10)
+      : groups && groups.length > 0
+        ? parseInt(String(groups[0]).replace("Group ", ""), 10)
+        : NaN;
+    if (!Number.isFinite(groupNum)) return null;
+
+    const groupData = engineData?.groups?.find(
+      (g: any) => g.group_number === groupNum,
+    );
+    if (!groupData?.logics) return null;
+
+    const logicNameUpper = String(logicSuffix || baseName || nameSafe).toUpperCase();
+    const candidates = groupData.logics.filter((l: any) => {
+      const candidateName = String(l?.logic_name || "").toUpperCase();
+      return candidateName === logicNameUpper;
+    });
+
+    return (
+      candidates.find((l: any) => resolveLogicDirection(l) === targetDirection) ||
+      null
+    );
+  };
+
+  const getTargetLogicId = (side: "buy" | "sell") => {
+    const row = findDirectionalLogic(side);
+    const logicId =
+      String((row as any)?.logic_id || "") ||
+      String((logicConfig as any)?.logic_id || "");
+    if (logicId) return logicId;
+    return `${engineLetter}_${logicSuffix}_${side}`.toUpperCase();
+  };
   
   useEffect(() => {
+    // Skip if already initialized with same config (prevents reset on field changes)
+    if (
+      initializedRef.current === logicConfigKey &&
+      (Object.keys(fieldValuesBySide.buy || {}).length > 0 ||
+        Object.keys(fieldValuesBySide.sell || {}).length > 0)
+    ) {
+      return;
+    }
+
     // Re-initialize when logicConfig changes (e.g., when loading a new setfile)
     initializedRef.current = logicConfigKey;
 
@@ -367,63 +463,63 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
 
     initialFieldsRef.current = newInitialFields;
 
-    const initialValues: Record<string, any> = {};
-    newInitialFields.forEach((f) => {
-      initialValues[f.id] = f.value;
-    });
+    const hasBuyRow = Boolean(findDirectionalLogic("buy"));
+    const hasSellRow = Boolean(findDirectionalLogic("sell"));
+    const singleRowBuyOn = config["allow_buy" as keyof LogicConfig] === true;
+    const singleRowSellOn = config["allow_sell" as keyof LogicConfig] === true;
+    const defaultDirection: "buy" | "sell" =
+      hasBuyRow
+        ? "buy"
+        : hasSellRow
+          ? "sell"
+          : singleRowSellOn && !singleRowBuyOn
+            ? "sell"
+            : "buy";
+    const buildSideValues = (side: "buy" | "sell") => {
+      const directionalRow = findDirectionalLogic(side);
+      const sourceLogic = directionalRow || logicConfig || null;
+      const values: Record<string, any> = {};
 
-    if (mode === 1) {
-      if (
-        (initialValues["allow_buy"] === "ON" || initialValues["allow_buy"] === true) &&
-        (initialValues["allow_sell"] === "ON" || initialValues["allow_sell"] === true)
-      ) {
-        initialValues["allow_buy"] = "ON";
-        initialValues["allow_sell"] = "OFF";
-      }
-    } else if (mode === 2) {
-      initialValues["allow_buy"] = "ON";
-      initialValues["allow_sell"] = "ON";
-    }
+      newInitialFields.forEach((f) => {
+        values[f.id] = f.value;
+      });
 
-    setFieldValues(initialValues);
+      values["allow_buy"] = side === "buy" ? "ON" : "OFF";
+      values["allow_sell"] = side === "sell" ? "ON" : "OFF";
+
+      if (!sourceLogic) return values;
+
+      newInitialFields.forEach((field) => {
+        const source = sourceLogic as Record<string, any>;
+        let rawValue: any;
+        if (directionalRow) {
+          rawValue = source[field.id];
+        } else if (directionalFields.has(String(field.id))) {
+          const suffix = side === "buy" ? "_b" : "_s";
+          rawValue = source[`${field.id}${suffix}`];
+          if (rawValue === undefined) rawValue = source[field.id];
+        } else {
+          rawValue = source[field.id];
+        }
+        if (rawValue === undefined) return;
+        values[field.id] =
+          field.type === "toggle" && typeof rawValue === "boolean"
+            ? rawValue
+              ? "ON"
+              : "OFF"
+            : rawValue;
+      });
+
+      return values;
+    };
+
+    const buyValues = buildSideValues("buy");
+    const sellValues = buildSideValues("sell");
+
+    setActiveDirection(defaultDirection);
+    setFieldValuesBySide({ buy: buyValues, sell: sellValues });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [logicConfig, logicConfigKey, groups, nameSafe]);
-
-  const prevModeRef = useRef(mode);
-  
-  useEffect(() => {
-    if (prevModeRef.current === mode) return;
-    prevModeRef.current = mode;
-    
-    if (Object.keys(fieldValues).length > 0) {
-      if (mode === 1) {
-        if (
-          (fieldValues["allow_buy"] === "ON" ||
-            fieldValues["allow_buy"] === true) &&
-          (fieldValues["allow_sell"] === "ON" ||
-            fieldValues["allow_sell"] === true)
-        ) {
-          const updates = { allow_buy: "ON", allow_sell: "OFF" };
-          setFieldValues((prev) => ({ ...prev, ...updates }));
-          Object.entries(updates).forEach(([key, v]) => onUpdate?.(key, v));
-        }
-      } else if (mode === 2) {
-        if (
-          !(
-            (fieldValues["allow_buy"] === "ON" ||
-              fieldValues["allow_buy"] === true) &&
-            (fieldValues["allow_sell"] === "ON" ||
-              fieldValues["allow_sell"] === true)
-          )
-        ) {
-          const updates = { allow_buy: "ON", allow_sell: "ON" };
-          setFieldValues((prev) => ({ ...prev, ...updates }));
-          Object.entries(updates).forEach(([key, v]) => onUpdate?.(key, v));
-        }
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode]);
 
   if (!engineSafe || !nameSafe) {
     return null;
@@ -446,11 +542,17 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
       }
     }
 
-    setFieldValues((prev) => ({ ...prev, ...updates }));
+    // Always update local UI state for the visible field
+    updateActiveSideValues((prev) => ({ ...prev, ...updates }));
 
-    // Propagate changes to parent component
+    // Apply edit only to currently selected side.
+    const editDirection: "buy" | "sell" = activeDirection;
+    const targetLogicId = getTargetLogicId(editDirection);
+
+    // Propagate only the base field ID upward and let parent
+    // handle mapping to buy/sell specific storage using direction hint
     Object.entries(updates).forEach(([fieldId, fieldValue]) => {
-      onUpdate?.(fieldId, fieldValue);
+      onUpdate?.(fieldId, fieldValue, editDirection, targetLogicId);
     });
   };
 
@@ -615,6 +717,7 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
               {tradingMode === "Hedge" && (
                 <LogicConfigPanel
                   mode="hedge"
+                  engine={engine}
                   config={{
                     enabled:
                       fieldValues["enabled"] === "ON" ||
@@ -653,29 +756,31 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
                     partial_close:
                       fieldValues["partial_close"] === "ON" ||
                       fieldValues["partial_close"] === true,
+                    start_level: parseInt(fieldValues["start_level"]) || 0,
                   }}
                   onChange={(field, value) => {
-                    // Map LogicConfigPanel field names to LogicModule field names
+                    // Map LogicConfigPanel field names to LogicModule field names (snake_case to camelCase)
                     const fieldMapping: Record<string, string> = {
-                      hedge_reference: "hedge_reference",
-                      hedge_scale: "hedge_scale",
-                      reverse_reference: "reverse_reference",
-                      initial_lot: "initial_lot",
+                      hedge_reference: "hedgeReference",
+                      hedge_scale: "hedgeScale",
+                      reverse_reference: "reverseReference",
+                      initial_lot: "initialLot",
                       enabled: "enabled",
                       multiplier: "multiplier",
                       grid: "grid",
-                      trail_method: "trail_method",
-                      trail_value: "trail_value",
-                      trail_step: "trail_step",
-                      use_tp: "use_tp",
-                      tp_value: "tp_value",
-                      use_sl: "use_sl",
-                      sl_value: "sl_value",
-                      trigger_type: "trigger_type",
-                      trigger_bars: "trigger_bars",
-                      trigger_pips: "trigger_pips",
-                      grid_behavior: "grid_behavior",
-                      partial_close: "partial_close",
+                      trail_method: "trailMethod",
+                      trail_value: "trailValue",
+                      trail_step: "trailStep",
+                      use_tp: "useTP",
+                      tp_value: "takeProfit",
+                      use_sl: "useSL",
+                      sl_value: "stopLoss",
+                      trigger_type: "triggerType",
+                      trigger_bars: "triggerBars",
+                      trigger_pips: "triggerPips",
+                      grid_behavior: "gridBehavior",
+                      partial_close: "partialClose",
+                      start_level: "startLevel",
                     };
 
                     const mappedField = fieldMapping[field] || field;
@@ -691,12 +796,17 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
                       processedValue = value ? "ON" : "OFF";
                     }
 
-                    setFieldValues((prev) => ({
+                    updateActiveSideValues((prev) => ({
                       ...prev,
                       [mappedField]: processedValue,
                     }));
                     if (onUpdate) {
-                      onUpdate(mappedField, processedValue);
+                      onUpdate(
+                        mappedField,
+                        processedValue,
+                        activeDirection,
+                        getTargetLogicId(activeDirection),
+                      );
                     }
                   }}
                   onChangeMode={(newMode) => {
@@ -709,12 +819,17 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
                           : newMode === "trend_following"
                             ? "Trend Following"
                             : "Counter Trend";
-                    setFieldValues((prev) => ({
+                    updateActiveSideValues((prev) => ({
                       ...prev,
                       trading_mode: modeValue,
                     }));
                     if (onUpdate) {
-                      onUpdate("trading_mode", modeValue);
+                      onUpdate(
+                        "trading_mode",
+                        modeValue,
+                        activeDirection,
+                        getTargetLogicId(activeDirection),
+                      );
                     }
                   }}
                   onDuplicate={() => {
@@ -749,14 +864,20 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
                         partial_close: "OFF",
                         enabled: "ON",
                       };
-                      setFieldValues((prev) => ({ ...prev, ...defaults }));
+                      updateActiveSideValues((prev) => ({ ...prev, ...defaults }));
                       Object.entries(defaults).forEach(([key, value]) => {
-                        if (onUpdate) onUpdate(key, value);
+                        if (onUpdate) {
+                          onUpdate(
+                            key,
+                            value,
+                            activeDirection,
+                            getTargetLogicId(activeDirection),
+                          );
+                        }
                       });
                     }
                   }}
                   logicType={name}
-                  engine={engineLetter}
                   group={
                     groups && groups.length > 0
                       ? parseInt(groups[0].replace("Group ", ""))
@@ -928,91 +1049,46 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
                               <ArrowLeftRight className="w-3 h-3" />
                               Trading Direction
                             </div>
-                            <ToggleGroup
-                              type="single"
-                              value={
-                                mode === 2
-                                  ? "both"
-                                  : (fieldValues["allow_buy"] === "ON" ||
-                                        fieldValues["allow_buy"] === true) &&
-                                      (fieldValues["allow_sell"] === "ON" ||
-                                        fieldValues["allow_sell"] === true)
-                                    ? "both"
-                                    : fieldValues["allow_buy"] === "ON" ||
-                                        fieldValues["allow_buy"] === true
-                                      ? "buy"
-                                      : fieldValues["allow_sell"] === "ON" ||
-                                          fieldValues["allow_sell"] === true
-                                        ? "sell"
-                                        : mode === 1
-                                          ? "buy"
-                                          : "both"
-                              }
-                              onValueChange={(val) => {
-                                if (!val) return;
-                                // Mode 2: Only allow "both"
-                                if (mode === 2 && val !== "both") return;
-                                // Mode 1: Only allow "buy" or "sell"
-                                if (mode === 1 && val === "both") return;
-
-                                const updates: Record<string, any> = {};
-                                if (val === "both") {
-                                  updates["allow_buy"] = "ON";
-                                  updates["allow_sell"] = "ON";
-                                } else if (val === "buy") {
-                                  updates["allow_buy"] = "ON";
-                                  updates["allow_sell"] = "OFF";
-                                } else if (val === "sell") {
-                                  updates["allow_buy"] = "OFF";
-                                  updates["allow_sell"] = "ON";
-                                }
-                                setFieldValues((prev) => ({
-                                  ...prev,
-                                  ...updates,
-                                }));
-
-                                if (onUpdate) {
-                                  Object.entries(updates).forEach(([key, v]) =>
-                                    onUpdate(key, v),
-                                  );
-                                }
-                              }}
-                              className="flex flex-col sm:flex-row justify-start gap-2 w-full"
-                            >
-                              <ToggleGroupItem
-                                value="buy"
-                                disabled={mode === 2}
+                            <div className="flex flex-row gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  updateSideValues("buy", (prev) => ({
+                                    ...prev,
+                                    allow_buy: "ON",
+                                    allow_sell: "OFF",
+                                  }));
+                                  setActiveDirection("buy");
+                                }}
                                 className={cn(
-                                  "flex-1 h-8 px-3 text-xs",
-                                  mode === 2 && "opacity-40 cursor-not-allowed",
-                                  "data-[state=on]:bg-emerald-500/20 data-[state=on]:text-emerald-500 border border-border/50 data-[state=on]:border-emerald-500/30",
+                                  "flex-1 h-8 px-3 text-xs rounded-md border transition-colors",
+                                  activeDirection === "buy"
+                                    ? "bg-emerald-500/20 text-emerald-500 border-emerald-500/30"
+                                    : "bg-background border-border hover:bg-accent"
                                 )}
                               >
                                 Buy
-                              </ToggleGroupItem>
-                              <ToggleGroupItem
-                                value="sell"
-                                disabled={mode === 2}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  updateSideValues("sell", (prev) => ({
+                                    ...prev,
+                                    allow_buy: "OFF",
+                                    allow_sell: "ON",
+                                  }));
+                                  setActiveDirection("sell");
+                                }}
                                 className={cn(
-                                  "flex-1 h-8 px-3 text-xs",
-                                  mode === 2 && "opacity-40 cursor-not-allowed",
-                                  "data-[state=on]:bg-rose-500/20 data-[state=on]:text-rose-500 border border-border/50 data-[state=on]:border-rose-500/30",
+                                  "flex-1 h-8 px-3 text-xs rounded-md border transition-colors",
+                                  activeDirection === "sell"
+                                    ? "bg-rose-500/20 text-rose-500 border-rose-500/30"
+                                    : "bg-background border-border hover:bg-accent"
                                 )}
                               >
                                 Sell
-                              </ToggleGroupItem>
-                              <ToggleGroupItem
-                                value="both"
-                                disabled={mode === 1}
-                                className={cn(
-                                  "flex-1 h-8 px-3 text-xs",
-                                  mode === 1 && "opacity-40 cursor-not-allowed",
-                                  "data-[state=on]:bg-blue-500/20 data-[state=on]:text-blue-500 border border-border/50 data-[state=on]:border-blue-500/30",
-                                )}
-                              >
-                                Both Sides
-                              </ToggleGroupItem>
-                            </ToggleGroup>
+                              </button>
+                            </div>
                           </div>
                         )}
 

@@ -27,7 +27,7 @@ interface VaultSaveModalProps {
 export interface VaultSaveData {
   name: string;
   category: string;
-  strategyType: "buy" | "sell" | "both";
+  strategyType: "buy" | "sell";
   magicNumber: number;
   tags: string[];
   comments: string;
@@ -39,7 +39,7 @@ export interface VaultSaveData {
 export function VaultSaveModal({ open, onClose, onSave, defaultName = "", defaultMagicNumber = 777 }: VaultSaveModalProps) {
   const [name, setName] = useState(defaultName);
   const [category, setCategory] = useState("General");
-  const [strategyType, setStrategyType] = useState<"buy" | "sell" | "both">("both");
+  const [strategyType, setStrategyType] = useState<"buy" | "sell">("buy");
   const [magicNumber, setMagicNumber] = useState(defaultMagicNumber);
   const [tags, setTags] = useState("");
   const [comments, setComments] = useState("");
@@ -126,7 +126,7 @@ export function VaultSaveModal({ open, onClose, onSave, defaultName = "", defaul
                   {/* Strategy Type Toggle */}
                   <div className="p-3 bg-muted/30 rounded-lg border border-border/40">
                     <Label className="text-xs text-muted-foreground mb-2 block">Strategy Direction</Label>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-2 gap-2">
                       <button
                         onClick={() => setStrategyType("buy")}
                         className={cn(
@@ -150,18 +150,6 @@ export function VaultSaveModal({ open, onClose, onSave, defaultName = "", defaul
                       >
                         Sell
                         {strategyType === "sell" && <Check className="w-3 h-3" />}
-                      </button>
-                      <button
-                        onClick={() => setStrategyType("both")}
-                        className={cn(
-                          "px-3 py-2 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2",
-                          strategyType === "both" 
-                            ? "bg-blue-500/10 text-blue-500 border border-blue-500/20 shadow-sm" 
-                            : "bg-background hover:bg-muted text-muted-foreground border border-transparent"
-                        )}
-                      >
-                        Both
-                        {strategyType === "both" && <Check className="w-3 h-3" />}
                       </button>
                     </div>
                   </div>

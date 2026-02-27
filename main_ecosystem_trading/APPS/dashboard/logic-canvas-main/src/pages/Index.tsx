@@ -12,7 +12,7 @@ import { GroupCard } from "@/components/config/GroupCard";
 import { GeneralCategories } from "@/components/config/GeneralCategories";
 import { GroupThresholdsCard } from "@/components/config/GroupThresholdsCard";
 import { MultiEditIndicator } from "@/components/config/MultiEditIndicator";
-import { SelectionDashboard } from "@/components/config/SelectionDashboard";
+import { CLITerminal } from "@/components/config/CLITerminal";
 import { EmptyState } from "@/components/config/EmptyState";
 import { FooterRibbon } from "@/components/config/FooterRibbon";
 import {
@@ -158,12 +158,14 @@ const platformToMT = (p: Platform): MTPlatform => {
 };
 
 function Index() {
-  const { settings } = useSettings();
+  const { settings, updateSetting, saveSettings } = useSettings();
   const [selectedEngines, setSelectedEngines] = useState<string[]>([]);
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
   const [selectedLogics, setSelectedLogics] = useState<string[]>([]);
   const [selectedFields, setSelectedFields] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [checkedFavorites, setCheckedFavorites] = useState<string[]>([]);
   const [vaultModalOpen, setVaultModalOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
@@ -172,7 +174,6 @@ function Index() {
   const [previousViewMode, setPreviousViewMode] = useState<ViewMode>("logics");
   const [selectedGeneralCategory, setSelectedGeneralCategory] =
     useState<string>("risk");
-  const [mode, setMode] = useState<1 | 2>(1);
 
   const [isChatCollapsed, setIsChatCollapsed] = useState(false);
   const [isQuickActionsCollapsed, setIsQuickActionsCollapsed] = useState(false);
@@ -192,6 +193,28 @@ function Index() {
     groups: string[];
     logics: string[];
   }>({ engines: [], groups: [], logics: [] });
+
+  // Command history for sidebar-chat integration
+  const [commandHistory, setCommandHistory] = useState<Array<{
+    id: string;
+    command: string;
+    timestamp: Date;
+    status: 'pending' | 'applied' | 'cancelled' | 'error';
+    changesCount?: number;
+  }>>([]);
+
+  // Stats for sidebar
+  const [chatStats, setChatStats] = useState<{
+    totalChangesApplied: number;
+    commandsToday: number;
+    snapshotsCount: number;
+    lastCommandAt: Date | null;
+  }>({
+    totalChangesApplied: 0,
+    commandsToday: 0,
+    snapshotsCount: 0,
+    lastCommandAt: null,
+  });
   const [vaultSaveDraft, setVaultSaveDraft] = useState<{
     name: string;
     category: string;
@@ -214,13 +237,28 @@ function Index() {
   }, []);
 
   const filteredFields = useMemo(() => {
-    if (!searchQuery.trim()) return selectedFields;
-    const matchingIds = getMatchingFieldIds(searchQuery);
-    if (selectedFields.length > 0) {
-      return selectedFields.filter(f => matchingIds.includes(f));
+    let fields = selectedFields;
+    
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const matchingIds = getMatchingFieldIds(searchQuery);
+      if (fields.length > 0) {
+        fields = fields.filter(f => matchingIds.includes(f));
+      } else {
+        fields = matchingIds;
+      }
     }
-    return matchingIds;
-  }, [searchQuery, selectedFields]);
+    
+    // Apply favorites filter - use checked favorites
+    if (favoritesOnly && checkedFavorites.length > 0) {
+      fields = fields.filter(f => checkedFavorites.includes(f));
+    } else if (favoritesOnly && checkedFavorites.length === 0 && settings.favoriteFields.length > 0) {
+      // If favoritesOnly is true but no checked favorites, show nothing
+      fields = [];
+    }
+    
+    return fields;
+  }, [searchQuery, selectedFields, favoritesOnly, checkedFavorites, settings.favoriteFields]);
 
   const pushChatCommand = (command: string) => {
     setExternalCommand(command);
@@ -359,6 +397,21 @@ function Index() {
     }
 
     return changes;
+  };
+
+  const handleToggleFavorite = (fieldId: string) => {
+    const currentFavorites = settings.favoriteFields || [];
+    const newFavorites = currentFavorites.includes(fieldId)
+      ? currentFavorites.filter(f => f !== fieldId)
+      : [...currentFavorites, fieldId];
+    updateSetting("favoriteFields", newFavorites);
+    
+    // Also remove from checkedFavorites if un-favorited
+    if (currentFavorites.includes(fieldId)) {
+      setCheckedFavorites(prev => prev.filter(f => f !== fieldId));
+    }
+    
+    saveSettings();
   };
 
   const handleGeneralUpdate = async (updates: Partial<GeneralConfig>) => {
@@ -613,80 +666,28 @@ function Index() {
       }
 
       // Apply strategy type logic
-      // ALWAYS export BOTH directions - dropdown controls editing mode only
-      // Buy = edit Buy values, Sell = edit Sell values, Both = edit both with same values
-      if (data.strategyType === "buy") {
-        configToSave.general.allow_buy = true;
+      // Strategy type now controls which directions are enabled on export.
+      // We do NOT overwrite buy/sell values anymore so they can stay independent.
+      if (data.strategyType === "sell") {
+        configToSave.general.allow_buy = false;
         configToSave.general.allow_sell = true;
-        // Buy mode - sync Buy values to Sell for export
         configToSave.engines?.forEach((engine: any) => {
           engine.groups?.forEach((group: any) => {
             group.logics?.forEach((logic: any) => {
-              logic.allow_buy = true;
+              logic.allow_buy = false;
               logic.allow_sell = true;
-              // Copy Buy values to Sell suffix
-              if (logic.initial_lot) logic.initial_lot_b = logic.initial_lot;
-              if (logic.multiplier) logic.multiplier_b = logic.multiplier;
-              if (logic.grid) logic.grid_b = logic.grid;
-              if (logic.trail_value) logic.trail_value_b = logic.trail_value;
-              if (logic.trail_start) logic.trail_start_b = logic.trail_start;
-              if (logic.trail_step) logic.trail_step_b = logic.trail_step;
-            });
-          });
-        });
-      } else if (data.strategyType === "sell") {
-        configToSave.general.allow_buy = true;
-        configToSave.general.allow_sell = true;
-        // Sell mode - sync Sell values to Buy for export
-        configToSave.engines?.forEach((engine: any) => {
-          engine.groups?.forEach((group: any) => {
-            group.logics?.forEach((logic: any) => {
-              logic.allow_buy = true;
-              logic.allow_sell = true;
-              // Copy Sell suffix values to base
-              if (logic.initial_lot_s) logic.initial_lot = logic.initial_lot_s;
-              if (logic.multiplier_s) logic.multiplier = logic.multiplier_s;
-              if (logic.grid_s) logic.grid = logic.grid_s;
-              if (logic.trail_value_s) logic.trail_value = logic.trail_value_s;
-              if (logic.trail_start_s) logic.trail_start = logic.trail_start_s;
-              if (logic.trail_step_s) logic.trail_step = logic.trail_step_s;
             });
           });
         });
       } else {
-        // Both Sides mode - ensure both directions have values
+        // Default/fallback to BUY-only scope for save/export intent.
         configToSave.general.allow_buy = true;
-        configToSave.general.allow_sell = true;
+        configToSave.general.allow_sell = false;
         configToSave.engines?.forEach((engine: any) => {
           engine.groups?.forEach((group: any) => {
             group.logics?.forEach((logic: any) => {
               logic.allow_buy = true;
-              logic.allow_sell = true;
-              // Sync base values to both suffixes for export
-              if (logic.initial_lot) {
-                logic.initial_lot_b = logic.initial_lot;
-                logic.initial_lot_s = logic.initial_lot;
-              }
-              if (logic.multiplier) {
-                logic.multiplier_b = logic.multiplier;
-                logic.multiplier_s = logic.multiplier;
-              }
-              if (logic.grid) {
-                logic.grid_b = logic.grid;
-                logic.grid_s = logic.grid;
-              }
-              if (logic.trail_value) {
-                logic.trail_value_b = logic.trail_value;
-                logic.trail_value_s = logic.trail_value;
-              }
-              if (logic.trail_start) {
-                logic.trail_start_b = logic.trail_start;
-                logic.trail_start_s = logic.trail_start;
-              }
-              if (logic.trail_step) {
-                logic.trail_step_b = logic.trail_step;
-                logic.trail_step_s = logic.trail_step;
-              }
+              logic.allow_sell = false;
             });
           });
         });
@@ -706,24 +707,6 @@ function Index() {
 
         const configToExport = withUseDirectPriceGrid(configToSave, settings);
 
-        // ALWAYS export with AllowBuy=1 and AllowSell=1 regardless of strategyType
-        // User controls actual trading in MT4/MT5 terminal directly
-        if (configToExport.general) {
-          configToExport.general.allow_buy = true;
-          configToExport.general.allow_sell = true;
-        }
-        // Also force all logic allow_buy/allow_sell to true
-        if (configToExport.engines) {
-          configToExport.engines.forEach((engine: any) => {
-            engine.groups?.forEach((group: any) => {
-              group.logics?.forEach((logic: any) => {
-                logic.allow_buy = true;
-                logic.allow_sell = true;
-              });
-            });
-          });
-        }
-
         if (data.format === "json") {
           await invoke("export_json_file", {
             config: normalizeConfigForExport(configToExport),
@@ -732,18 +715,6 @@ function Index() {
             comments: data.comments,
           });
         } else {
-          // Debug: Log grid values before export
-          console.log("DEBUG_EXPORT: Config before export:");
-          configToExport.engines?.forEach((engine: any, ei: number) => {
-            engine.groups?.forEach((group: any, gi: number) => {
-              group.logics?.forEach((logic: any, li: number) => {
-                if (logic.logic_name === "Power" && gi === 0) {
-                  console.log(`DEBUG_EXPORT: Engine ${ei} Group ${gi} Power: grid=${logic.grid}, grid_b=${logic.grid_b}, grid_s=${logic.grid_s}`);
-                }
-              });
-            });
-          });
-          
           await invoke("export_massive_v19_setfile", {
             config: normalizeConfigForExport(configToExport),
             filePath: fullPath,
@@ -838,8 +809,6 @@ function Index() {
         onMagicNumberChange={(val) =>
           handleGeneralUpdate({ magic_number: val })
         }
-        mode={mode}
-        onModeChange={setMode}
         onLoadConfig={(c) => {
           handleSaveConfig(c);
           setHasStarted(true);
@@ -851,6 +820,12 @@ function Index() {
         }}
         searchQuery={searchQuery}
         onSearchQueryChange={setSearchQuery}
+        favoritesOnly={favoritesOnly}
+        onFavoritesOnlyChange={setFavoritesOnly}
+        favoriteFields={settings.favoriteFields || []}
+        onToggleFavorite={handleToggleFavorite}
+        checkedFavorites={checkedFavorites}
+        onCheckedFavoritesChange={setCheckedFavorites}
         onSearchSelect={(item) => {
           if (item.type === "field") {
             setSelectedFields([item.id]);
@@ -908,12 +883,67 @@ function Index() {
                   });
                   handleSaveConfig(newConfig);
                   setChatLastAppliedPreview(chatPendingPlan.preview);
+                  
+                  // Update the pending command status to 'applied'
+                  setCommandHistory(prev => {
+                    const lastPending = prev.findLast(c => c.status === 'pending');
+                    if (lastPending) {
+                      return prev.map(c => 
+                        c.id === lastPending.id 
+                          ? { ...c, status: 'applied' as const, changesCount: chatPendingPlan.preview.length }
+                          : c
+                      );
+                    }
+                    // If no pending found, add new entry
+                    return [...prev, {
+                      id: `cmd-${Date.now()}`,
+                      command: chatPendingPlan.description || 'Apply changes',
+                      timestamp: new Date(),
+                      status: 'applied' as const,
+                      changesCount: chatPendingPlan.preview.length,
+                    }].slice(-50);
+                  });
+                  
+                  // Update stats
+                  setChatStats(prev => ({
+                    totalChangesApplied: prev.totalChangesApplied + chatPendingPlan.preview.length,
+                    commandsToday: prev.commandsToday + 1,
+                    snapshotsCount: prev.snapshotsCount,
+                    lastCommandAt: new Date(),
+                  }));
+                  
                   setChatPendingPlan(null);
                   toast.success(`Applied ${chatPendingPlan.preview.length} changes`);
                 }
               }}
               onCancelPlan={() => {
+                if (chatPendingPlan) {
+                  // Update the pending command status to 'cancelled'
+                  setCommandHistory(prev => {
+                    const lastPending = prev.findLast(c => c.status === 'pending');
+                    if (lastPending) {
+                      return prev.map(c => 
+                        c.id === lastPending.id 
+                          ? { ...c, status: 'cancelled' as const }
+                          : c
+                      );
+                    }
+                    // If no pending found, add new entry
+                    return [...prev, {
+                      id: `cmd-${Date.now()}`,
+                      command: chatPendingPlan.description || 'Apply changes',
+                      timestamp: new Date(),
+                      status: 'cancelled' as const,
+                    }].slice(-50);
+                  });
+                }
                 setChatPendingPlan(null);
+              }}
+              commandHistory={commandHistory}
+              stats={chatStats}
+              onCommandClick={(command) => {
+                // Push the command to the chat input
+                pushChatCommand(command);
               }}
             />
           </ResizablePanel>
@@ -932,7 +962,7 @@ function Index() {
               viewMode === "grouping" ||
               viewMode === "collaboration"
                 ? 82
-                : viewMode === "batch"
+                : viewMode === "chat"
                   ? 50
                   : 62
             }
@@ -992,24 +1022,9 @@ function Index() {
 
                       {viewMode === "logics" && (
                         <div className="space-y-3">
-                          <SelectionDashboard
-                            config={config}
-                            selectedEngines={selectedEngines}
-                            selectedGroups={selectedGroups}
-                            selectedLogics={selectedLogics}
-                            selectedFields={filteredFields || []}
-                            isMultiEdit={isMultiEdit}
-                            chatActive={chatActive}
-                            pendingPlan={chatPendingPlan}
-                            lastAppliedPreview={chatLastAppliedPreview}
-                            onFocusField={(field) => {
-                              setSelectedFields([field]);
-                              setHasStarted(true);
-                              setViewMode("logics");
-                            }}
-                            onSendToChat={(cmd) => pushChatCommand(cmd)}
-                            onOpenVaultSave={(draft) => openVaultSave(draft)}
-                            onClearSelection={clearSelection}
+                          <CLITerminal
+                            onExecuteCommand={(cmd) => pushChatCommand(cmd)}
+                            placeholder="Type: set grid power a 600, set lot 0.02, enable reverse..."
                           />
                         </div>
                       )}
@@ -1057,16 +1072,16 @@ function Index() {
                                       engineData={engineConfig.engineData}
                                       selectedLogics={selectedLogics}
                                       selectedFields={filteredFields || []}
-                                      mode={mode}
+                                      mode={1}
                                       platform={platform}
                                       config={config}
-                                      onUpdateLogic={(logic, field, value, groupNum) => {
+                                      onUpdateLogic={(logic, field, value, groupNum, direction, targetLogicId) => {
                                         if (!config) return;
                                         let processedValue = value;
                                         if (
                                           typeof value === "string" &&
                                           (field.includes("enabled") ||
-                                            field.includes("allow_") ||
+                                            field.includes("allow") ||
                                             field === "close_partial")
                                         ) {
                                           processedValue =
@@ -1084,7 +1099,7 @@ function Index() {
                                         const newConfig: MTConfig = {
                                           ...config,
                                           engines: config.engines.map((e) => {
-                                            if (e.engine_id !== targetEngineId) return e;
+                                              if (e.engine_id !== targetEngineId) return e;
                                             return {
                                               ...e,
                                               groups: e.groups.map((g) => {
@@ -1092,11 +1107,61 @@ function Index() {
                                                 return {
                                                   ...g,
                                                   logics: g.logics.map((l) => {
-                                                    if (l.logic_name?.toUpperCase() !== logic.toUpperCase()) return l;
-                                                    return {
-                                                      ...l,
-                                                      [field]: processedValue as any,
-                                                    };
+                                                    // Strip engine prefix (B or C) from UI logic name to match config
+                                                    // "BPOWER" -> "Power", "BREPOWER" -> "Repower", etc.
+                                                    const logicBaseName = logic.replace(/^(B|C)/i, '');
+                                                    if (l.logic_name?.toUpperCase() !== logicBaseName.toUpperCase()) return l;
+
+                                                    const rowDirection = (() => {
+                                                      const dirRaw = String((l as any).direction || "").toUpperCase();
+                                                      if (dirRaw === "B" || dirRaw === "BUY") return "buy";
+                                                      if (dirRaw === "S" || dirRaw === "SELL") return "sell";
+                                                      const logicId = String((l as any).logic_id || "").toUpperCase();
+                                                      if (logicId.includes("_B_") || logicId.endsWith("_B")) return "buy";
+                                                      if (logicId.includes("_S_") || logicId.endsWith("_S")) return "sell";
+                                                      if ((l as any).allow_buy === true && (l as any).allow_sell !== true) return "buy";
+                                                      if ((l as any).allow_sell === true && (l as any).allow_buy !== true) return "sell";
+                                                      return null;
+                                                    })();
+
+                                                    const directionalFields = new Set([
+                                                      "initial_lot",
+                                                      "multiplier",
+                                                      "grid",
+                                                      "trail_value",
+                                                      "trail_start",
+                                                      "trail_step",
+                                                    ]);
+                                                    const isDirectionalField = directionalFields.has(field);
+                                                    const rowLogicId = String((l as any).logic_id || "");
+                                                    const wantsDirection = direction === "buy" || direction === "sell";
+                                                    const normalizedTargetLogicId = String(targetLogicId || "");
+
+                                                    // Primary targeting: explicit logic row id from active canvas side.
+                                                    if (
+                                                      normalizedTargetLogicId &&
+                                                      rowLogicId &&
+                                                      rowLogicId !== normalizedTargetLogicId
+                                                    ) {
+                                                      return l;
+                                                    }
+
+                                                    if (wantsDirection) {
+                                                      if (rowDirection && rowDirection !== direction) {
+                                                        return l;
+                                                      }
+
+                                                      // Single-row model: write only side-specific suffix field.
+                                                      if (!rowDirection && isDirectionalField) {
+                                                        const suffix = direction === "buy" ? "_b" : "_s";
+                                                        return {
+                                                          ...l,
+                                                          [`${field}${suffix}`]: processedValue,
+                                                        };
+                                                      }
+                                                    }
+
+                                                    return { ...l, [field]: processedValue };
                                                   }),
                                                 };
                                               }),
@@ -1119,7 +1184,7 @@ function Index() {
                             platform={platform}
                             generalConfig={config?.general || mockGeneralConfig}
                             mtPlatform={platform}
-                            mode={mode}
+                            mode={1}
                             selectedCategory={selectedGeneralCategory}
                             onConfigChange={(newGeneralConfig) => {
                               if (config) {
@@ -1133,13 +1198,30 @@ function Index() {
                         </div>
                       )}
 
-                      {viewMode === "batch" && (
+                      {viewMode === "chat" && (
                         <div className="mt-4">
                           <BatchEditTab
                             platform={platform}
                             config={config}
                             onConfigChange={handleSaveConfig}
                             onNavigate={handleChatNavigation}
+                            onCommandSent={(command, hasPlan, changesCount) => {
+                              // Add to command history when a command creates a plan
+                              if (hasPlan) {
+                                const newHistoryItem = {
+                                  id: `cmd-${Date.now()}`,
+                                  command: command,
+                                  timestamp: new Date(),
+                                  status: 'pending' as const,
+                                  changesCount,
+                                };
+                                setCommandHistory(prev => [...prev, newHistoryItem].slice(-50));
+                              }
+                            }}
+                            onPlanSnapshot={({ pendingPlan, lastAppliedPreview }) => {
+                              setChatPendingPlan(pendingPlan);
+                              setChatLastAppliedPreview(lastAppliedPreview);
+                            }}
                           />
                         </div>
                       )}
@@ -1219,7 +1301,7 @@ function Index() {
             )}
           </ResizablePanel>
 
-          {viewMode !== "batch" &&
+          {viewMode !== "chat" &&
             viewMode !== "save_config" &&
             viewMode !== "vault" &&
             viewMode !== "version-control" &&
@@ -1227,7 +1309,7 @@ function Index() {
             viewMode !== "undo-redo" &&
             viewMode !== "memory" &&
             viewMode !== "grouping" &&
-            viewMode !== "collaboration" && viewMode !== "batch" && (
+            viewMode !== "collaboration" && viewMode !== "chat" && (
               <>
                 <ResizableHandle withHandle />
 
@@ -1252,39 +1334,51 @@ function Index() {
                       setViewMode("save_config");
                       setHasStarted(true);
                     }}
+                    favoritesOnly={favoritesOnly}
+                    onFavoritesOnlyChange={setFavoritesOnly}
+                    favoriteFields={settings.favoriteFields || []}
+                    onToggleFavorite={handleToggleFavorite}
+                    checkedFavorites={checkedFavorites}
+                    onCheckedFavoritesChange={setCheckedFavorites}
                   />
                 </ResizablePanel>
               </>
             )}
 
-          {/* Quick Changes Sidebar for Chat/Batch mode - Advanced change review UI */}
-          {viewMode === "batch" && (
-            <>
-              <ResizableHandle withHandle />
-              
-              <ResizablePanel
-                id="quick-changes-panel"
-                order={3}
-                defaultSize={28}
-                minSize={20}
-                maxSize={40}
-                collapsible={true}
-                collapsedSize={4}
-              >
-                <QuickActionsPanel
-                  config={config}
-                  onConfigChange={handleSaveConfig}
-                  onViewModeChange={handleViewModeChange}
-                  isCollapsed={isQuickActionsCollapsed}
-                  onToggleCollapse={() => setIsQuickActionsCollapsed(!isQuickActionsCollapsed)}
-                  onOpenVaultSave={(draft) => {
-                    setVaultSaveDraft(draft || null);
-                    setPreviousViewMode(viewMode);
-                    setViewMode("save_config");
-                    setHasStarted(true);
-                  }}
-                  viewMode={viewMode}
-                  pendingPlan={chatPendingPlan}
+            {/* Quick Changes Sidebar for Chat mode - Advanced change review UI */}
+            {viewMode === "chat" && (
+              <>
+                <ResizableHandle withHandle />
+                
+                <ResizablePanel
+                  id="quick-changes-panel"
+                  order={3}
+                  defaultSize={28}
+                  minSize={20}
+                  maxSize={40}
+                  collapsible={true}
+                  collapsedSize={4}
+                >
+                  <QuickActionsPanel
+                    config={config}
+                    onConfigChange={handleSaveConfig}
+                    onViewModeChange={handleViewModeChange}
+                    isCollapsed={isQuickActionsCollapsed}
+                    onToggleCollapse={() => setIsQuickActionsCollapsed(!isQuickActionsCollapsed)}
+                    onOpenVaultSave={(draft) => {
+                      setVaultSaveDraft(draft || null);
+                      setPreviousViewMode(viewMode);
+                      setViewMode("save_config");
+                      setHasStarted(true);
+                    }}
+                    viewMode={viewMode}
+                    pendingPlan={chatPendingPlan}
+                    favoritesOnly={favoritesOnly}
+                    onFavoritesOnlyChange={setFavoritesOnly}
+                    favoriteFields={settings.favoriteFields || []}
+                    onToggleFavorite={handleToggleFavorite}
+                    checkedFavorites={checkedFavorites}
+                    onCheckedFavoritesChange={setCheckedFavorites}
                   recentChanges={chatLastAppliedPreview?.map(p => ({
                     engine: p.engine,
                     group: p.group,
