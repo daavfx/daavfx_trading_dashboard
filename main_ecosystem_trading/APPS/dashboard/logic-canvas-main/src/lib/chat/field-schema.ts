@@ -17,7 +17,6 @@ export const FIELD_SCHEMA = {
     "allow_sell",
     "enable_logs",
     "use_direct_price_grid",
-    "group_mode",
     "grid_unit",
     "pip_factor",
     "compounding_enabled",

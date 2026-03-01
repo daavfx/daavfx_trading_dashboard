@@ -244,8 +244,6 @@ pub struct GeneralConfig {
     pub use_direct_price_grid: bool,
 
     #[serde(default)]
-    pub group_mode: Option<i32>,
-    #[serde(default)]
     pub grid_unit: Option<i32>,
     #[serde(default)]
     pub pip_factor: Option<i32>,
@@ -342,10 +340,41 @@ pub struct NewsFilterConfig {
     pub impact_level: i32,
     pub minutes_before: i32,
     pub minutes_after: i32,
-    pub action: String,
+    #[serde(default = "default_true")]
+    pub stop_ea: bool,
+    #[serde(default)]
+    pub close_trades: bool,
+    #[serde(default = "default_true")]
+    pub auto_restart: bool,
+    #[serde(default)]
+    pub check_interval: i32,
+    #[serde(default)]
+    pub alert_minutes: i32,
+    #[serde(default = "default_true")]
+    pub filter_high_only: bool,
+    #[serde(default)]
+    pub filter_weekends: bool,
+    #[serde(default = "default_true")]
+    pub use_local_cache: bool,
+    #[serde(default = "default_3600")]
+    pub cache_duration: i32,
+    #[serde(default)]
+    pub fallback_on_error: String,
+    #[serde(default)]
+    pub filter_currencies: String,
+    #[serde(default = "default_true")]
+    pub include_speeches: bool,
+    #[serde(default = "default_true")]
+    pub include_reports: bool,
+    #[serde(default = "default_true")]
+    pub visual_indicator: bool,
+    #[serde(default)]
+    pub alert_before_news: bool,
     #[serde(default)]
     pub calendar_file: Option<String>,
 }
+
+fn default_3600() -> i32 { 3600 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EngineConfig {
@@ -405,8 +434,8 @@ fn default_trail_step_mode() -> String {
 fn default_strategy_trail() -> String {
     "Trail".to_string()
 }
-fn default_mode_trending() -> String {
-    "Trending".to_string()
+fn default_mode_counter_trend() -> String {
+    "Counter Trend".to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -462,7 +491,7 @@ pub struct LogicConfig {
     // ===== MODE SELECTORS (Dashboard Only / Mapped) =====
     #[serde(default = "default_strategy_trail")]
     pub strategy_type: String,
-    #[serde(default = "default_mode_trending")]
+    #[serde(default = "default_mode_counter_trend")]
     pub trading_mode: String,
     #[serde(default = "default_true")]
     pub allow_buy: bool, // gInput_AllowBuy_{suffix}
@@ -566,13 +595,15 @@ pub struct LogicConfig {
     #[serde(default)]
     pub trail_step_mode_7: Option<String>,
 
-    // ===== CLOSE PARTIAL (5 fields) =====
+    // ===== CLOSE PARTIAL (active contract + legacy compatibility) =====
     pub close_partial: bool,
     pub close_partial_cycle: i32,
     pub close_partial_mode: String,
     pub close_partial_balance: String,
     #[serde(default = "default_trail_step_mode")]
     pub close_partial_trail_step_mode: String, // gInput_ClosePartialTrailStepMode_{suffix}
+    #[serde(default)]
+    pub close_partial_profit_threshold: f64, // gInput_ClosePartialProfitThreshold_{suffix}
 
     // ===== CLOSE PARTIAL EXTENDED (Levels 2-4) =====
     #[serde(default)]
@@ -583,6 +614,8 @@ pub struct LogicConfig {
     pub close_partial_mode_2: Option<String>,
     #[serde(default)]
     pub close_partial_balance_2: Option<String>,
+    #[serde(default)]
+    pub close_partial_profit_threshold_2: Option<f64>,
 
     #[serde(default)]
     pub close_partial_3: Option<bool>,
@@ -592,6 +625,8 @@ pub struct LogicConfig {
     pub close_partial_mode_3: Option<String>,
     #[serde(default)]
     pub close_partial_balance_3: Option<String>,
+    #[serde(default)]
+    pub close_partial_profit_threshold_3: Option<f64>,
 
     #[serde(default)]
     pub close_partial_4: Option<bool>,
@@ -601,6 +636,8 @@ pub struct LogicConfig {
     pub close_partial_mode_4: Option<String>,
     #[serde(default)]
     pub close_partial_balance_4: Option<String>,
+    #[serde(default)]
+    pub close_partial_profit_threshold_4: Option<f64>,
 
     // ===== TRIGGERS (optional) =====
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1177,16 +1214,20 @@ pub fn export_set_file(
 
     lines.push("; === CLEAN MATH ===".to_string());
     lines.push(format!(
-        "gInput_GroupMode={}",
-        config.general.group_mode.unwrap_or(1)
-    ));
-    lines.push(format!(
         "gInput_GridUnit={}",
-        config.general.grid_unit.unwrap_or(0)
+        config
+            .general
+            .grid_unit
+            .map(|v| v.to_string())
+            .unwrap_or_default()
     ));
     lines.push(format!(
         "gInput_PipFactor={}",
-        config.general.pip_factor.unwrap_or(0)
+        config
+            .general
+            .pip_factor
+            .map(|v| v.to_string())
+            .unwrap_or_default()
     ));
     lines.push(String::new());
 
@@ -1232,9 +1273,70 @@ pub fn export_set_file(
         "gInput_MinutesAfterNews={}",
         config.general.news_filter.minutes_after
     ));
+    // Convert 3 boolean fields to news action enum
+    let nf = &config.general.news_filter;
+    let news_action = if !nf.stop_ea {
+        0
+    } else if nf.close_trades && nf.auto_restart {
+        6
+    } else if nf.close_trades && !nf.auto_restart {
+        5
+    } else if !nf.close_trades && nf.auto_restart {
+        7
+    } else {
+        2
+    };
+    lines.push(format!("gInput_NewsAction={}", news_action));
+    lines.push(format!("gInput_NewsStopEA={}", if nf.stop_ea { 1 } else { 0 }));
+    lines.push(format!("gInput_NewsCloseTrades={}", if nf.close_trades { 1 } else { 0 }));
+    lines.push(format!("gInput_NewsAutoRestart={}", if nf.auto_restart { 1 } else { 0 }));
     lines.push(format!(
-        "gInput_NewsAction={}",
-        trigger_action_to_int(&config.general.news_filter.action)
+        "gInput_NewsCheckInterval={}",
+        config.general.news_filter.check_interval
+    ));
+    lines.push(format!(
+        "gInput_FilterHighImpactOnly={}",
+        if config.general.news_filter.filter_high_only { 1 } else { 0 }
+    ));
+    lines.push(format!(
+        "gInput_FilterWeekendNews={}",
+        if config.general.news_filter.filter_weekends { 1 } else { 0 }
+    ));
+    lines.push(format!(
+        "gInput_UseLocalNewsCache={}",
+        if config.general.news_filter.use_local_cache { 1 } else { 0 }
+    ));
+    lines.push(format!(
+        "gInput_NewsCacheDuration={}",
+        config.general.news_filter.cache_duration
+    ));
+    lines.push(format!(
+        "gInput_NewsFallbackOnError={}",
+        config.general.news_filter.fallback_on_error
+    ));
+    lines.push(format!(
+        "gInput_FilterCurrencies={}",
+        config.general.news_filter.filter_currencies
+    ));
+    lines.push(format!(
+        "gInput_IncludeSpeeches={}",
+        if config.general.news_filter.include_speeches { 1 } else { 0 }
+    ));
+    lines.push(format!(
+        "gInput_IncludeReports={}",
+        if config.general.news_filter.include_reports { 1 } else { 0 }
+    ));
+    lines.push(format!(
+        "gInput_NewsVisualIndicator={}",
+        if config.general.news_filter.visual_indicator { 1 } else { 0 }
+    ));
+    lines.push(format!(
+        "gInput_AlertBeforeNews={}",
+        if config.general.news_filter.alert_before_news { 1 } else { 0 }
+    ));
+    lines.push(format!(
+        "gInput_AlertMinutesBefore={}",
+        config.general.news_filter.alert_minutes
     ));
     if let Some(cf) = config.general.news_filter.calendar_file.as_deref() {
         lines.push(format!("gInput_NewsCalendarFile={}", cf));
@@ -1814,15 +1916,11 @@ pub fn export_set_file(
                     group.group_number, short, logic.hedge_reference
                 ));
 
-                // Close Partial - use correct variable names
+                // Close Partial (active simplified contract)
                 lines.push(format!(
                     "gInput_ClosePartial_{}={}",
                     suffix,
                     if logic.close_partial { 1 } else { 0 }
-                ));
-                lines.push(format!(
-                    "gInput_ClosePartialCycle_{}={}",
-                    suffix, logic.close_partial_cycle
                 ));
                 lines.push(format!(
                     "gInput_ClosePartialMode_{}={}",
@@ -1830,27 +1928,17 @@ pub fn export_set_file(
                     encode_partial_mode(&logic.close_partial_mode)
                 ));
                 lines.push(format!(
-                    "gInput_ClosePartialBalance_{}={}",
-                    suffix,
-                    encode_partial_balance(&logic.close_partial_balance)
-                ));
-                lines.push(format!(
-                    "gInput_ClosePartialTrailStepMode_{}={}",
-                    suffix,
-                    encode_trail_step_mode(&logic.close_partial_trail_step_mode)
+                    "gInput_ClosePartialProfitThreshold_{}={:.2}",
+                    suffix, logic.close_partial_profit_threshold
                 ));
 
                 // Close Partial Extended (Levels 2-4)
-                // Level 2
                 if let Some(v) = logic.close_partial_2 {
                     lines.push(format!(
                         "gInput_ClosePartial2_{}={}",
                         suffix,
                         if v { 1 } else { 0 }
                     ));
-                }
-                if let Some(v) = logic.close_partial_cycle_2 {
-                    lines.push(format!("gInput_ClosePartialCycle2_{}={}", suffix, v));
                 }
                 if let Some(ref v) = logic.close_partial_mode_2 {
                     lines.push(format!(
@@ -1859,24 +1947,19 @@ pub fn export_set_file(
                         encode_partial_mode(v)
                     ));
                 }
-                if let Some(ref v) = logic.close_partial_balance_2 {
+                if let Some(v) = logic.close_partial_profit_threshold_2 {
                     lines.push(format!(
-                        "gInput_ClosePartialBalance2_{}={}",
-                        suffix,
-                        encode_partial_balance(v)
+                        "gInput_ClosePartialProfitThreshold2_{}={:.2}",
+                        suffix, v
                     ));
                 }
 
-                // Level 3
                 if let Some(v) = logic.close_partial_3 {
                     lines.push(format!(
                         "gInput_ClosePartial3_{}={}",
                         suffix,
                         if v { 1 } else { 0 }
                     ));
-                }
-                if let Some(v) = logic.close_partial_cycle_3 {
-                    lines.push(format!("gInput_ClosePartialCycle3_{}={}", suffix, v));
                 }
                 if let Some(ref v) = logic.close_partial_mode_3 {
                     lines.push(format!(
@@ -1885,24 +1968,19 @@ pub fn export_set_file(
                         encode_partial_mode(v)
                     ));
                 }
-                if let Some(ref v) = logic.close_partial_balance_3 {
+                if let Some(v) = logic.close_partial_profit_threshold_3 {
                     lines.push(format!(
-                        "gInput_ClosePartialBalance3_{}={}",
-                        suffix,
-                        encode_partial_balance(v)
+                        "gInput_ClosePartialProfitThreshold3_{}={:.2}",
+                        suffix, v
                     ));
                 }
 
-                // Level 4
                 if let Some(v) = logic.close_partial_4 {
                     lines.push(format!(
                         "gInput_ClosePartial4_{}={}",
                         suffix,
                         if v { 1 } else { 0 }
                     ));
-                }
-                if let Some(v) = logic.close_partial_cycle_4 {
-                    lines.push(format!("gInput_ClosePartialCycle4_{}={}", suffix, v));
                 }
                 if let Some(ref v) = logic.close_partial_mode_4 {
                     lines.push(format!(
@@ -1911,11 +1989,10 @@ pub fn export_set_file(
                         encode_partial_mode(v)
                     ));
                 }
-                if let Some(ref v) = logic.close_partial_balance_4 {
+                if let Some(v) = logic.close_partial_profit_threshold_4 {
                     lines.push(format!(
-                        "gInput_ClosePartialBalance4_{}={}",
-                        suffix,
-                        encode_partial_balance(v)
+                        "gInput_ClosePartialProfitThreshold4_{}={:.2}",
+                        suffix, v
                     ));
                 }
 
@@ -1976,7 +2053,7 @@ pub fn export_set_file_to_mt_common_files(
 /// Export massive v19 setfile format: gInput_{Group}_{Engine}{Logic}_{Direction}_{Param}
 #[cfg_attr(feature = "tauri-app", tauri::command(rename_all = "camelCase"))]
 pub fn export_massive_v19_setfile(
-    config: MTConfig,
+    mut config: MTConfig,
     file_path: String,
     platform: String,
     export_keymap_json: Option<bool>,
@@ -1985,13 +2062,45 @@ pub fn export_massive_v19_setfile(
     let sanitized_path = sanitize_and_validate_path(&path_buf)?;
 
     let mut lines: Vec<String> = Vec::new();
+    // Temporary export diagnostics for start-level rewrite tracing.
+    let mut missing_scope_count: usize = 0;
+    let mut missing_scope_samples: Vec<String> = Vec::new();
+    let mut start_level_under4_count: usize = 0;
+    let mut start_level_under4_samples: Vec<String> = Vec::new();
+    let mut start_level_missing_count: usize = 0;
+    let mut start_level_missing_samples: Vec<String> = Vec::new();
+
+    // Enforce canonical mode contract before serialization.
+    normalize_config_mode_contract(&mut config);
+
+    let mut any_reverse_mode = false;
+    let mut any_hedge_mode = false;
+    for engine in &config.engines {
+        for group in &engine.groups {
+            if group.reverse_mode {
+                any_reverse_mode = true;
+            }
+            if group.hedge_mode {
+                any_hedge_mode = true;
+            }
+            for logic in &group.logics {
+                let mode = normalize_trading_mode(&logic.trading_mode);
+                if mode == "Reverse" {
+                    any_reverse_mode = true;
+                }
+                if mode == "Hedge" {
+                    any_hedge_mode = true;
+                }
+            }
+        }
+    }
 
     // Header
     lines.push(format!("; DAAVFX MASSIVE v19 Configuration"));
     lines.push(format!("; Platform: {}", platform));
     lines.push(format!("; Generated: {}", chrono::Local::now().format("%Y-%m-%d %H:%M:%S")));
     lines.push(format!("; Format: gInput_{{Group}}_{{Engine}}{{Logic}}_{{Direction}}_{{Param}}"));
-    lines.push(format!("; Total Logic Inputs: {}", 69300));
+    lines.push(format!("; Total Logic Inputs: {}", V19_TOTAL_LOGIC_INPUTS));
     lines.push(String::new());
 
     // General settings
@@ -2013,6 +2122,14 @@ pub fn export_massive_v19_setfile(
     // Trading Permissions
     lines.push(format!("gInput_allowBuy={}", if config.general.allow_buy { 1 } else { 0 }));
     lines.push(format!("gInput_allowSell={}", if config.general.allow_sell { 1 } else { 0 }));
+    lines.push(format!(
+        "gInput_EnableReverseMode={}",
+        if any_reverse_mode { 1 } else { 0 }
+    ));
+    lines.push(format!(
+        "gInput_EnableHedgeMode={}",
+        if any_hedge_mode { 1 } else { 0 }
+    ));
     
     // Logging
     lines.push(format!("gInput_EnableLogs={}", if config.general.enable_logs { 1 } else { 0 }));
@@ -2049,22 +2166,36 @@ pub fn export_massive_v19_setfile(
     // ===== CLEAN MATH =====
     lines.push(String::new());
     lines.push("; === CLEAN MATH ===".to_string());
-    lines.push(format!("gInput_GroupMode={}", config.general.group_mode.unwrap_or(1)));
-    lines.push(format!("gInput_GridUnit={}", config.general.grid_unit.unwrap_or(0)));
-    lines.push(format!("gInput_PipFactor={}", config.general.pip_factor.unwrap_or(0)));
+    let key_grid_unit = "gInput_GridUnit".to_string();
+    let grid_unit_fallback = config
+        .general
+        .grid_unit
+        .map(|v| v.to_string())
+        .unwrap_or_else(|| "".to_string());
+    lines.push(format!("{}={}", key_grid_unit, grid_unit_fallback));
+    let key_pip_factor = "gInput_PipFactor".to_string();
+    let pip_factor_fallback = config
+        .general
+        .pip_factor
+        .map(|v| v.to_string())
+        .unwrap_or_else(|| "".to_string());
+    lines.push(format!("{}={}", key_pip_factor, pip_factor_fallback));
 
     lines.push(String::new());
     lines.push("; === GROUP THRESHOLDS ===".to_string());
     let engine_a = config.engines.iter().find(|e| e.engine_id == "A");
     for g in 2..=15u8 {
-        let gps: i32 = engine_a
+        let gps: Option<i32> = engine_a
             .and_then(|e| e.groups.iter().find(|gr| gr.group_number == g))
-            .and_then(|gr| gr.group_power_start)
-            .unwrap_or(g as i32);
+            .and_then(|gr| gr.group_power_start);
 
-        lines.push(format!("gInput_GroupPowerStart_P{}={}", g, gps));
-        lines.push(format!("gInput_GroupPowerStart_BP{}={}", g, gps));
-        lines.push(format!("gInput_GroupPowerStart_CP{}={}", g, gps));
+        let key_p = format!("gInput_GroupPowerStart_P{}", g);
+        let key_bp = format!("gInput_GroupPowerStart_BP{}", g);
+        let key_cp = format!("gInput_GroupPowerStart_CP{}", g);
+        let gps_fallback = gps.map(|v| v.to_string()).unwrap_or_else(|| "".to_string());
+        lines.push(format!("{}={}", key_p, gps_fallback.clone()));
+        lines.push(format!("{}={}", key_bp, gps_fallback.clone()));
+        lines.push(format!("{}={}", key_cp, gps_fallback));
     }
     
     // ===== RISK MANAGEMENT =====
@@ -2080,9 +2211,10 @@ pub fn export_massive_v19_setfile(
     let risk_action_raw = rm
         .risk_action
         .as_ref()
-        .map(|s| s.as_str())
-        .unwrap_or("TriggerAction_StopEA_KeepTrades");
-    lines.push(format!("gInput_RiskAction={}", trigger_action_to_int(risk_action_raw)));
+        .map(|s| trigger_action_to_int(s).to_string())
+        .unwrap_or_else(|| "".to_string());
+    let key_risk_action = "gInput_RiskAction".to_string();
+    lines.push(format!("{}={}", key_risk_action, risk_action_raw));
     
     // ===== NEWS FILTER =====
     lines.push(String::new());
@@ -2096,8 +2228,45 @@ pub fn export_massive_v19_setfile(
     lines.push(format!("gInput_NewsImpactLevel={}", nf.impact_level));
     lines.push(format!("gInput_MinutesBeforeNews={}", nf.minutes_before));
     lines.push(format!("gInput_MinutesAfterNews={}", nf.minutes_after));
-    lines.push(format!("gInput_NewsAction={}", trigger_action_to_int(&nf.action)));
-    lines.push(format!("gInput_NewsCalendarFile={}", nf.calendar_file.as_ref().unwrap_or(&"".to_string())));
+    // Convert 3 boolean fields to news action enum
+    // stop_ea=false -> 0 (None)
+    // stop_ea=true, close=false, restart=false -> 2 (StopEA_KeepTrades)
+    // stop_ea=true, close=false, restart=true -> 7 (PauseEA_KeepTrades)
+    // stop_ea=true, close=true, restart=false -> 5 (StopEA_CloseTrades)
+    // stop_ea=true, close=true, restart=true -> 6 (PauseEA_CloseTrades)
+    let news_action = if !nf.stop_ea {
+        0 // TriggerAction_None
+    } else if nf.close_trades && nf.auto_restart {
+        6 // TriggerAction_PauseEA_CloseTrades
+    } else if nf.close_trades && !nf.auto_restart {
+        5 // TriggerAction_StopEA_CloseTrades
+    } else if !nf.close_trades && nf.auto_restart {
+        7 // TriggerAction_PauseEA_KeepTrades
+    } else {
+        2 // TriggerAction_StopEA_KeepTrades (default)
+    };
+    lines.push(format!("gInput_NewsAction={}", news_action));
+    lines.push(format!("gInput_NewsStopEA={}", if nf.stop_ea { 1 } else { 0 }));
+    lines.push(format!("gInput_NewsCloseTrades={}", if nf.close_trades { 1 } else { 0 }));
+    lines.push(format!("gInput_NewsAutoRestart={}", if nf.auto_restart { 1 } else { 0 }));
+    lines.push(format!("gInput_NewsCheckInterval={}", nf.check_interval));
+    lines.push(format!("gInput_FilterHighImpactOnly={}", if nf.filter_high_only { 1 } else { 0 }));
+    lines.push(format!("gInput_FilterWeekendNews={}", if nf.filter_weekends { 1 } else { 0 }));
+    lines.push(format!("gInput_UseLocalNewsCache={}", if nf.use_local_cache { 1 } else { 0 }));
+    lines.push(format!("gInput_NewsCacheDuration={}", nf.cache_duration));
+    lines.push(format!("gInput_NewsFallbackOnError={}", nf.fallback_on_error));
+    lines.push(format!("gInput_FilterCurrencies={}", nf.filter_currencies));
+    lines.push(format!("gInput_IncludeSpeeches={}", if nf.include_speeches { 1 } else { 0 }));
+    lines.push(format!("gInput_IncludeReports={}", if nf.include_reports { 1 } else { 0 }));
+    lines.push(format!("gInput_NewsVisualIndicator={}", if nf.visual_indicator { 1 } else { 0 }));
+    lines.push(format!("gInput_AlertBeforeNews={}", if nf.alert_before_news { 1 } else { 0 }));
+    lines.push(format!("gInput_AlertMinutesBefore={}", nf.alert_minutes));
+    let key_news_calendar = "gInput_NewsCalendarFile".to_string();
+    let news_calendar_fallback = nf
+        .calendar_file
+        .clone()
+        .unwrap_or_else(|| "".to_string());
+    lines.push(format!("{}={}", key_news_calendar, news_calendar_fallback));
     
     // ===== TIME FILTERS =====
     lines.push(String::new());
@@ -2137,52 +2306,78 @@ pub fn export_massive_v19_setfile(
         let upper = raw.to_uppercase();
         if upper.contains("AVG") {
             1
-        } else if upper.contains("PROFIT") {
-            2
         } else {
             0
         }
     };
 
     let encode_tpsl_mode = |raw: &str| -> i32 {
-        match raw {
-            "TPSL_Price" => 1,
-            "TPSL_Percent" => 2,
+        match raw.trim() {
+            "1" | "TPSL_Price" => 1,
+            "2" | "TPSL_Percent" => 2,
+            "0" | "TPSL_Points" | "TP_Pips" | "SL_Pips" | "TPMode_Fixed" | "SLMode_Fixed" => 0,
             _ => 0,
         }
     };
 
-    let logic_names = ["POWER", "REPOWER", "SCALP", "STOPPER", "STO", "SCA", "RPO"];
+    let logic_names = ["POWER", "REPOWER", "SCALPER", "STOPPER", "STO", "SCA", "RPO"];
     let directions = ["Buy", "Sell"];
 
     let engine_ids = ["A", "B", "C"];
     for engine_id in &engine_ids {
-        let engine = config
-            .engines
-            .iter()
-            .find(|e| e.engine_id == *engine_id)
-            .cloned()
-            .unwrap_or_else(|| EngineConfig {
-                engine_id: engine_id.to_string(),
-                engine_name: engine_id.to_string(),
-                max_power_orders: 0,
-                groups: Vec::new(),
-            });
+        let Some(engine) = config.engines.iter().find(|e| e.engine_id == *engine_id) else {
+            missing_scope_count += 1;
+            if missing_scope_samples.len() < 24 {
+                missing_scope_samples.push(format!("missing engine {}", engine_id));
+            }
+            continue;
+        };
         for group_num in 1..=15 {
             let group_num_u8 = group_num as u8;
-            let group = engine.groups.iter().find(|g| g.group_number == group_num_u8);
+            let Some(group) = engine.groups.iter().find(|g| g.group_number == group_num_u8) else {
+                missing_scope_count += 1;
+                if missing_scope_samples.len() < 24 {
+                    missing_scope_samples.push(format!("missing group E{} G{}", engine.engine_id, group_num));
+                }
+                continue;
+            };
 
             for logic_name in &logic_names {
-                let default_logic = create_default_logic(logic_name);
-                let matching_logics: Vec<LogicConfig> = group
-                    .map(|g| {
-                        g.logics
-                            .iter()
-                            .filter(|l| l.logic_name.to_uppercase() == *logic_name)
-                            .cloned()
-                            .collect()
+                let matching_logics_all: Vec<&LogicConfig> = group
+                    .logics
+                    .iter()
+                    .filter(|l| {
+                        let logic_upper = l.logic_name.trim().to_uppercase();
+                        let normalized = if logic_upper == "SCALP" {
+                            "SCALPER"
+                        } else {
+                            logic_upper.as_str()
+                        };
+                        normalized == *logic_name
                     })
-                    .unwrap_or_default();
+                    .collect();
+                let matching_logics: Vec<&LogicConfig> = {
+                    let exact: Vec<&LogicConfig> = matching_logics_all
+                        .iter()
+                        .copied()
+                        .filter(|l| l.logic_name.trim().to_uppercase() == *logic_name)
+                        .collect();
+                    if exact.is_empty() {
+                        matching_logics_all
+                    } else {
+                        exact
+                    }
+                };
+                if matching_logics.is_empty() {
+                    missing_scope_count += 1;
+                    if missing_scope_samples.len() < 24 {
+                        missing_scope_samples.push(format!(
+                            "missing logic E{} G{} {}",
+                            engine.engine_id, group_num, logic_name
+                        ));
+                    }
+                    continue;
+                }
 
                 let infer_row_direction = |l: &LogicConfig| -> Option<&'static str> {
                     let logic_id_upper = l.logic_id.to_uppercase();
@@ -2201,31 +2396,44 @@ pub fn export_massive_v19_setfile(
                     None
                 };
 
-                let base_logic = matching_logics
+                let base_logic = *matching_logics
                     .first()
-                    .cloned()
-                    .unwrap_or_else(|| default_logic.clone());
+                    .expect("matching_logics is non-empty");
                 let buy_logic = matching_logics
                     .iter()
                     .find(|l| infer_row_direction(l) == Some("Buy"))
-                    .cloned();
+                    .copied();
                 let sell_logic = matching_logics
                     .iter()
                     .find(|l| infer_row_direction(l) == Some("Sell"))
-                    .cloned();
+                    .copied();
 
                 let v19_suffix = get_v19_suffix(&engine.engine_id, logic_name);
 
-                let has_directional_rows = buy_logic.is_some() && sell_logic.is_some();
+                let has_any_directional_rows = buy_logic.is_some() || sell_logic.is_some();
                 for direction in &directions {
                     let is_buy = *direction == "Buy";
-                    let logic = if is_buy {
-                        buy_logic.as_ref().unwrap_or(&base_logic)
+                    let logic_opt = if has_any_directional_rows {
+                        if is_buy {
+                            buy_logic
+                        } else {
+                            sell_logic
+                        }
                     } else {
-                        sell_logic.as_ref().unwrap_or(&base_logic)
+                        Some(base_logic)
+                    };
+                    let Some(logic) = logic_opt else {
+                        missing_scope_count += 1;
+                        if missing_scope_samples.len() < 24 {
+                            missing_scope_samples.push(format!(
+                                "missing directional row E{} G{} {} {}",
+                                engine.engine_id, group_num, logic_name, direction
+                            ));
+                        }
+                        continue;
                     };
                     let pick_directional_value = |base: f64, b: Option<f64>, s: Option<f64>| -> f64 {
-                        if has_directional_rows {
+                        if has_any_directional_rows {
                             // Directional-row model: each row owns its own values, do not read suffix mirrors.
                             base
                         } else if is_buy {
@@ -2236,6 +2444,53 @@ pub fn export_massive_v19_setfile(
                     };
 
                     let enabled = if is_buy { logic.allow_buy } else { logic.allow_sell };
+                    let effective_mode = if is_engine_a_power(&engine.engine_id, logic_name) {
+                        "Counter Trend".to_string()
+                    } else {
+                        normalize_trading_mode(&logic.trading_mode)
+                    };
+
+                    let (
+                        export_reverse_enabled,
+                        export_hedge_enabled,
+                        export_reverse_reference,
+                        export_hedge_reference,
+                        export_reverse_scale,
+                        export_hedge_scale,
+                    ) = match effective_mode.as_str() {
+                        "Hedge" => (
+                            false,
+                            true,
+                            "Logic_None".to_string(),
+                            if logic.hedge_reference.trim().is_empty() {
+                                "Logic_None".to_string()
+                            } else {
+                                logic.hedge_reference.clone()
+                            },
+                            100.0,
+                            logic.hedge_scale,
+                        ),
+                        "Reverse" => (
+                            true,
+                            false,
+                            if logic.reverse_reference.trim().is_empty() {
+                                "Logic_None".to_string()
+                            } else {
+                                logic.reverse_reference.clone()
+                            },
+                            "Logic_None".to_string(),
+                            logic.reverse_scale,
+                            50.0,
+                        ),
+                        _ => (
+                            false,
+                            false,
+                            "Logic_None".to_string(),
+                            "Logic_None".to_string(),
+                            100.0,
+                            50.0,
+                        ),
+                    };
 
                     lines.push(format!(
                         "gInput_{}_{}_{}_Enabled={}",
@@ -2264,6 +2519,11 @@ pub fn export_massive_v19_setfile(
                     }
 
                     lines.push(format!(
+                        "gInput_{}_{}_{}_TradingMode={}",
+                        group_num, v19_suffix, direction, effective_mode
+                    ));
+
+                    lines.push(format!(
                         "gInput_{}_{}_{}_InitialLot={:.2}",
                         group_num,
                         v19_suffix,
@@ -2271,12 +2531,16 @@ pub fn export_massive_v19_setfile(
                         pick_directional_value(logic.initial_lot, logic.initial_lot_b, logic.initial_lot_s)
                     ));
 
+                    let key_last_lot =
+                        format!("gInput_{}_{}_{}_LastLot", group_num, v19_suffix, direction);
+                    let last_lot_fallback = logic
+                        .last_lot
+                        .map(|v| format!("{:.2}", v))
+                        .unwrap_or_else(|| "".to_string());
                     lines.push(format!(
-                        "gInput_{}_{}_{}_LastLot={:.2}",
-                        group_num,
-                        v19_suffix,
-                        direction,
-                        logic.last_lot.unwrap_or(0.0)
+                        "{}={}",
+                        key_last_lot,
+                        last_lot_fallback
                     ));
 
                     lines.push(format!(
@@ -2297,7 +2561,13 @@ pub fn export_massive_v19_setfile(
                         grid_value
                     ));
 
-                    lines.push(format!("gInput_{}_{}_{}_GridBehavior={}", group_num, v19_suffix, direction, 0));
+                    let key_grid_behavior =
+                        format!("gInput_{}_{}_{}_GridBehavior", group_num, v19_suffix, direction);
+                    lines.push(format!(
+                        "{}={}",
+                        key_grid_behavior,
+                        "".to_string()
+                    ));
 
                     lines.push(format!(
                         "gInput_{}_{}_{}_Trail={}",
@@ -2397,11 +2667,12 @@ pub fn export_massive_v19_setfile(
 
                     for i in 0..6 {
                         let n = i + 2;
-                        if let Some(v) = step_values[i] {
-                            lines.push(format!("gInput_{}_{}_{}_TrailStep{}={:.1}", group_num, v19_suffix, direction, n, v));
-                        } else {
-                            lines.push(format!("gInput_{}_{}_{}_TrailStep{}={:.1}", group_num, v19_suffix, direction, n, 0.0));
-                        }
+                        let key_step =
+                            format!("gInput_{}_{}_{}_TrailStep{}", group_num, v19_suffix, direction, n);
+                        let step_fallback = step_values[i]
+                            .map(|v| format!("{:.1}", v))
+                            .unwrap_or_else(|| "".to_string());
+                        lines.push(format!("{}={}", key_step, step_fallback));
                         lines.push(format!(
                             "gInput_{}_{}_{}_TrailStepMethod{}={}",
                             group_num,
@@ -2418,21 +2689,29 @@ pub fn export_massive_v19_setfile(
                             n,
                             encode_trail_step_mode(step_modes[i].unwrap_or(&logic.trail_step_mode))
                         ));
+                        let key_step_cycle = format!(
+                            "gInput_{}_{}_{}_TrailStepCycle{}",
+                            group_num, v19_suffix, direction, n
+                        );
+                        let step_cycle_fallback = step_cycles[i]
+                            .map(|v| v.to_string())
+                            .unwrap_or_else(|| "".to_string());
                         lines.push(format!(
-                            "gInput_{}_{}_{}_TrailStepCycle{}={}",
-                            group_num,
-                            v19_suffix,
-                            direction,
-                            n,
-                            step_cycles[i].unwrap_or(0)
+                            "{}={}",
+                            key_step_cycle,
+                            step_cycle_fallback
                         ));
+                        let key_step_balance = format!(
+                            "gInput_{}_{}_{}_TrailStepBalance{}",
+                            group_num, v19_suffix, direction, n
+                        );
+                        let step_balance_fallback = step_balances[i]
+                            .map(|v| format!("{:.1}", v))
+                            .unwrap_or_else(|| "".to_string());
                         lines.push(format!(
-                            "gInput_{}_{}_{}_TrailStepBalance{}={:.1}",
-                            group_num,
-                            v19_suffix,
-                            direction,
-                            n,
-                            step_balances[i].unwrap_or(0.0)
+                            "{}={}",
+                            key_step_balance,
+                            step_balance_fallback
                         ));
                     }
 
@@ -2479,51 +2758,121 @@ pub fn export_massive_v19_setfile(
                         logic.sl_value
                     ));
 
-                    lines.push(format!("gInput_{}_{}_{}_BreakEvenMode={}", group_num, v19_suffix, direction, 0));
-                    lines.push(format!("gInput_{}_{}_{}_BreakEvenActivation={:.1}", group_num, v19_suffix, direction, 0.0));
-                    lines.push(format!("gInput_{}_{}_{}_BreakEvenLock={:.1}", group_num, v19_suffix, direction, 0.0));
-                    lines.push(format!("gInput_{}_{}_{}_BreakEvenTrail={}", group_num, v19_suffix, direction, 0));
+                    let key_be_mode =
+                        format!("gInput_{}_{}_{}_BreakEvenMode", group_num, v19_suffix, direction);
+                    lines.push(format!(
+                        "{}={}",
+                        key_be_mode,
+                        "".to_string()
+                    ));
+                    let key_be_activation = format!(
+                        "gInput_{}_{}_{}_BreakEvenActivation",
+                        group_num, v19_suffix, direction
+                    );
+                    lines.push(format!(
+                        "{}={}",
+                        key_be_activation,
+                        "".to_string()
+                    ));
+                    let key_be_lock =
+                        format!("gInput_{}_{}_{}_BreakEvenLock", group_num, v19_suffix, direction);
+                    lines.push(format!(
+                        "{}={}",
+                        key_be_lock,
+                        "".to_string()
+                    ));
+                    let key_be_trail =
+                        format!("gInput_{}_{}_{}_BreakEvenTrail", group_num, v19_suffix, direction);
+                    lines.push(format!(
+                        "{}={}",
+                        key_be_trail,
+                        "".to_string()
+                    ));
 
+                    let key_trigger_type =
+                        format!("gInput_{}_{}_{}_TriggerType", group_num, v19_suffix, direction);
+                    let trigger_type_fallback = logic
+                        .trigger_type
+                        .as_deref()
+                        .map(normalize_trigger_type)
+                        .unwrap_or_else(|| "".to_string());
                     lines.push(format!(
-                        "gInput_{}_{}_{}_TriggerType={}",
-                        group_num,
-                        v19_suffix,
-                        direction,
-                        logic.trigger_type.as_deref().map(normalize_trigger_type).unwrap_or_else(|| "0".to_string())
+                        "{}={}",
+                        key_trigger_type,
+                        trigger_type_fallback
                     ));
+                    let key_trigger_bars =
+                        format!("gInput_{}_{}_{}_TriggerBars", group_num, v19_suffix, direction);
+                    let trigger_bars_fallback = logic
+                        .trigger_bars
+                        .map(|v| v.to_string())
+                        .unwrap_or_else(|| "".to_string());
                     lines.push(format!(
-                        "gInput_{}_{}_{}_TriggerBars={}",
-                        group_num,
-                        v19_suffix,
-                        direction,
-                        logic.trigger_bars.unwrap_or(0)
+                        "{}={}",
+                        key_trigger_bars,
+                        trigger_bars_fallback
                     ));
+                    let key_trigger_minutes =
+                        format!("gInput_{}_{}_{}_TriggerMinutes", group_num, v19_suffix, direction);
+                    let trigger_minutes_fallback = logic
+                        .trigger_minutes
+                        .map(|v| v.to_string())
+                        .unwrap_or_else(|| "".to_string());
                     lines.push(format!(
-                        "gInput_{}_{}_{}_TriggerMinutes={}",
-                        group_num,
-                        v19_suffix,
-                        direction,
-                        logic.trigger_minutes.unwrap_or(0)
+                        "{}={}",
+                        key_trigger_minutes,
+                        trigger_minutes_fallback
                     ));
+                    let key_trigger_pips =
+                        format!("gInput_{}_{}_{}_TriggerPips", group_num, v19_suffix, direction);
+                    let trigger_pips_fallback = logic
+                        .trigger_pips
+                        .map(|v| format!("{:.1}", v))
+                        .unwrap_or_else(|| "".to_string());
                     lines.push(format!(
-                        "gInput_{}_{}_{}_TriggerPips={:.1}",
-                        group_num,
-                        v19_suffix,
-                        direction,
-                        logic.trigger_pips.unwrap_or(0.0)
+                        "{}={}",
+                        key_trigger_pips,
+                        trigger_pips_fallback
                     ));
 
                     lines.push(format!(
                         "gInput_{}_{}_{}_OrderCountReferenceLogic={}",
                         group_num, v19_suffix, direction, logic.order_count_reference
                     ));
-                    lines.push(format!(
-                        "gInput_{}_{}_{}_StartLevel={}",
-                        group_num,
-                        v19_suffix,
-                        direction,
-                        logic.start_level.unwrap_or(0)
-                    ));
+                    // StartLevel is a Group 1-only field.
+                    // ARCHIVE (disabled fallback):
+                    // "StartLevel={logic.start_level.unwrap_or(0)}" silently rewrote missing values to 0.
+                    // Single source of truth: only export StartLevel when explicitly present.
+                    if group_num == 1 {
+                        if let Some(start_level) = logic.start_level {
+                            if *logic_name != "POWER" && start_level < 4 {
+                                start_level_under4_count += 1;
+                                if start_level_under4_samples.len() < 30 {
+                                    start_level_under4_samples.push(format!(
+                                        "E{} G{} {} {} id={} start={}",
+                                        engine.engine_id,
+                                        group_num,
+                                        logic_name,
+                                        direction,
+                                        logic.logic_id,
+                                        start_level
+                                    ));
+                                }
+                            }
+                            lines.push(format!(
+                                "gInput_{}_{}_{}_StartLevel={}",
+                                group_num, v19_suffix, direction, start_level
+                            ));
+                        } else if *logic_name != "POWER" {
+                            start_level_missing_count += 1;
+                            if start_level_missing_samples.len() < 30 {
+                                start_level_missing_samples.push(format!(
+                                    "E{} G{} {} {} id={} start=<missing>",
+                                    engine.engine_id, group_num, logic_name, direction, logic.logic_id
+                                ));
+                            }
+                        }
+                    }
                     lines.push(format!(
                         "gInput_{}_{}_{}_ResetLotOnRestart={}",
                         group_num,
@@ -2532,118 +2881,89 @@ pub fn export_massive_v19_setfile(
                         if logic.reset_lot_on_restart { 1 } else { 0 }
                     ));
 
-                    let partial_enabled = [
-                        logic.close_partial,
-                        logic.close_partial_2.unwrap_or(false),
-                        logic.close_partial_3.unwrap_or(false),
-                        logic.close_partial_4.unwrap_or(false),
-                    ];
-                    let partial_cycles = [
-                        logic.close_partial_cycle,
-                        logic.close_partial_cycle_2.unwrap_or(0),
-                        logic.close_partial_cycle_3.unwrap_or(0),
-                        logic.close_partial_cycle_4.unwrap_or(0),
-                    ];
+                    let partial_enabled = [Some(logic.close_partial), logic.close_partial_2, logic.close_partial_3, logic.close_partial_4];
                     let partial_modes = [
                         Some(logic.close_partial_mode.as_str()),
                         logic.close_partial_mode_2.as_deref(),
                         logic.close_partial_mode_3.as_deref(),
                         logic.close_partial_mode_4.as_deref(),
                     ];
-                    let partial_balances = [
-                        Some(logic.close_partial_balance.as_str()),
-                        logic.close_partial_balance_2.as_deref(),
-                        logic.close_partial_balance_3.as_deref(),
-                        logic.close_partial_balance_4.as_deref(),
-                    ];
-                    let partial_trail_modes = [
-                        Some(logic.close_partial_trail_step_mode.as_str()),
-                        Some(logic.close_partial_trail_step_mode.as_str()),
-                        Some(logic.close_partial_trail_step_mode.as_str()),
-                        Some(logic.close_partial_trail_step_mode.as_str()),
+                    let partial_profit_thresholds = [
+                        Some(logic.close_partial_profit_threshold),
+                        logic.close_partial_profit_threshold_2,
+                        logic.close_partial_profit_threshold_3,
+                        logic.close_partial_profit_threshold_4,
                     ];
 
                     for idx in 0..4 {
                         let n = idx + 1;
                         let base = if n == 1 { "".to_string() } else { n.to_string() };
+                        let key_partial_enabled =
+                            format!("gInput_{}_{}_{}_ClosePartial{}", group_num, v19_suffix, direction, base);
+                        let key_partial_mode =
+                            format!("gInput_{}_{}_{}_ClosePartialMode{}", group_num, v19_suffix, direction, base);
+                        let key_partial_profit_threshold =
+                            format!("gInput_{}_{}_{}_ClosePartialProfitThreshold{}", group_num, v19_suffix, direction, base);
 
-                        lines.push(format!(
-                            "gInput_{}_{}_{}_ClosePartial{}={}",
-                            group_num,
-                            v19_suffix,
-                            direction,
-                            base,
-                            if partial_enabled[idx] { 1 } else { 0 }
-                        ));
-                        lines.push(format!(
-                            "gInput_{}_{}_{}_ClosePartialCycle{}={}",
-                            group_num,
-                            v19_suffix,
-                            direction,
-                            base,
-                            partial_cycles[idx]
-                        ));
-                        lines.push(format!(
-                            "gInput_{}_{}_{}_ClosePartialMode{}={}",
-                            group_num,
-                            v19_suffix,
-                            direction,
-                            base,
-                            encode_partial_mode(partial_modes[idx].unwrap_or("PartialMode_Balanced"))
-                        ));
-                        lines.push(format!(
-                            "gInput_{}_{}_{}_ClosePartialBalance{}={}",
-                            group_num,
-                            v19_suffix,
-                            direction,
-                            base,
-                            encode_partial_balance(partial_balances[idx].unwrap_or("PartialBalance_Balanced"))
-                        ));
-                        lines.push(format!(
-                            "gInput_{}_{}_{}_ClosePartialTrailMode{}={}",
-                            group_num,
-                            v19_suffix,
-                            direction,
-                            base,
-                            encode_trail_step_mode(partial_trail_modes[idx].unwrap_or("TrailStepMode_Auto"))
-                        ));
-                        lines.push(format!(
-                            "gInput_{}_{}_{}_ClosePartialTrigger{}={}",
-                            group_num, v19_suffix, direction, base, 0
-                        ));
-                        lines.push(format!(
-                            "gInput_{}_{}_{}_ClosePartialProfitThreshold{}={:.1}",
-                            group_num, v19_suffix, direction, base, 0.0
-                        ));
-                        lines.push(format!(
-                            "gInput_{}_{}_{}_ClosePartialPercent{}={:.1}",
-                            group_num, v19_suffix, direction, base, 0.0
-                        ));
-                        lines.push(format!(
-                            "gInput_{}_{}_{}_ClosePartialHours{}={}",
-                            group_num, v19_suffix, direction, base, 0
-                        ));
+                        let enabled_value = partial_enabled[idx]
+                            .map(|v| if v { "1".to_string() } else { "0".to_string() })
+                            .unwrap_or_else(|| "".to_string());
+                        let mode_value = partial_modes[idx]
+                            .map(|v| encode_partial_mode(v).to_string())
+                            .unwrap_or_else(|| "".to_string());
+                        let threshold_value = partial_profit_thresholds[idx]
+                            .map(|v| format!("{:.2}", v))
+                            .unwrap_or_else(|| "".to_string());
+
+                        lines.push(format!("{}={}", key_partial_enabled, enabled_value));
+                        lines.push(format!("{}={}", key_partial_mode, mode_value));
+                        lines.push(format!("{}={}", key_partial_profit_threshold, threshold_value));
                     }
 
+                    let key_profit_enabled = format!(
+                        "gInput_{}_{}_{}_ProfitTrailEnabled",
+                        group_num, v19_suffix, direction
+                    );
                     lines.push(format!(
-                        "gInput_{}_{}_{}_ProfitTrailEnabled={}",
-                        group_num, v19_suffix, direction, 0
+                        "{}={}",
+                        key_profit_enabled,
+                        "".to_string()
                     ));
+                    let key_profit_peak_drop = format!(
+                        "gInput_{}_{}_{}_ProfitTrailPeakDropPercent",
+                        group_num, v19_suffix, direction
+                    );
                     lines.push(format!(
-                        "gInput_{}_{}_{}_ProfitTrailPeakDropPercent={:.1}",
-                        group_num, v19_suffix, direction, 0.0
+                        "{}={}",
+                        key_profit_peak_drop,
+                        "".to_string()
                     ));
+                    let key_profit_lock_percent = format!(
+                        "gInput_{}_{}_{}_ProfitTrailLockPercent",
+                        group_num, v19_suffix, direction
+                    );
                     lines.push(format!(
-                        "gInput_{}_{}_{}_ProfitTrailLockPercent={:.1}",
-                        group_num, v19_suffix, direction, 0.0
+                        "{}={}",
+                        key_profit_lock_percent,
+                        "".to_string()
                     ));
+                    let key_profit_close_on_trigger = format!(
+                        "gInput_{}_{}_{}_ProfitTrailCloseOnTrigger",
+                        group_num, v19_suffix, direction
+                    );
                     lines.push(format!(
-                        "gInput_{}_{}_{}_ProfitTrailCloseOnTrigger={}",
-                        group_num, v19_suffix, direction, 0
+                        "{}={}",
+                        key_profit_close_on_trigger,
+                        "".to_string()
                     ));
+                    let key_profit_use_break_even = format!(
+                        "gInput_{}_{}_{}_ProfitTrailUseBreakEven",
+                        group_num, v19_suffix, direction
+                    );
                     lines.push(format!(
-                        "gInput_{}_{}_{}_ProfitTrailUseBreakEven={}",
-                        group_num, v19_suffix, direction, 0
+                        "{}={}",
+                        key_profit_use_break_even,
+                        "".to_string()
                     ));
 
                     lines.push(format!(
@@ -2651,21 +2971,21 @@ pub fn export_massive_v19_setfile(
                         group_num,
                         v19_suffix,
                         direction,
-                        if logic.reverse_enabled { 1 } else { 0 }
+                        if export_reverse_enabled { 1 } else { 0 }
                     ));
                     lines.push(format!(
                         "gInput_{}_{}_{}_ReverseReference={}",
                         group_num,
                         v19_suffix,
                         direction,
-                        logic.reverse_reference
+                        export_reverse_reference
                     ));
                     lines.push(format!(
                         "gInput_{}_{}_{}_ReverseScale={:.2}",
                         group_num,
                         v19_suffix,
                         direction,
-                        logic.reverse_scale
+                        export_reverse_scale
                     ));
 
                     lines.push(format!(
@@ -2673,21 +2993,21 @@ pub fn export_massive_v19_setfile(
                         group_num,
                         v19_suffix,
                         direction,
-                        if logic.hedge_enabled { 1 } else { 0 }
+                        if export_hedge_enabled { 1 } else { 0 }
                     ));
                     lines.push(format!(
                         "gInput_{}_{}_{}_HedgeReference={}",
                         group_num,
                         v19_suffix,
                         direction,
-                        logic.hedge_reference
+                        export_hedge_reference
                     ));
                     lines.push(format!(
                         "gInput_{}_{}_{}_HedgeScale={:.2}",
                         group_num,
                         v19_suffix,
                         direction,
-                        logic.hedge_scale
+                        export_hedge_scale
                     ));
 
                     lines.push(format!(
@@ -2708,13 +3028,28 @@ pub fn export_massive_v19_setfile(
             !s.is_empty() && !s.starts_with(';') && s.contains('=')
         })
         .count();
-    if key_lines < 60000 {
-        return Err(format!(
-            "export_massive_v19_setfile: refusing to write non-massive output (key_lines={})",
-            key_lines
-        ));
+    println!(
+        "[SETFILE][EXPORT] Massive v19 diagnostics: missing_scope={}, start_under4_non_power={}, start_missing_non_power={}, key_lines={}",
+        missing_scope_count, start_level_under4_count, start_level_missing_count, key_lines
+    );
+    if !missing_scope_samples.is_empty() {
+        println!(
+            "[SETFILE][EXPORT] missing-scope samples: {}",
+            missing_scope_samples.join(" | ")
+        );
     }
-
+    if !start_level_under4_samples.is_empty() {
+        println!(
+            "[SETFILE][EXPORT] start<4 samples: {}",
+            start_level_under4_samples.join(" | ")
+        );
+    }
+    if !start_level_missing_samples.is_empty() {
+        println!(
+            "[SETFILE][EXPORT] start missing samples: {}",
+            start_level_missing_samples.join(" | ")
+        );
+    }
     // Write to file
     let content = lines.join("\n");
     atomic_write(&sanitized_path, &content)?;
@@ -2744,13 +3079,6 @@ pub fn export_massive_v19_setfile(
                 dup_keys
             ));
         }
-        if map.len() < 60000 {
-            return Err(format!(
-                "export_massive_v19_setfile: keymap too small for massive output (keys={})",
-                map.len()
-            ));
-        }
-
         let json = serde_json::to_string_pretty(&map).map_err(|e| e.to_string())?;
         atomic_write(&sanitized_keymap_path, &json)?;
     }
@@ -3115,6 +3443,29 @@ pub async fn import_set_file(file_path: String) -> Result<MTConfig, String> {
         }
 
         let mut config = build_config_from_v19_setfile(&content)?;
+        if let Ok(legacy_overlay) = build_config_from_values(&values) {
+            // Preserve full global metadata and group trigger thresholds from the same source file.
+            // v19 parser remains authoritative for directional logic rows.
+            config.general = legacy_overlay.general;
+            for engine in &mut config.engines {
+                if let Some(legacy_engine) = legacy_overlay
+                    .engines
+                    .iter()
+                    .find(|e| e.engine_id == engine.engine_id)
+                {
+                    for group in &mut engine.groups {
+                        if let Some(legacy_group) = legacy_engine
+                            .groups
+                            .iter()
+                            .find(|g| g.group_number == group.group_number)
+                        {
+                            group.group_power_start = legacy_group.group_power_start;
+                        }
+                    }
+                }
+            }
+        }
+        normalize_config_mode_contract(&mut config);
         config.tags = tags;
         config.comments = comments;
         config.deobfuscate_sensitive_fields();
@@ -4007,7 +4358,49 @@ fn trigger_action_to_int(action: &str) -> i32 {
         "TriggerAction_CloseAll" => 3,
         "TriggerAction_KeepEA_CloseTrades" => 4,
         "TriggerAction_StopEA_CloseTrades" => 5,
-        _ => 0,
+        "TriggerAction_PauseEA_CloseTrades" => 6,
+        "TriggerAction_PauseEA_KeepTrades" => 7,
+        "Action_Default" => 2,
+        "Action_CloseAll" => 3,
+        _ => 2,
+    }
+}
+
+fn trigger_action_from_int(n: i32) -> &'static str {
+    match n {
+        0 => "TriggerAction_None",
+        1 => "TriggerAction_StopEA",
+        2 => "TriggerAction_StopEA_KeepTrades",
+        3 => "TriggerAction_CloseAll",
+        4 => "TriggerAction_KeepEA_CloseTrades",
+        5 => "TriggerAction_StopEA_CloseTrades",
+        6 => "TriggerAction_PauseEA_CloseTrades",
+        7 => "TriggerAction_PauseEA_KeepTrades",
+        _ => "TriggerAction_StopEA_KeepTrades",
+    }
+}
+
+fn trigger_action_from_raw(raw: &str) -> String {
+    let s = raw.trim();
+    if s.is_empty() {
+        return "TriggerAction_StopEA_KeepTrades".to_string();
+    }
+    if let Ok(n) = s.parse::<i32>() {
+        return trigger_action_from_int(n).to_string();
+    }
+    let lower = s.to_ascii_lowercase();
+    match lower.as_str() {
+        "triggeraction_none" => "TriggerAction_None".to_string(),
+        "triggeraction_stopea" => "TriggerAction_StopEA".to_string(),
+        "triggeraction_stopea_keeptrades" => "TriggerAction_StopEA_KeepTrades".to_string(),
+        "triggeraction_closeall" => "TriggerAction_CloseAll".to_string(),
+        "triggeraction_keepea_closetrades" => "TriggerAction_KeepEA_CloseTrades".to_string(),
+        "triggeraction_stopea_closetrades" => "TriggerAction_StopEA_CloseTrades".to_string(),
+        "triggeraction_pauseea_closetrades" => "TriggerAction_PauseEA_CloseTrades".to_string(),
+        "triggeraction_pauseea_keeptrades" => "TriggerAction_PauseEA_KeepTrades".to_string(),
+        "action_default" => "TriggerAction_StopEA_KeepTrades".to_string(),
+        "action_closeall" => "TriggerAction_CloseAll".to_string(),
+        _ => "TriggerAction_StopEA_KeepTrades".to_string(),
     }
 }
 
@@ -4079,7 +4472,6 @@ fn normalize_trigger_type(raw: &str) -> String {
 fn encode_trail_step_method(raw: &str) -> i32 {
     match raw {
         "Step_Percent" => 1,
-        "Step_Pips" => 0,
         _ => 0,
     }
 }
@@ -4089,7 +4481,6 @@ fn encode_trail_step_mode(raw: &str) -> i32 {
         "TrailStepMode_Auto" => 0,
         "TrailStepMode_Fixed" => 1,
         "TrailStepMode_PerOrder" => 3,
-        "TrailStepMode_Disabled" => 4,
         _ => 0,
     }
 }
@@ -4097,8 +4488,8 @@ fn encode_trail_step_mode(raw: &str) -> i32 {
 fn encode_partial_mode(raw: &str) -> i32 {
     match raw {
         "PartialMode_Low" => 0,
-        "PartialMode_Balanced" => 1,
-        "PartialMode_High" => 2,
+        "PartialMode_Mid" | "PartialMode_Balanced" => 1,
+        "PartialMode_Aggressive" | "PartialMode_High" => 2,
         _ => 1,
     }
 }
@@ -4144,6 +4535,20 @@ fn get_bool(values: &std::collections::HashMap<String, String>, key: &str) -> bo
         .get(key)
         .map(|v| v == "1" || v.to_lowercase() == "true")
         .unwrap_or(false)
+}
+
+fn get_bool_with_default(
+    values: &std::collections::HashMap<String, String>,
+    key: &str,
+    default: bool,
+) -> bool {
+    values
+        .get(key)
+        .map(|v| {
+            let t = v.trim().to_ascii_lowercase();
+            t == "1" || t == "true"
+        })
+        .unwrap_or(default)
 }
 
 fn get_i32(values: &std::collections::HashMap<String, String>, key: &str, default: i32) -> i32 {
@@ -4263,7 +4668,6 @@ fn build_config_from_values(
         allow_sell: get_bool(values, "gInput_allowSell"),
         enable_logs: get_bool(values, "gInput_EnableLogs"),
         use_direct_price_grid: get_bool(values, "gInput_UseDirectPriceGrid"),
-        group_mode: Some(get_i32(values, "gInput_GroupMode", 1)),
         grid_unit: Some(get_i32(values, "gInput_GridUnit", 0)),
         pip_factor: Some(get_i32(values, "gInput_PipFactor", 0)),
         compounding_enabled: get_bool(values, "gInput_Input_Compounding"),
@@ -4314,14 +4718,29 @@ fn build_config_from_values(
             sessions,
         },
         news_filter: NewsFilterConfig {
-            enabled: get_bool(values, "gInput_EnableNewsFilter"),
+            enabled: get_bool_first(values, &["gInput_EnableNewsFilter", "gInput_NewsFilterEnabled"]),
             api_key: get_string(values, "gInput_NewsAPIKey", ""),
-            api_url: get_string(values, "gInput_NewsAPIURL", "https://api.forexfactory.com"),
-            countries: get_string(values, "gInput_NewsFilterCountries", "USD,EUR,GBP"),
-            impact_level: get_i32(values, "gInput_NewsImpactLevel", 2),
-            minutes_before: get_i32(values, "gInput_MinutesBeforeNews", 15),
-            minutes_after: get_i32(values, "gInput_MinutesAfterNews", 15),
-            action: get_string(values, "gInput_NewsAction", "Action_CloseAll"),
+            api_url: get_string(values, "gInput_NewsAPIURL", "https://www.jblanked.com/news/api/calendar/"),
+            countries: get_string(values, "gInput_NewsFilterCountries", "US,GB,EU"),
+            impact_level: get_i32(values, "gInput_NewsImpactLevel", 3),
+            minutes_before: get_i32(values, "gInput_MinutesBeforeNews", 30),
+            minutes_after: get_i32(values, "gInput_MinutesAfterNews", 30),
+            // Convert action enum to 3 boolean fields
+            stop_ea: get_bool_with_default(values, "gInput_NewsStopEA", true),
+            close_trades: get_bool_with_default(values, "gInput_NewsCloseTrades", false),
+            auto_restart: get_bool_with_default(values, "gInput_NewsAutoRestart", true),
+            check_interval: get_i32(values, "gInput_NewsCheckInterval", 60),
+            alert_minutes: get_i32(values, "gInput_AlertMinutesBefore", 5),
+            filter_high_only: get_bool_with_default(values, "gInput_FilterHighImpactOnly", true),
+            filter_weekends: get_bool_with_default(values, "gInput_FilterWeekendNews", false),
+            use_local_cache: get_bool_with_default(values, "gInput_UseLocalNewsCache", true),
+            cache_duration: get_i32(values, "gInput_NewsCacheDuration", 3600),
+            fallback_on_error: get_string(values, "gInput_NewsFallbackOnError", "Fallback_Continue"),
+            filter_currencies: get_string(values, "gInput_FilterCurrencies", ""),
+            include_speeches: get_bool_with_default(values, "gInput_IncludeSpeeches", true),
+            include_reports: get_bool_with_default(values, "gInput_IncludeReports", true),
+            visual_indicator: get_bool_with_default(values, "gInput_NewsVisualIndicator", true),
+            alert_before_news: get_bool_with_default(values, "gInput_AlertBeforeNews", false),
             calendar_file: {
                 let s = get_string(values, "gInput_NewsCalendarFile", "");
                 if s.is_empty() {
@@ -4349,7 +4768,7 @@ fn build_config_from_values(
         );
     }
 
-    Ok(MTConfig {
+    let mut config = MTConfig {
         version: "17.06.01".to_string(),
         platform: "MT4".to_string(),
         timestamp: chrono::Local::now().to_rfc3339(),
@@ -4361,7 +4780,9 @@ fn build_config_from_values(
         comments: None,
         general,
         engines,
-    })
+    };
+    normalize_config_mode_contract(&mut config);
+    Ok(config)
 }
 
 // ============================================
@@ -4450,13 +4871,13 @@ fn parse_parameter_name(name: &str) -> Option<ParsedParameter> {
     };
 
     // Map logic abbreviation to full name
-    // Setfile uses single-letter codes: C=SCA, O=STO, P=Power, R=Repower, S=Scalp, T=Stopper, X=RPO
+    // Setfile uses single-letter codes: C=SCA, O=STO, P=Power, R=Repower, S=Scalper, T=Stopper, X=RPO
     let logic_name = match logic_abbr {
         "C" => "SCA",
         "O" => "STO",
         "P" => "Power",
         "R" => "Repower",
-        "S" => "Scalp",
+        "S" => "Scalper",
         "T" => "Stopper",
         "X" => "RPO",
         // Also support full names if ever used
@@ -4465,7 +4886,8 @@ fn parse_parameter_name(name: &str) -> Option<ParsedParameter> {
         "RPO" => "RPO",
         "Power" => "Power",
         "Repower" => "Repower",
-        "Scalp" => "Scalp",
+        "Scalp" => "Scalper",
+        "Scalper" => "Scalper",
         "Stopper" => "Stopper",
         _ => {
             println!("[SETFILE] Rust: Unknown logic abbreviation '{}' in: {}", logic_abbr, name);
@@ -4495,7 +4917,7 @@ fn parse_parameter_name(name: &str) -> Option<ParsedParameter> {
 }
 
 /// Parse logic code like P1, BP1, R1, BR1, ST1, BST1 into (engine, logic_name, group)
-/// Logic codes: P (Power), R (Repower), S (Scalp), ST (Stopper), STO, SCA, RPO
+/// Logic codes: P (Power), R (Repower), S (Scalper), ST (Stopper), STO, SCA, RPO
 /// Engine prefixes: B (Engine B), C (Engine C), none (Engine A)
 fn parse_logic_code(code: &str) -> Option<(String, String, u8)> {
     // Logic mapping - longer codes first to avoid partial matches
@@ -4506,7 +4928,7 @@ fn parse_logic_code(code: &str) -> Option<(String, String, u8)> {
         ("ST", "Stopper"),
         ("P", "Power"),
         ("R", "Repower"),
-        ("S", "Scalp"),
+        ("S", "Scalper"),
     ];
 
     let mut engine = "A".to_string();
@@ -4746,12 +5168,8 @@ fn build_group_config(
 ) -> Result<GroupConfig, String> {
     let mut logics = Vec::new();
 
-    // Define logic order based on engine_id
-    let logic_order = match engine_id {
-        "B" => vec!["BPower", "BRepower", "BScalp", "BStopper", "BSTO", "BSCA", "BRPO"],
-        "C" => vec!["CPower", "CRepower", "CScalp", "CStopper", "CSTO", "CSCA", "CRPO"],
-        _ => vec!["Power", "Repower", "Scalp", "Stopper", "STO", "SCA", "RPO"], // Engine A
-    };
+    // Logic names in config are base names (engine is modeled separately).
+    let logic_order = vec!["Power", "Repower", "Scalper", "Stopper", "STO", "SCA", "RPO"];
 
     for logic_name in &logic_order {
         let empty_direction_data: std::collections::HashMap<
@@ -4977,13 +5395,14 @@ fn build_logic_config(
     let trail_step_method = get_param_multi(&["TrailStepMethod"], "0");
 
     // Parse logic-specific parameters
-    let start_level = if logic_name != "Power" {
+    let is_power_logic = logic_name.eq_ignore_ascii_case("power");
+    let start_level = if !is_power_logic {
         Some(get_param_i32_multi(&["StartLevel", &format!("Start{}", logic_name)], 4))
     } else {
         None
     };
 
-    let last_lot = if logic_name != "Power" {
+    let last_lot = if !is_power_logic {
         Some(get_param_f64_multi(&["LastLot", &format!("LastLot{}", logic_name)], 0.12))
     } else {
         Some(get_param_f64_multi(&["LastLot", "LastLotPower"], 0.63))
@@ -4998,7 +5417,7 @@ fn build_logic_config(
 
     // Parse mode selectors
     let strategy_type = get_param_multi(&["StrategyType"], "Trail");
-    let trading_mode = get_param_multi(&["TradingMode"], "Trending");
+    let trading_mode = get_param_multi(&["TradingMode"], "Counter Trend");
     let allow_buy = get_param_bool_multi(&["AllowBuy"]);
     let allow_sell = get_param_bool_multi(&["AllowSell"]);
 
@@ -5006,13 +5425,13 @@ fn build_logic_config(
     let use_tp = get_param_bool_multi(&["UseTP", &format!("G{}_UseTP_{}", group_num, short_logic)]);
     let tp_mode = get_param_multi(
         &["TPMode", &format!("G{}_TP_Mode_{}", group_num, short_logic)],
-        "TP_Pips",
+        "TPSL_Points",
     );
     let tp_value = get_param_f64_multi(&["TakeProfit", "TPValue", &format!("G{}_TP_Value_{}", group_num, short_logic)], 100.0);
     let use_sl = get_param_bool_multi(&["UseSL", &format!("G{}_UseSL_{}", group_num, short_logic)]);
     let sl_mode = get_param_multi(
         &["SLMode", &format!("G{}_SL_Mode_{}", group_num, short_logic)],
-        "SL_Pips",
+        "TPSL_Points",
     );
     let sl_value = get_param_f64_multi(&["StopLoss", "SLValue", &format!("G{}_SL_Value_{}", group_num, short_logic)], 100.0);
 
@@ -5041,10 +5460,14 @@ fn build_logic_config(
     // Parse close partial parameters with multiple name variants
     let close_partial = get_param_bool_multi(&["PartialEnabled1", "ClosePartial"]);
     let close_partial_cycle = get_param_i32_multi(&["PartialCycle1", "ClosePartialCycle"], 1);
-    let close_partial_mode = get_param_multi(&["PartialMode1", "ClosePartialMode"], "PartialMode_Balanced");
+    let close_partial_mode = get_param_multi(&["PartialMode1", "ClosePartialMode"], "PartialMode_Mid");
     let close_partial_balance = get_param_multi(&["PartialBalance1", "ClosePartialBalance"], "PartialBalance_Balanced");
     let close_partial_trail_step_mode =
         get_param_multi(&["PartialTrailMode1", "ClosePartialTrailStepMode"], "TrailStepMode_Auto");
+    let close_partial_profit_threshold = get_param_f64_multi(
+        &["PartialProfitThreshold1", "ClosePartialProfitThreshold"],
+        0.0,
+    );
 
     // Check if logic is enabled with multiple name variants
     let enabled = get_param_bool_multi(&["Start", "Enabled"]);
@@ -5073,11 +5496,7 @@ fn build_logic_config(
         grid,
         grid_b,
         grid_s,
-        trail_method: if trail_method == "0" {
-            "Trail".to_string()
-        } else {
-            trail_method
-        },
+        trail_method: decode_trail_method_numeric(&trail_method),
         trail_value,
         trail_value_b,
         trail_value_s,
@@ -5087,7 +5506,7 @@ fn build_logic_config(
         trail_step,
         trail_step_b,
         trail_step_s,
-        trail_step_method: decode_trail_step_method(&trail_step_method),
+        trail_step_method: decode_trail_step_method_numeric(&trail_step_method),
         start_level,
         last_lot,
         close_targets,
@@ -5147,18 +5566,22 @@ fn build_logic_config(
         close_partial_mode,
         close_partial_balance,
         close_partial_trail_step_mode,
+        close_partial_profit_threshold,
         close_partial_2: None,
         close_partial_cycle_2: None,
         close_partial_mode_2: None,
         close_partial_balance_2: None,
+        close_partial_profit_threshold_2: None,
         close_partial_3: None,
         close_partial_cycle_3: None,
         close_partial_mode_3: None,
         close_partial_balance_3: None,
+        close_partial_profit_threshold_3: None,
         close_partial_4: None,
         close_partial_cycle_4: None,
         close_partial_mode_4: None,
         close_partial_balance_4: None,
+        close_partial_profit_threshold_4: None,
         trigger_type: None,
         trigger_bars: None,
         trigger_minutes: None,
@@ -5171,7 +5594,7 @@ fn create_default_group(group_num: u8) -> GroupConfig {
     GroupConfig {
         group_number: group_num,
         enabled: group_num == 1,
-        group_power_start: if group_num > 1 { Some(1) } else { None },
+        group_power_start: None,
         reverse_mode: false,
         hedge_mode: false,
         hedge_reference: "Logic_None".to_string(),
@@ -5179,7 +5602,7 @@ fn create_default_group(group_num: u8) -> GroupConfig {
         logics: vec![
             create_default_logic("Power"),
             create_default_logic("Repower"),
-            create_default_logic("Scalp"),
+            create_default_logic("Scalper"),
             create_default_logic("Stopper"),
             create_default_logic("STO"),
             create_default_logic("SCA"),
@@ -5190,7 +5613,7 @@ fn create_default_group(group_num: u8) -> GroupConfig {
 
 /// Create a default logic configuration
 fn create_default_logic(logic_name: &str) -> LogicConfig {
-    let is_power = logic_name == "Power";
+    let is_power = logic_name.eq_ignore_ascii_case("power");
 
     LogicConfig {
         logic_name: logic_name.to_string(),
@@ -5205,7 +5628,7 @@ fn create_default_logic(logic_name: &str) -> LogicConfig {
         grid: 300.0,
         grid_b: None,
         grid_s: None,
-        trail_method: "Trail".to_string(),
+        trail_method: "Points".to_string(),
         trail_value: 3000.0,
         trail_value_b: None,
         trail_value_s: None,
@@ -5215,21 +5638,22 @@ fn create_default_logic(logic_name: &str) -> LogicConfig {
         trail_step: 1500.0,
         trail_step_b: None,
         trail_step_s: None,
-        trail_step_method: "TrailStepMode_Auto".to_string(),
-        start_level: if is_power { None } else { Some(4) },
+        trail_step_method: "Step_Points".to_string(),
+        // Preserve source-of-truth semantics: missing StartLevel stays missing.
+        start_level: None,
         last_lot: if is_power { Some(0.63) } else { Some(0.12) },
         close_targets: default_close_targets("A", logic_name),
         order_count_reference: "Logic_None".to_string(),
         reset_lot_on_restart: false,
         strategy_type: "Trail".to_string(),
-        trading_mode: "Trending".to_string(),
+        trading_mode: "Counter Trend".to_string(),
         allow_buy: true,
         allow_sell: true,
         use_tp: false,
-        tp_mode: "TP_Pips".to_string(),
+        tp_mode: "TPSL_Points".to_string(),
         tp_value: 100.0,
         use_sl: false,
-        sl_mode: "SL_Pips".to_string(),
+        sl_mode: "TPSL_Points".to_string(),
         sl_value: 100.0,
         reverse_enabled: false,
         hedge_enabled: false,
@@ -5272,21 +5696,25 @@ fn create_default_logic(logic_name: &str) -> LogicConfig {
         trail_step_mode_7: None,
         close_partial: false,
         close_partial_cycle: 1,
-        close_partial_mode: "PartialMode_Balanced".to_string(),
+        close_partial_mode: "PartialMode_Mid".to_string(),
         close_partial_balance: "PartialBalance_Balanced".to_string(),
         close_partial_trail_step_mode: "TrailStepMode_Auto".to_string(),
+        close_partial_profit_threshold: 0.0,
         close_partial_2: None,
         close_partial_cycle_2: None,
         close_partial_mode_2: None,
         close_partial_balance_2: None,
+        close_partial_profit_threshold_2: None,
         close_partial_3: None,
         close_partial_cycle_3: None,
         close_partial_mode_3: None,
         close_partial_balance_3: None,
+        close_partial_profit_threshold_3: None,
         close_partial_4: None,
         close_partial_cycle_4: None,
         close_partial_mode_4: None,
         close_partial_balance_4: None,
+        close_partial_profit_threshold_4: None,
         trigger_type: None,
         trigger_bars: None,
         trigger_minutes: None,
@@ -5299,7 +5727,7 @@ fn get_logic_code(logic_name: &str) -> &'static str {
     match logic_name {
         "Power" => "P",
         "Repower" => "R",
-        "Scalp" => "S",
+        "Scalp" | "Scalper" => "S",
         "Stopper" => "ST",
         "STO" => "STO",
         "SCA" => "SCA",
@@ -5311,10 +5739,8 @@ fn get_logic_code(logic_name: &str) -> &'static str {
 /// Decode trail step method from numeric/string value
 fn decode_trail_step_method(val: &str) -> String {
     match val {
-        "0" => "TrailStepMode_Auto".to_string(),
-        "1" => "TrailStepMode_Fixed".to_string(),
-        "3" => "TrailStepMode_PerOrder".to_string(),
-        "4" => "TrailStepMode_Disabled".to_string(),
+        "0" => "Step_Points".to_string(),
+        "1" => "Step_Percent".to_string(),
         _ => val.to_string(),
     }
 }
@@ -5892,7 +6318,8 @@ const ENGINE_MAP: &[(&str, &str)] = &[("AP", "A"), ("BP", "B"), ("CP", "C")];
 const LOGIC_MAP: &[(&str, &str)] = &[
     ("Power", "POWER"),
     ("Repower", "REPOWER"),
-    ("Scalp", "SCALP"),
+    ("Scalp", "SCALPER"),
+    ("Scalper", "SCALPER"),
     ("Stopper", "STOPPER"),
     ("STO", "STO"),
     ("SCA", "SCA"),
@@ -6134,7 +6561,6 @@ fn create_default_mt_config() -> MTConfig {
             allow_sell: true,
             enable_logs: true,
             use_direct_price_grid: false,
-            group_mode: Some(1),
             grid_unit: Some(0),
             pip_factor: Some(0),
             compounding_enabled: false,
@@ -6176,7 +6602,21 @@ fn create_default_mt_config() -> MTConfig {
                 impact_level: 3,
                 minutes_before: 30,
                 minutes_after: 30,
-                action: "TriggerAction_StopEA_KeepTrades".to_string(),
+                stop_ea: true,
+                close_trades: false,
+                auto_restart: true,
+                check_interval: 60,
+                alert_minutes: 5,
+                filter_high_only: true,
+                filter_weekends: false,
+                use_local_cache: true,
+                cache_duration: 3600,
+                fallback_on_error: "Fallback_Continue".to_string(),
+                filter_currencies: "".to_string(),
+                include_speeches: true,
+                include_reports: true,
+                visual_indicator: true,
+                alert_before_news: false,
                 calendar_file: Some("DAAVFX_NEWS.csv".to_string()),
             },
         },
@@ -6199,7 +6639,7 @@ fn create_default_logic_config(logic_name: &str) -> LogicConfig {
         grid: 100.0,
         grid_b: None,
         grid_s: None,
-        trail_method: "Trail_None".to_string(),
+        trail_method: "Points".to_string(),
         trail_value: 50.0,
         trail_value_b: None,
         trail_value_s: None,
@@ -6209,21 +6649,22 @@ fn create_default_logic_config(logic_name: &str) -> LogicConfig {
         trail_step: 50.0,
         trail_step_b: None,
         trail_step_s: None,
-        trail_step_method: "TrailStepMode_Auto".to_string(),
-        start_level: if logic_name == "POWER" { None } else { Some(2) },
+        trail_step_method: "Step_Points".to_string(),
+        // Preserve source values as-is. Missing StartLevel stays missing.
+        start_level: None,
         last_lot: None,
         close_targets: "CloseTargets_ProfitOnly".to_string(),
         order_count_reference: "OrderCount_Direct".to_string(),
         reset_lot_on_restart: false,
         strategy_type: "Trail".to_string(),
-        trading_mode: "Trending".to_string(),
+        trading_mode: "Counter Trend".to_string(),
         allow_buy: true,
         allow_sell: true,
         use_tp: false,
-        tp_mode: "TPMode_Fixed".to_string(),
+        tp_mode: "TPSL_Points".to_string(),
         tp_value: 0.0,
         use_sl: false,
-        sl_mode: "SLMode_Fixed".to_string(),
+        sl_mode: "TPSL_Points".to_string(),
         sl_value: 0.0,
         reverse_enabled: false,
         hedge_enabled: false,
@@ -6266,21 +6707,25 @@ fn create_default_logic_config(logic_name: &str) -> LogicConfig {
         trail_step_mode_7: None,
         close_partial: false,
         close_partial_cycle: 1,
-        close_partial_mode: "ClosePartialMode_Fixed".to_string(),
-        close_partial_balance: "ClosePartialBalance_Equity".to_string(),
+        close_partial_mode: "PartialMode_Mid".to_string(),
+        close_partial_balance: "PartialBalance_Balanced".to_string(),
         close_partial_trail_step_mode: "TrailStepMode_Auto".to_string(),
+        close_partial_profit_threshold: 0.0,
         close_partial_2: None,
         close_partial_cycle_2: None,
         close_partial_mode_2: None,
         close_partial_balance_2: None,
+        close_partial_profit_threshold_2: None,
         close_partial_3: None,
         close_partial_cycle_3: None,
         close_partial_mode_3: None,
         close_partial_balance_3: None,
+        close_partial_profit_threshold_3: None,
         close_partial_4: None,
         close_partial_cycle_4: None,
         close_partial_mode_4: None,
         close_partial_balance_4: None,
+        close_partial_profit_threshold_4: None,
         trigger_type: None,
         trigger_bars: None,
         trigger_minutes: None,
@@ -6319,11 +6764,8 @@ fn apply_param_to_config(
                     "Grid_B" => logic.grid_b = Some(value),
                     "Grid_S" => logic.grid_s = Some(value),
                     "Trail" => logic.trail_method = match value as i32 {
-                        0 => "Trail_None".to_string(),
-                        1 => "Trail_Points".to_string(),
-                        2 => "Trail_AVG_Percent".to_string(),
-                        3 => "Trail_Profit_Percent".to_string(),
-                        _ => "Trail_None".to_string(),
+                        1 => "AVG_Percent".to_string(),
+                        _ => "Points".to_string(),
                     },
                     "TrailValue" => logic.trail_value = value,
                     "TrailValue_B" => logic.trail_value_b = Some(value),
@@ -6341,20 +6783,20 @@ fn apply_param_to_config(
                     "ClosePartialCycle" => logic.close_partial_cycle = value as i32,
                     "ClosePartialMode" => {
                         logic.close_partial_mode = match value as i32 {
-                            0 => "ClosePartialMode_Fixed".to_string(),
-                            1 => "ClosePartialMode_Step".to_string(),
-                            2 => "ClosePartialMode_Balance".to_string(),
-                            _ => "ClosePartialMode_Fixed".to_string(),
+                            0 => "PartialMode_Low".to_string(),
+                            1 => "PartialMode_Mid".to_string(),
+                            2 => "PartialMode_Aggressive".to_string(),
+                            _ => "PartialMode_Mid".to_string(),
                         }
                     }
                     "LastLot" => logic.last_lot = Some(value),
                     "StartLevel" => logic.start_level = Some(value as i32),
                     "UseTP" => logic.use_tp = value > 0.5,
                     "TPValue" => logic.tp_value = value,
-                    "TPMode" => logic.tp_mode = if value > 0.5 { "TPMode_Fixed".to_string() } else { "TPMode_None".to_string() },
+                    "TPMode" => logic.tp_mode = decode_tpsl_mode_numeric(&format!("{}", value as i32)),
                     "UseSL" => logic.use_sl = value > 0.5,
                     "SLValue" => logic.sl_value = value,
-                    "SLMode" => logic.sl_mode = if value > 0.5 { "SLMode_Fixed".to_string() } else { "SLMode_None".to_string() },
+                    "SLMode" => logic.sl_mode = decode_tpsl_mode_numeric(&format!("{}", value as i32)),
                     _ => {
                         // Try to match extended parameters
                         if param_name.starts_with("TrailStep") {
@@ -6394,13 +6836,13 @@ const V19_MAX_LOGICS: usize = 7;
 #[allow(dead_code)]
 const V19_MAX_DIRECTIONS: usize = 2;
 #[allow(dead_code)]
-const V19_FIELDS_PER_LOGIC: usize = 110;
+const V19_FIELDS_PER_LOGIC: usize = 111;
 #[allow(dead_code)]
 const V19_TOTAL_LOGIC_DIRECTIONS: usize = V19_MAX_GROUPS * V19_MAX_ENGINES * V19_MAX_LOGICS * V19_MAX_DIRECTIONS; // 630
 #[allow(dead_code)]
-const V19_TOTAL_LOGIC_INPUTS: usize = V19_TOTAL_LOGIC_DIRECTIONS * V19_FIELDS_PER_LOGIC; // 69,300
+const V19_TOTAL_LOGIC_INPUTS: usize = V19_TOTAL_LOGIC_DIRECTIONS * V19_FIELDS_PER_LOGIC; // 69,930
 #[allow(dead_code)]
-const V19_TOTAL_INPUTS: usize = V19_TOTAL_LOGIC_INPUTS + 50; // ~69,350
+const V19_TOTAL_INPUTS: usize = V19_TOTAL_LOGIC_INPUTS + 50; // ~69,980
 
 #[derive(Debug, Clone)]
 pub struct ParsedV19Key {
@@ -6543,10 +6985,16 @@ pub fn parse_v19_setfile(content: &str) -> V19ParsedSetfile {
     }
 
     for (k, count) in &logic_counts {
-        if *count != V19_FIELDS_PER_LOGIC {
+        // Legacy files may omit StartLevel (POWER) and TradingMode.
+        // Accept 109..111 to preserve backward compatibility.
+        let min_fields = V19_FIELDS_PER_LOGIC - 2;
+        if *count < min_fields || *count > V19_FIELDS_PER_LOGIC {
             errors.push(format!(
-                "Logic-direction {} has {} fields (expected {}).",
-                k, count, V19_FIELDS_PER_LOGIC
+                "Logic-direction {} has {} fields (expected {} to {}).",
+                k,
+                count,
+                min_fields,
+                V19_FIELDS_PER_LOGIC
             ));
         }
     }
@@ -6589,7 +7037,7 @@ fn create_full_v19_config() -> MTConfig {
     let mut config = create_default_mt_config();
 
     let engines = ["A", "B", "C"];
-    let logics = ["POWER", "REPOWER", "SCALP", "STOPPER", "STO", "SCA", "RPO"];
+    let logics = ["POWER", "REPOWER", "SCALPER", "STOPPER", "STO", "SCA", "RPO"];
 
     for engine_id in &engines {
         let mut engine = EngineConfig {
@@ -6603,7 +7051,7 @@ fn create_full_v19_config() -> MTConfig {
             let mut group = GroupConfig {
                 group_number: group_num,
                 enabled: true,
-                group_power_start: if group_num > 1 { Some(1) } else { None },
+                group_power_start: None,
                 reverse_mode: false,
                 hedge_mode: false,
                 hedge_reference: "Logic_None".to_string(),
@@ -6639,7 +7087,7 @@ fn logic_code_to_name(code: char) -> Option<&'static str> {
     match code {
         'P' => Some("POWER"),
         'R' => Some("REPOWER"),
-        'S' => Some("SCALP"),
+        'S' => Some("SCALPER"),
         'T' => Some("STOPPER"),
         'O' => Some("STO"),
         'C' => Some("SCA"),
@@ -6661,7 +7109,19 @@ fn decode_trail_step_mode_numeric(raw: &str) -> String {
         "0" => "TrailStepMode_Auto".to_string(),
         "1" => "TrailStepMode_Fixed".to_string(),
         "3" => "TrailStepMode_PerOrder".to_string(),
-        "4" => "TrailStepMode_Disabled".to_string(),
+        "4" => "TrailStepMode_Auto".to_string(),
+        other => other.to_string(),
+    }
+}
+
+fn decode_trail_step_method_numeric(raw: &str) -> String {
+    match raw.trim() {
+        "0" => "Step_Points".to_string(),
+        "1" => "Step_Percent".to_string(),
+        "2" => "Step_Points".to_string(),
+        "Step_Pips" | "step_pips" => "Step_Points".to_string(),
+        "Step_Points" | "step_points" => "Step_Points".to_string(),
+        "Step_Percent" | "step_percent" => "Step_Percent".to_string(),
         other => other.to_string(),
     }
 }
@@ -6669,9 +7129,19 @@ fn decode_trail_step_mode_numeric(raw: &str) -> String {
 fn decode_partial_mode_numeric(raw: &str) -> String {
     match raw.trim() {
         "0" => "PartialMode_Low".to_string(),
-        "1" => "PartialMode_Balanced".to_string(),
-        "2" => "PartialMode_High".to_string(),
-        other => other.to_string(),
+        "1" => "PartialMode_Mid".to_string(),
+        "2" => "PartialMode_Aggressive".to_string(),
+        // Legacy aliases -> canonical
+        "3" => "PartialMode_Aggressive".to_string(),
+        "4" => "PartialMode_Mid".to_string(),
+        "PartialMode_Low" | "partialmode_low" => "PartialMode_Low".to_string(),
+        "PartialMode_Mid" | "partialmode_mid" => "PartialMode_Mid".to_string(),
+        "PartialMode_Aggressive" | "partialmode_aggressive" => {
+            "PartialMode_Aggressive".to_string()
+        }
+        "PartialMode_High" | "partialmode_high" => "PartialMode_Aggressive".to_string(),
+        "PartialMode_Balanced" | "partialmode_balanced" => "PartialMode_Mid".to_string(),
+        _ => "PartialMode_Mid".to_string(),
     }
 }
 
@@ -6689,7 +7159,155 @@ fn decode_tpsl_mode_numeric(raw: &str) -> String {
         "0" => "TPSL_Points".to_string(),
         "1" => "TPSL_Price".to_string(),
         "2" => "TPSL_Percent".to_string(),
+        "TP_Pips" | "SL_Pips" | "TPMode_Fixed" | "SLMode_Fixed" => "TPSL_Points".to_string(),
+        "TPMode_None" | "SLMode_None" => "TPSL_Points".to_string(),
         other => other.to_string(),
+    }
+}
+
+fn decode_trail_method_numeric(raw: &str) -> String {
+    match raw.trim() {
+        "0" => "Points".to_string(),
+        "1" => "AVG_Percent".to_string(),
+        "2" => "Points".to_string(),
+        "Trail" | "trail" => "Points".to_string(),
+        "Trail_Points" | "Points" => "Points".to_string(),
+        "Trail_AVG_Percent" | "AVG_Percent" => "AVG_Percent".to_string(),
+        "Trail_AVG_Points" | "AVG_Points" => "Points".to_string(),
+        "Trail_Profit_Percent" | "Percent" => "Points".to_string(),
+        other => other.to_string(),
+    }
+}
+
+fn decode_trigger_type_numeric(raw: &str) -> String {
+    match raw.trim() {
+        "0" => "0 Trigger_Immediate".to_string(),
+        "1" => "1 Trigger_AfterBars".to_string(),
+        "2" => "2 Trigger_AfterSeconds".to_string(),
+        "3" => "3 Trigger_AfterPips".to_string(),
+        "4" => "4 Trigger_TimeFilter".to_string(),
+        "5" => "5 Trigger_NewsFilter".to_string(),
+        other => other.to_string(),
+    }
+}
+
+fn normalize_trading_mode(raw: &str) -> String {
+    let mode = raw.trim().to_ascii_lowercase();
+    match mode.as_str() {
+        "hedge" => "Hedge".to_string(),
+        "reverse" => "Reverse".to_string(),
+        "counter trend"
+        | "countertrend"
+        | "counter_trend"
+        | "counter-trend"
+        | "trend following"
+        | "trend_following"
+        | "trending"
+        | "" => "Counter Trend".to_string(),
+        _ => "Counter Trend".to_string(),
+    }
+}
+
+fn is_engine_a_power(engine_id: &str, logic_name: &str) -> bool {
+    engine_id.eq_ignore_ascii_case("A") && logic_name.eq_ignore_ascii_case("POWER")
+}
+
+fn normalize_logic_mode_and_flags(logic: &mut LogicConfig, engine_id: &str) {
+    logic.trail_method = decode_trail_method_numeric(&logic.trail_method);
+    logic.trail_step_method = decode_trail_step_method_numeric(&logic.trail_step_method);
+    logic.trail_step_mode = decode_trail_step_mode_numeric(&logic.trail_step_mode);
+
+    let normalize_opt_step =
+        |slot: &mut Option<String>, decoder: fn(&str) -> String| {
+            if let Some(curr) = slot.clone() {
+                let next = decoder(&curr);
+                if next.trim().is_empty() {
+                    *slot = None;
+                } else {
+                    *slot = Some(next);
+                }
+            }
+        };
+
+    normalize_opt_step(&mut logic.trail_step_method_2, decode_trail_step_method_numeric);
+    normalize_opt_step(&mut logic.trail_step_method_3, decode_trail_step_method_numeric);
+    normalize_opt_step(&mut logic.trail_step_method_4, decode_trail_step_method_numeric);
+    normalize_opt_step(&mut logic.trail_step_method_5, decode_trail_step_method_numeric);
+    normalize_opt_step(&mut logic.trail_step_method_6, decode_trail_step_method_numeric);
+    normalize_opt_step(&mut logic.trail_step_method_7, decode_trail_step_method_numeric);
+    normalize_opt_step(&mut logic.trail_step_mode_2, decode_trail_step_mode_numeric);
+    normalize_opt_step(&mut logic.trail_step_mode_3, decode_trail_step_mode_numeric);
+    normalize_opt_step(&mut logic.trail_step_mode_4, decode_trail_step_mode_numeric);
+    normalize_opt_step(&mut logic.trail_step_mode_5, decode_trail_step_mode_numeric);
+    normalize_opt_step(&mut logic.trail_step_mode_6, decode_trail_step_mode_numeric);
+    normalize_opt_step(&mut logic.trail_step_mode_7, decode_trail_step_mode_numeric);
+
+    let explicit_mode = if logic.trading_mode.trim().is_empty() {
+        None
+    } else {
+        Some(normalize_trading_mode(&logic.trading_mode))
+    };
+
+    let mut mode = if let Some(m) = explicit_mode.clone() {
+        m
+    } else if logic.hedge_enabled && !logic.reverse_enabled {
+        "Hedge".to_string()
+    } else if logic.reverse_enabled && !logic.hedge_enabled {
+        "Reverse".to_string()
+    } else {
+        "Counter Trend".to_string()
+    };
+
+    // Invalid legacy conflict: no explicit mode and both flags enabled.
+    if explicit_mode.is_none() && logic.hedge_enabled && logic.reverse_enabled {
+        mode = "Counter Trend".to_string();
+    }
+
+    // Engine A POWER is always Counter Trend.
+    if is_engine_a_power(engine_id, &logic.logic_name) {
+        mode = "Counter Trend".to_string();
+    }
+
+    logic.trading_mode = mode.clone();
+
+    match mode.as_str() {
+        "Hedge" => {
+            logic.hedge_enabled = true;
+            logic.reverse_enabled = false;
+            if logic.hedge_reference.trim().is_empty() {
+                logic.hedge_reference = "Logic_None".to_string();
+            }
+            logic.reverse_reference = "Logic_None".to_string();
+            logic.reverse_scale = 100.0;
+        }
+        "Reverse" => {
+            logic.reverse_enabled = true;
+            logic.hedge_enabled = false;
+            if logic.reverse_reference.trim().is_empty() {
+                logic.reverse_reference = "Logic_None".to_string();
+            }
+            logic.hedge_reference = "Logic_None".to_string();
+            logic.hedge_scale = 50.0;
+        }
+        _ => {
+            logic.reverse_enabled = false;
+            logic.hedge_enabled = false;
+            logic.reverse_reference = "Logic_None".to_string();
+            logic.hedge_reference = "Logic_None".to_string();
+            logic.reverse_scale = 100.0;
+            logic.hedge_scale = 50.0;
+            logic.trading_mode = "Counter Trend".to_string();
+        }
+    }
+}
+
+fn normalize_config_mode_contract(config: &mut MTConfig) {
+    for engine in &mut config.engines {
+        for group in &mut engine.groups {
+            for logic in &mut group.logics {
+                normalize_logic_mode_and_flags(logic, &engine.engine_id);
+            }
+        }
     }
 }
 
@@ -6703,96 +7321,251 @@ fn set_dir_opt_f64(is_buy: bool, field_b: &mut Option<f64>, field_s: &mut Option
 
 fn apply_v19_param_to_logic(logic: &mut LogicConfig, is_buy: bool, param: &str, raw: &str) {
     let p = param.to_ascii_lowercase();
+    let raw_trimmed = raw.trim();
     match p.as_str() {
         "enabled" => logic.enabled = parse_bool_val(raw),
         "allowbuy" => logic.allow_buy = parse_bool_val(raw),
         "allowsell" => logic.allow_sell = parse_bool_val(raw),
-        "initiallot" => {
-            let v = raw.parse::<f64>().unwrap_or(0.0);
-            logic.initial_lot = v;
-            set_dir_opt_f64(is_buy, &mut logic.initial_lot_b, &mut logic.initial_lot_s, v);
+        "tradingmode" => {
+            logic.trading_mode = normalize_trading_mode(raw);
         }
-        "lastlot" => logic.last_lot = Some(raw.parse::<f64>().unwrap_or(0.0)),
+        "initiallot" => {
+            if let Ok(v) = raw_trimmed.parse::<f64>() {
+                logic.initial_lot = v;
+                set_dir_opt_f64(is_buy, &mut logic.initial_lot_b, &mut logic.initial_lot_s, v);
+            }
+        }
+        "lastlot" => {
+            if raw_trimmed.is_empty() {
+                logic.last_lot = None;
+            } else if let Ok(v) = raw_trimmed.parse::<f64>() {
+                logic.last_lot = Some(v);
+            }
+        }
         "mult" => {
-            let v = raw.parse::<f64>().unwrap_or(0.0);
-            logic.multiplier = v;
-            set_dir_opt_f64(is_buy, &mut logic.multiplier_b, &mut logic.multiplier_s, v);
+            if let Ok(v) = raw_trimmed.parse::<f64>() {
+                logic.multiplier = v;
+                set_dir_opt_f64(is_buy, &mut logic.multiplier_b, &mut logic.multiplier_s, v);
+            }
         }
         "grid" => {
-            let v = raw.parse::<f64>().unwrap_or(0.0);
-            logic.grid = v;
-            set_dir_opt_f64(is_buy, &mut logic.grid_b, &mut logic.grid_s, v);
+            if let Ok(v) = raw_trimmed.parse::<f64>() {
+                logic.grid = v;
+                set_dir_opt_f64(is_buy, &mut logic.grid_b, &mut logic.grid_s, v);
+            }
         }
         "trail" => {
-            let n = raw.parse::<i32>().unwrap_or(0);
-            logic.trail_method = match n {
-                1 => "Trail_AVG_Percent".to_string(),
-                2 => "Trail_Profit_Percent".to_string(),
-                _ => "Trail_Points".to_string(),
-            };
+            if let Ok(n) = raw_trimmed.parse::<i32>() {
+                logic.trail_method = match n {
+                    1 => "AVG_Percent".to_string(),
+                    _ => "Points".to_string(),
+                };
+            }
         }
-        "trailvalue" => logic.trail_value = raw.parse::<f64>().unwrap_or(0.0),
+        "trailvalue" => {
+            if let Ok(v) = raw_trimmed.parse::<f64>() {
+                logic.trail_value = v;
+            }
+        }
         "trailstart" => {
-            let v = raw.parse::<f64>().unwrap_or(0.0);
-            logic.trail_start = v;
-            set_dir_opt_f64(is_buy, &mut logic.trail_start_b, &mut logic.trail_start_s, v);
+            if let Ok(v) = raw_trimmed.parse::<f64>() {
+                logic.trail_start = v;
+                set_dir_opt_f64(is_buy, &mut logic.trail_start_b, &mut logic.trail_start_s, v);
+            }
         }
         "trailstep" => {
-            let v = raw.parse::<f64>().unwrap_or(0.0);
-            logic.trail_step = v;
-            set_dir_opt_f64(is_buy, &mut logic.trail_step_b, &mut logic.trail_step_s, v);
+            if let Ok(v) = raw_trimmed.parse::<f64>() {
+                logic.trail_step = v;
+                set_dir_opt_f64(is_buy, &mut logic.trail_step_b, &mut logic.trail_step_s, v);
+            }
         }
-        "trailstepmethod" => logic.trail_step_method = decode_trail_step_mode_numeric(raw),
+        "trailstepmethod" => logic.trail_step_method = decode_trail_step_method_numeric(raw),
         "trailstepmode" => logic.trail_step_mode = decode_trail_step_mode_numeric(raw),
-        "trailstepcycle" => logic.trail_step_cycle = raw.parse::<i32>().unwrap_or(0),
-        "trailstepbalance" => logic.trail_step_balance = raw.parse::<f64>().unwrap_or(0.0),
+        "trailstepcycle" => {
+            if let Ok(v) = raw_trimmed.parse::<i32>() {
+                logic.trail_step_cycle = v;
+            }
+        }
+        "trailstepbalance" => {
+            if let Ok(v) = raw_trimmed.parse::<f64>() {
+                logic.trail_step_balance = v;
+            }
+        }
+        "triggertype" => {
+            if raw_trimmed.is_empty() {
+                logic.trigger_type = None;
+            } else {
+                logic.trigger_type = Some(decode_trigger_type_numeric(raw));
+            }
+        }
+        "triggerbars" => {
+            if let Ok(v) = raw_trimmed.parse::<i32>() {
+                logic.trigger_bars = Some(v);
+            }
+        }
+        "triggerminutes" | "triggerseconds" => {
+            if let Ok(v) = raw_trimmed.parse::<i32>() {
+                logic.trigger_minutes = Some(v);
+            }
+        }
+        "triggerpips" => {
+            if let Ok(v) = raw_trimmed.parse::<f64>() {
+                logic.trigger_pips = Some(v);
+            }
+        }
         "usetp" => logic.use_tp = parse_bool_val(raw),
         "tpmode" => logic.tp_mode = decode_tpsl_mode_numeric(raw),
-        "tpvalue" => logic.tp_value = raw.parse::<f64>().unwrap_or(0.0),
+        "tpvalue" => {
+            if let Ok(v) = raw_trimmed.parse::<f64>() {
+                logic.tp_value = v;
+            }
+        }
         "usesl" => logic.use_sl = parse_bool_val(raw),
         "slmode" => logic.sl_mode = decode_tpsl_mode_numeric(raw),
-        "slvalue" => logic.sl_value = raw.parse::<f64>().unwrap_or(0.0),
+        "slvalue" => {
+            if let Ok(v) = raw_trimmed.parse::<f64>() {
+                logic.sl_value = v;
+            }
+        }
         "ordercountreferencelogic" => logic.order_count_reference = raw.to_string(),
-        "startlevel" => logic.start_level = Some(raw.parse::<i32>().unwrap_or(0)),
+        // ARCHIVE (disabled fallback):
+        // previous parser used unwrap_or(0), which rewrote malformed/missing values to 0.
+        "startlevel" => {
+            if let Ok(v) = raw_trimmed.parse::<i32>() {
+                logic.start_level = Some(v);
+            }
+        }
         "resetlotonrestart" => logic.reset_lot_on_restart = parse_bool_val(raw),
         "closepartial" => logic.close_partial = parse_bool_val(raw),
-        "closepartialcycle" => logic.close_partial_cycle = raw.parse::<i32>().unwrap_or(0),
+        // Deprecated in active contract: ignored on import.
+        "closepartialcycle" => {}
         "closepartialmode" => logic.close_partial_mode = decode_partial_mode_numeric(raw),
-        "closepartialbalance" => logic.close_partial_balance = decode_partial_balance_numeric(raw),
-        "closepartialtrailmode" => logic.close_partial_trail_step_mode = decode_trail_step_mode_numeric(raw),
-        "closepartial2" => logic.close_partial_2 = Some(parse_bool_val(raw)),
-        "closepartialcycle2" => logic.close_partial_cycle_2 = Some(raw.parse::<i32>().unwrap_or(0)),
-        "closepartialmode2" => logic.close_partial_mode_2 = Some(decode_partial_mode_numeric(raw)),
-        "closepartialbalance2" => logic.close_partial_balance_2 = Some(decode_partial_balance_numeric(raw)),
+        // Deprecated in active contract: ignored on import.
+        "closepartialbalance" => {}
+        "closepartialtrailmode" => {}
+        "closepartialprofitthreshold" => {
+            if let Ok(v) = raw_trimmed.parse::<f64>() {
+                logic.close_partial_profit_threshold = v;
+            }
+        }
+        "closepartial2" => {
+            if raw_trimmed.is_empty() {
+                logic.close_partial_2 = None;
+            } else {
+                logic.close_partial_2 = Some(parse_bool_val(raw));
+            }
+        }
+        // Deprecated in active contract: ignored on import.
+        "closepartialcycle2" => {}
+        "closepartialmode2" => {
+            if raw_trimmed.is_empty() {
+                logic.close_partial_mode_2 = None;
+            } else {
+                logic.close_partial_mode_2 = Some(decode_partial_mode_numeric(raw));
+            }
+        }
+        // Deprecated in active contract: ignored on import.
+        "closepartialbalance2" => {}
         "closepartialtrailmode2" => {}
-        "closepartial3" => logic.close_partial_3 = Some(parse_bool_val(raw)),
-        "closepartialcycle3" => logic.close_partial_cycle_3 = Some(raw.parse::<i32>().unwrap_or(0)),
-        "closepartialmode3" => logic.close_partial_mode_3 = Some(decode_partial_mode_numeric(raw)),
-        "closepartialbalance3" => logic.close_partial_balance_3 = Some(decode_partial_balance_numeric(raw)),
+        "closepartialprofitthreshold2" => {
+            if raw_trimmed.is_empty() {
+                logic.close_partial_profit_threshold_2 = None;
+            } else if let Ok(v) = raw_trimmed.parse::<f64>() {
+                logic.close_partial_profit_threshold_2 = Some(v);
+            }
+        }
+        "closepartial3" => {
+            if raw_trimmed.is_empty() {
+                logic.close_partial_3 = None;
+            } else {
+                logic.close_partial_3 = Some(parse_bool_val(raw));
+            }
+        }
+        // Deprecated in active contract: ignored on import.
+        "closepartialcycle3" => {}
+        "closepartialmode3" => {
+            if raw_trimmed.is_empty() {
+                logic.close_partial_mode_3 = None;
+            } else {
+                logic.close_partial_mode_3 = Some(decode_partial_mode_numeric(raw));
+            }
+        }
+        // Deprecated in active contract: ignored on import.
+        "closepartialbalance3" => {}
         "closepartialtrailmode3" => {}
-        "closepartial4" => logic.close_partial_4 = Some(parse_bool_val(raw)),
-        "closepartialcycle4" => logic.close_partial_cycle_4 = Some(raw.parse::<i32>().unwrap_or(0)),
-        "closepartialmode4" => logic.close_partial_mode_4 = Some(decode_partial_mode_numeric(raw)),
-        "closepartialbalance4" => logic.close_partial_balance_4 = Some(decode_partial_balance_numeric(raw)),
+        "closepartialprofitthreshold3" => {
+            if raw_trimmed.is_empty() {
+                logic.close_partial_profit_threshold_3 = None;
+            } else if let Ok(v) = raw_trimmed.parse::<f64>() {
+                logic.close_partial_profit_threshold_3 = Some(v);
+            }
+        }
+        "closepartial4" => {
+            if raw_trimmed.is_empty() {
+                logic.close_partial_4 = None;
+            } else {
+                logic.close_partial_4 = Some(parse_bool_val(raw));
+            }
+        }
+        // Deprecated in active contract: ignored on import.
+        "closepartialcycle4" => {}
+        "closepartialmode4" => {
+            if raw_trimmed.is_empty() {
+                logic.close_partial_mode_4 = None;
+            } else {
+                logic.close_partial_mode_4 = Some(decode_partial_mode_numeric(raw));
+            }
+        }
+        // Deprecated in active contract: ignored on import.
+        "closepartialbalance4" => {}
         "closepartialtrailmode4" => {}
+        "closepartialprofitthreshold4" => {
+            if raw_trimmed.is_empty() {
+                logic.close_partial_profit_threshold_4 = None;
+            } else if let Ok(v) = raw_trimmed.parse::<f64>() {
+                logic.close_partial_profit_threshold_4 = Some(v);
+            }
+        }
         "reverseenabled" => logic.reverse_enabled = parse_bool_val(raw),
         "reversereference" => logic.reverse_reference = raw.to_string(),
-        "reversescale" => logic.reverse_scale = raw.parse::<f64>().unwrap_or(0.0),
+        "reversescale" => {
+            if let Ok(v) = raw_trimmed.parse::<f64>() {
+                logic.reverse_scale = v;
+            }
+        }
         "hedgeenabled" => logic.hedge_enabled = parse_bool_val(raw),
         "hedgereference" => logic.hedge_reference = raw.to_string(),
-        "hedgescale" => logic.hedge_scale = raw.parse::<f64>().unwrap_or(0.0),
+        "hedgescale" => {
+            if let Ok(v) = raw_trimmed.parse::<f64>() {
+                logic.hedge_scale = v;
+            }
+        }
         "closetargets" => logic.close_targets = raw.to_string(),
         _ => {
             if let Some(suffix) = p.strip_prefix("trailstep") {
                 if let Ok(n) = suffix.parse::<i32>() {
-                    let v = raw.parse::<f64>().unwrap_or(0.0);
+                    if raw_trimmed.is_empty() {
+                        match n {
+                            2 => logic.trail_step_2 = None,
+                            3 => logic.trail_step_3 = None,
+                            4 => logic.trail_step_4 = None,
+                            5 => logic.trail_step_5 = None,
+                            6 => logic.trail_step_6 = None,
+                            7 => logic.trail_step_7 = None,
+                            _ => {}
+                        }
+                        return;
+                    }
+                    let Ok(v) = raw_trimmed.parse::<f64>() else {
+                        return;
+                    };
                     match n {
-                        2 => logic.trail_step_2 = if v == 0.0 { None } else { Some(v) },
-                        3 => logic.trail_step_3 = if v == 0.0 { None } else { Some(v) },
-                        4 => logic.trail_step_4 = if v == 0.0 { None } else { Some(v) },
-                        5 => logic.trail_step_5 = if v == 0.0 { None } else { Some(v) },
-                        6 => logic.trail_step_6 = if v == 0.0 { None } else { Some(v) },
-                        7 => logic.trail_step_7 = if v == 0.0 { None } else { Some(v) },
+                        2 => logic.trail_step_2 = Some(v),
+                        3 => logic.trail_step_3 = Some(v),
+                        4 => logic.trail_step_4 = Some(v),
+                        5 => logic.trail_step_5 = Some(v),
+                        6 => logic.trail_step_6 = Some(v),
+                        7 => logic.trail_step_7 = Some(v),
                         _ => {}
                     }
                     return;
@@ -6800,7 +7573,19 @@ fn apply_v19_param_to_logic(logic: &mut LogicConfig, is_buy: bool, param: &str, 
             }
             if let Some(suffix) = p.strip_prefix("trailstepmethod") {
                 if let Ok(n) = suffix.parse::<i32>() {
-                    let v = decode_trail_step_mode_numeric(raw);
+                    if raw_trimmed.is_empty() {
+                        match n {
+                            2 => logic.trail_step_method_2 = None,
+                            3 => logic.trail_step_method_3 = None,
+                            4 => logic.trail_step_method_4 = None,
+                            5 => logic.trail_step_method_5 = None,
+                            6 => logic.trail_step_method_6 = None,
+                            7 => logic.trail_step_method_7 = None,
+                            _ => {}
+                        }
+                        return;
+                    }
+                    let v = decode_trail_step_method_numeric(raw);
                     match n {
                         2 => logic.trail_step_method_2 = Some(v),
                         3 => logic.trail_step_method_3 = Some(v),
@@ -6815,6 +7600,18 @@ fn apply_v19_param_to_logic(logic: &mut LogicConfig, is_buy: bool, param: &str, 
             }
             if let Some(suffix) = p.strip_prefix("trailstepmode") {
                 if let Ok(n) = suffix.parse::<i32>() {
+                    if raw_trimmed.is_empty() {
+                        match n {
+                            2 => logic.trail_step_mode_2 = None,
+                            3 => logic.trail_step_mode_3 = None,
+                            4 => logic.trail_step_mode_4 = None,
+                            5 => logic.trail_step_mode_5 = None,
+                            6 => logic.trail_step_mode_6 = None,
+                            7 => logic.trail_step_mode_7 = None,
+                            _ => {}
+                        }
+                        return;
+                    }
                     let v = decode_trail_step_mode_numeric(raw);
                     match n {
                         2 => logic.trail_step_mode_2 = Some(v),
@@ -6830,14 +7627,28 @@ fn apply_v19_param_to_logic(logic: &mut LogicConfig, is_buy: bool, param: &str, 
             }
             if let Some(suffix) = p.strip_prefix("trailstepcycle") {
                 if let Ok(n) = suffix.parse::<i32>() {
-                    let v = raw.parse::<i32>().unwrap_or(0);
+                    if raw_trimmed.is_empty() {
+                        match n {
+                            2 => logic.trail_step_cycle_2 = None,
+                            3 => logic.trail_step_cycle_3 = None,
+                            4 => logic.trail_step_cycle_4 = None,
+                            5 => logic.trail_step_cycle_5 = None,
+                            6 => logic.trail_step_cycle_6 = None,
+                            7 => logic.trail_step_cycle_7 = None,
+                            _ => {}
+                        }
+                        return;
+                    }
+                    let Ok(v) = raw_trimmed.parse::<i32>() else {
+                        return;
+                    };
                     match n {
-                        2 => logic.trail_step_cycle_2 = if v == 0 { None } else { Some(v) },
-                        3 => logic.trail_step_cycle_3 = if v == 0 { None } else { Some(v) },
-                        4 => logic.trail_step_cycle_4 = if v == 0 { None } else { Some(v) },
-                        5 => logic.trail_step_cycle_5 = if v == 0 { None } else { Some(v) },
-                        6 => logic.trail_step_cycle_6 = if v == 0 { None } else { Some(v) },
-                        7 => logic.trail_step_cycle_7 = if v == 0 { None } else { Some(v) },
+                        2 => logic.trail_step_cycle_2 = Some(v),
+                        3 => logic.trail_step_cycle_3 = Some(v),
+                        4 => logic.trail_step_cycle_4 = Some(v),
+                        5 => logic.trail_step_cycle_5 = Some(v),
+                        6 => logic.trail_step_cycle_6 = Some(v),
+                        7 => logic.trail_step_cycle_7 = Some(v),
                         _ => {}
                     }
                     return;
@@ -6845,14 +7656,28 @@ fn apply_v19_param_to_logic(logic: &mut LogicConfig, is_buy: bool, param: &str, 
             }
             if let Some(suffix) = p.strip_prefix("trailstepbalance") {
                 if let Ok(n) = suffix.parse::<i32>() {
-                    let v = raw.parse::<f64>().unwrap_or(0.0);
+                    if raw_trimmed.is_empty() {
+                        match n {
+                            2 => logic.trail_step_balance_2 = None,
+                            3 => logic.trail_step_balance_3 = None,
+                            4 => logic.trail_step_balance_4 = None,
+                            5 => logic.trail_step_balance_5 = None,
+                            6 => logic.trail_step_balance_6 = None,
+                            7 => logic.trail_step_balance_7 = None,
+                            _ => {}
+                        }
+                        return;
+                    }
+                    let Ok(v) = raw_trimmed.parse::<f64>() else {
+                        return;
+                    };
                     match n {
-                        2 => logic.trail_step_balance_2 = if v == 0.0 { None } else { Some(v) },
-                        3 => logic.trail_step_balance_3 = if v == 0.0 { None } else { Some(v) },
-                        4 => logic.trail_step_balance_4 = if v == 0.0 { None } else { Some(v) },
-                        5 => logic.trail_step_balance_5 = if v == 0.0 { None } else { Some(v) },
-                        6 => logic.trail_step_balance_6 = if v == 0.0 { None } else { Some(v) },
-                        7 => logic.trail_step_balance_7 = if v == 0.0 { None } else { Some(v) },
+                        2 => logic.trail_step_balance_2 = Some(v),
+                        3 => logic.trail_step_balance_3 = Some(v),
+                        4 => logic.trail_step_balance_4 = Some(v),
+                        5 => logic.trail_step_balance_5 = Some(v),
+                        6 => logic.trail_step_balance_6 = Some(v),
+                        7 => logic.trail_step_balance_7 = Some(v),
                         _ => {}
                     }
                     return;
@@ -6887,6 +7712,35 @@ fn apply_v19_global_keys(config: &mut MTConfig, inputs: &HashMap<String, String>
         &["gInput_MaxSlippagePoints", "gInput_MaxSlippage"],
         config.general.max_slippage_points,
     );
+
+    let nf = &mut config.general.news_filter;
+    nf.enabled = get_bool_first(inputs, &["gInput_EnableNewsFilter", "gInput_NewsFilterEnabled"]);
+    nf.api_key = get_string(inputs, "gInput_NewsAPIKey", &nf.api_key);
+    nf.api_url = get_string(inputs, "gInput_NewsAPIURL", &nf.api_url);
+    nf.countries = get_string(inputs, "gInput_NewsFilterCountries", &nf.countries);
+    nf.impact_level = get_i32(inputs, "gInput_NewsImpactLevel", nf.impact_level);
+    nf.minutes_before = get_i32(inputs, "gInput_MinutesBeforeNews", nf.minutes_before);
+    nf.minutes_after = get_i32(inputs, "gInput_MinutesAfterNews", nf.minutes_after);
+    // Parse 3 boolean fields
+    nf.stop_ea = get_bool_with_default(inputs, "gInput_NewsStopEA", nf.stop_ea);
+    nf.close_trades = get_bool_with_default(inputs, "gInput_NewsCloseTrades", nf.close_trades);
+    nf.auto_restart = get_bool_with_default(inputs, "gInput_NewsAutoRestart", nf.auto_restart);
+    nf.check_interval = get_i32(inputs, "gInput_NewsCheckInterval", nf.check_interval);
+    nf.alert_minutes = get_i32(inputs, "gInput_AlertMinutesBefore", nf.alert_minutes);
+    nf.filter_high_only = get_bool_with_default(inputs, "gInput_FilterHighImpactOnly", nf.filter_high_only);
+    nf.filter_weekends = get_bool_with_default(inputs, "gInput_FilterWeekendNews", nf.filter_weekends);
+    nf.use_local_cache = get_bool_with_default(inputs, "gInput_UseLocalNewsCache", nf.use_local_cache);
+    nf.cache_duration = get_i32(inputs, "gInput_NewsCacheDuration", nf.cache_duration);
+    nf.fallback_on_error = get_string(inputs, "gInput_NewsFallbackOnError", &nf.fallback_on_error);
+    nf.filter_currencies = get_string(inputs, "gInput_FilterCurrencies", &nf.filter_currencies);
+    nf.include_speeches = get_bool_with_default(inputs, "gInput_IncludeSpeeches", nf.include_speeches);
+    nf.include_reports = get_bool_with_default(inputs, "gInput_IncludeReports", nf.include_reports);
+    nf.visual_indicator = get_bool_with_default(inputs, "gInput_NewsVisualIndicator", nf.visual_indicator);
+    nf.alert_before_news = get_bool_with_default(inputs, "gInput_AlertBeforeNews", nf.alert_before_news);
+    let cf = get_string(inputs, "gInput_NewsCalendarFile", "");
+    if !cf.is_empty() {
+        nf.calendar_file = Some(cf);
+    }
 }
 
 fn build_config_from_v19_setfile(content: &str) -> Result<MTConfig, String> {
@@ -6900,6 +7754,10 @@ fn build_config_from_v19_setfile(content: &str) -> Result<MTConfig, String> {
 
     for (key, raw_val) in &parsed.inputs {
         if let Some(parsed_key) = parse_v19_key(key) {
+            // StartLevel is Group 1-only. Ignore legacy repeated keys from Groups 2-15.
+            if parsed_key.group != 1 && parsed_key.param.eq_ignore_ascii_case("StartLevel") {
+                continue;
+            }
             let engine_id = parsed_key.engine.to_string();
             let logic_name = logic_code_to_name(parsed_key.logic)
                 .ok_or_else(|| format!("Unknown logic code: {}", parsed_key.logic))?;
@@ -6927,6 +7785,7 @@ fn build_config_from_v19_setfile(content: &str) -> Result<MTConfig, String> {
         }
     }
 
+    normalize_config_mode_contract(&mut config);
     config.total_inputs = parsed.inputs.len();
     config.version = "v19.0".to_string();
     Ok(config)

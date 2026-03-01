@@ -45,6 +45,22 @@ export function ChatMessageContent({ message, onSend, onNavigate, onCompose, onS
       onShowPanel(message.result.showPanel);
     }
   }, [message.showPanel, message.result?.showPanel, onShowPanel]);
+
+  // Render pending inference banner if present
+  if (message.pendingInference && message.pendingMessage) {
+    return (
+      <div className="space-y-2">
+        <div className="inline-flex items-center gap-2 px-3 py-2 bg-blue-500/10 border border-blue-500/30 rounded-lg text-xs text-blue-400">
+          <span className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" />
+          {message.pendingMessage}
+        </div>
+        <div className="text-xs leading-relaxed whitespace-pre-wrap break-words">
+          {message.content}
+        </div>
+      </div>
+    );
+  }
+
   // Welcome message - use premium component
   if (message.id === "welcome") {
     return <WelcomeMessage onCompose={onCompose} />;

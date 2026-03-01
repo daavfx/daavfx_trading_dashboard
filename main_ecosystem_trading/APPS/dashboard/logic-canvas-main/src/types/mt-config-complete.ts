@@ -4,12 +4,12 @@
 export type Platform = "MT4" | "MT5";
 
 // Enums matching MQL4
-export type TrailMethod = "Points" | "AVG_Percent" | "AVG_Points" | "Percent";
+export type TrailMethod = "Points" | "AVG_Percent";
 export type TrailStepMethod = "Step_Points" | "Step_Percent";
-export type TrailStepMode = "TrailStepMode_Auto" | "TrailStepMode_Points" | "TrailStepMode_Percent" | "TrailStepMode_PerOrder" | "TrailStepMode_Disabled";
+export type TrailStepMode = "TrailStepMode_Auto" | "TrailStepMode_Fixed" | "TrailStepMode_PerOrder";
 export type TPSLMode = "TPSL_Points" | "TPSL_Price" | "TPSL_Percent";
-export type PartialMode = "PartialMode_Low" | "PartialMode_Mid" | "PartialMode_Aggressive" | "PartialMode_High" | "PartialMode_Balanced";
-export type PartialBalance = "PartialBalance_Negative" | "PartialBalance_Balanced" | "PartialBalance_Profit" | "PartialBalance_Aggressive" | "PartialBalance_Conservative";
+export type PartialMode = "PartialMode_Low" | "PartialMode_Mid" | "PartialMode_Aggressive";
+export type PartialBalance = "PartialBalance_Negative" | "PartialBalance_Balanced" | "PartialBalance_Profit";
 export type PartialTrigger = "PartialTrigger_Cycle" | "PartialTrigger_Profit" | "PartialTrigger_Time" | "PartialTrigger_Both";
 export type TradeDirection = "B" | "S" | "Both";
 export type CompoundingType = "Compound_Balance" | "Compound_Equity";
@@ -17,6 +17,15 @@ export type RestartPolicy = "Restart_Default" | "Restart_Cycle" | "Continue_Cycl
 export type BreakevenMode = "Breakeven_Disabled" | "Breakeven_Points" | "Breakeven_Percent" | "Breakeven_Price";
 export type GridBehavior = "GridBehavior_CounterTrend" | "GridBehavior_TrendFollowing" | "GridBehavior_Disabled";
 export type EntryTrigger = "Trigger_Immediate" | "Trigger_AfterBars" | "Trigger_AfterSeconds" | "Trigger_AfterPips" | "Trigger_TimeFilter" | "Trigger_NewsFilter";
+export type NewsAction = 
+  | "TriggerAction_None" 
+  | "TriggerAction_StopEA" 
+  | "TriggerAction_StopEA_KeepTrades" 
+  | "TriggerAction_CloseAll" 
+  | "TriggerAction_KeepEA_CloseTrades" 
+  | "TriggerAction_StopEA_CloseTrades"
+  | "TriggerAction_PauseEA_CloseTrades"
+  | "TriggerAction_PauseEA_KeepTrades";
 export type LogicReference = 
   | "Logic_None"
   | "Logic_Power" | "Logic_Repower" | "Logic_Scalp" | "Logic_Stopper" | "Logic_STO" | "Logic_SCA" | "Logic_RPO"
@@ -218,8 +227,20 @@ export interface GlobalConfig {
   newsImpactLevel: number;
   newsMinutesBefore: number;
   newsMinutesAfter: number;
-  newsAction: string;
+  newsAction: NewsAction;
   newsCalendarFile: string;
+  newsCheckInterval?: number;
+  filterHighImpactOnly?: boolean;
+  filterWeekendNews?: boolean;
+  useLocalNewsCache?: boolean;
+  newsCacheDuration?: number;
+  newsFallbackOnError?: string;
+  filterCurrencies?: string;
+  includeSpeeches?: boolean;
+  includeReports?: boolean;
+  newsVisualIndicator?: boolean;
+  alertBeforeNews?: boolean;
+  alertMinutesBefore?: number;
   
   // Risk limits
   risk: RiskConfig;

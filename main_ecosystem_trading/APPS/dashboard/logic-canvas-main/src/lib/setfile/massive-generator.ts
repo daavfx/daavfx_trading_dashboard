@@ -147,7 +147,7 @@ function createDefaultLogicConfig(logicName: string, groupNum: number, isPower: 
     
     // Engine-specific (Power doesn't have startLevel)
     maxOrderCap: 0,
-    startLevel: isPower ? 0 : 1,
+    startLevel: isPower ? 0 : 4,
     resetLotOnRestart: false,
     restartPolicy: "Restart_Default"
   };
@@ -193,12 +193,10 @@ function generateLogicConfig(
     // Vary mode
     const modes: TrailStepMode[] = [
       "TrailStepMode_Auto", 
-      "TrailStepMode_Points", 
-      "TrailStepMode_Percent",
-      "TrailStepMode_PerOrder",
-      "TrailStepMode_Disabled"
+      "TrailStepMode_Fixed",
+      "TrailStepMode_PerOrder"
     ];
-    base.trailSteps[i].mode = modes[(variationSeed + i) % 5];
+    base.trailSteps[i].mode = modes[(variationSeed + i) % modes.length];
   }
   
   // Vary partials (32 fields)
@@ -248,7 +246,7 @@ function generateLogicConfig(
   // Vary engine settings
   base.orderCountReference = 10 + (variationSeed % 20);
   if (!isPower) {
-    base.startLevel = 1 + (variationSeed % 5);
+    base.startLevel = 4 + (variationSeed % 5);
     base.lastLot = 0.01 + (variationSeed % 5) * 0.01;
   }
   base.resetLotOnRestart = variationSeed % 2 === 0;
@@ -293,7 +291,6 @@ function generateGlobalConfig(): GlobalConfig {
     compoundingType: "Compound_Balance",
     gridUnit: 0,
     pipFactor: 0,
-    groupMode: 0,
     groupPowerStart,
     groupReverseMode: Array(16).fill(false),
     groupHedgeMode: Array(16).fill(false),

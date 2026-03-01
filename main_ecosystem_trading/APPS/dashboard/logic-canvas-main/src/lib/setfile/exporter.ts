@@ -44,11 +44,6 @@ function trailMethodToInt(method: string): number {
     case "Trail_AVG_Percent":
     case "AVG_Percent":
       return 1;
-    case "Trail_AVG_Points":
-    case "AVG_Points":
-    case "Trail_Profit_Percent":
-    case "Percent":
-      return 2;
     default:
       return 0;
   }
@@ -67,10 +62,10 @@ function trailStepMethodToInt(method: string): number {
 function trailStepModeToInt(mode: string): number {
   switch (mode) {
     case "TrailStepMode_Auto": return 0;
+    case "TrailStepMode_Fixed":
     case "TrailStepMode_Points": return 1;
-    case "TrailStepMode_Percent": return 2;
+    case "TrailStepMode_Percent": return 1;
     case "TrailStepMode_PerOrder": return 3;
-    case "TrailStepMode_Disabled": return 4;
     default: return 0;
   }
 }
@@ -91,8 +86,9 @@ function partialModeToInt(mode: string): number {
     case "PartialMode_Low": return 0;
     case "PartialMode_Mid": return 1;
     case "PartialMode_Aggressive": return 2;
-    case "PartialMode_High": return 3;
-    case "PartialMode_Balanced": return 4;
+    // Legacy aliases normalize into active canonical values.
+    case "PartialMode_High": return 2;
+    case "PartialMode_Balanced": return 1;
     default: return 1;
   }
 }
@@ -117,6 +113,21 @@ function partialTriggerToInt(trigger: string): number {
     case "PartialTrigger_Time": return 2;
     case "PartialTrigger_Both": return 3;
     default: return 0;
+  }
+}
+
+// News action to number
+function newsActionToInt(action: string): number {
+  switch (action) {
+    case "TriggerAction_None": return 0;
+    case "TriggerAction_StopEA": return 1;
+    case "TriggerAction_StopEA_KeepTrades": return 2;
+    case "TriggerAction_CloseAll": return 3;
+    case "TriggerAction_KeepEA_CloseTrades": return 4;
+    case "TriggerAction_StopEA_CloseTrades": return 5;
+    case "TriggerAction_PauseEA_CloseTrades": return 6;
+    case "TriggerAction_PauseEA_KeepTrades": return 7;
+    default: return 2; // Default to StopEA_KeepTrades
   }
 }
 
@@ -317,7 +328,6 @@ function exportGlobalConfig(global: GlobalConfig, entries: Map<string, string>):
   add("EnableHedgeMode", global.enableHedgeMode);
   add("UseCompounding", global.useCompounding);
   add("CompoundingType", global.compoundingType === "Compound_Balance" ? 0 : 1);
-  add("GroupMode", global.groupMode);
   add("GridUnit", global.gridUnit);
   add("PipFactor", global.pipFactor);
 
@@ -330,7 +340,7 @@ function exportGlobalConfig(global: GlobalConfig, entries: Map<string, string>):
   add("NewsImpactLevel", global.newsImpactLevel);
   add("MinutesBeforeNews", global.newsMinutesBefore);
   add("MinutesAfterNews", global.newsMinutesAfter);
-  add("NewsAction", global.newsAction);
+  add("NewsAction", newsActionToInt(global.newsAction));
   add("NewsCalendarFile", global.newsCalendarFile);
 
   // Risk management

@@ -70,22 +70,16 @@ export function generateMassiveCompleteConfig(
 
             // Trail configuration
             trail_method:
-              logicIndex % 4 === 0
+              logicIndex % 2 === 0
                 ? "Points"
-                : logicIndex % 4 === 1
-                  ? "AVG_Percent"
-                  : logicIndex % 4 === 2
-                    ? "AVG_Points"
-                    : "Percent",
+                : "AVG_Percent",
             trail_value: 100 + logicIndex * 20,
             trail_start: 20 + logicIndex * 5,
             trail_step: 25 + logicIndex * 5,
             trail_step_method:
-              logicIndex % 3 === 0
+              logicIndex % 2 === 0
                 ? "Step_Points"
-                : logicIndex % 3 === 1
-                  ? "Step_Percent"
-                  : "Step_Pips",
+                : "Step_Percent",
 
             // LOGIC-SPECIFIC (Power has fewer fields)
             // Start level: 0 for A-Power, 4 for B-Power/C-Power (based on engine)
@@ -98,8 +92,8 @@ export function generateMassiveCompleteConfig(
                   start_level: engineIndex > 0 ? 4 : 0,
                 }
               : {
-                  // Non-Power logics: default to 1 (start after 1 order from reference)
-                  start_level: 1,
+                  // Non-Power logics: keep >=4 baseline to avoid leaking legacy low defaults.
+                  start_level: 4,
                   last_lot: 0.01 + logicIndex * 0.005,
                 }),
 
@@ -108,10 +102,10 @@ export function generateMassiveCompleteConfig(
             reset_lot_on_restart: logicIndex % 2 === 0,
 
             // TPSL - Direction aware
-            use_tp: true,
+            use_tp: false,
             tp_mode: "TPSL_Points",
             tp_value: 200 + logicIndex * 50,
-            use_sl: true,
+            use_sl: false,
             sl_mode: "TPSL_Points",
             sl_value: 100 + logicIndex * 25,
 
@@ -125,13 +119,11 @@ export function generateMassiveCompleteConfig(
 
             // TRAIL STEP ADVANCED (7 levels)
             trail_step_mode:
-              logicIndex % 4 === 0
+              logicIndex % 3 === 0
                 ? "TrailStepMode_Auto"
-                : logicIndex % 4 === 1
+                : logicIndex % 3 === 1
                   ? "TrailStepMode_Fixed"
-                  : logicIndex % 4 === 2
-                    ? "TrailStepMode_PerOrder"
-                    : "TrailStepMode_Disabled",
+                  : "TrailStepMode_PerOrder",
             trail_step_cycle: 1 + (logicIndex % 5),
             trail_step_balance: 1000 + groupNum * 100,
 
@@ -160,7 +152,7 @@ export function generateMassiveCompleteConfig(
             trail_step_method_5: "Step_Percent",
             trail_step_cycle_5: 5,
             trail_step_balance_5: 2500 + groupNum * 250,
-            trail_step_mode_5: "TrailStepMode_Disabled",
+            trail_step_mode_5: "TrailStepMode_Fixed",
 
             trail_step_6: 350 + logicIndex * 45 + dirIndex * 30,
             trail_step_method_6: "Step_Points",
@@ -176,45 +168,34 @@ export function generateMassiveCompleteConfig(
 
             // CLOSE PARTIAL
             close_partial: logicIndex % 2 === 0,
-            close_partial_cycle: 5 + logicIndex * 3,
             close_partial_mode:
               logicIndex % 3 === 0
                 ? "PartialMode_Low"
                 : logicIndex % 3 === 1
-                  ? "PartialMode_High"
-                  : "PartialMode_Balanced",
-            close_partial_balance:
-              logicIndex % 3 === 0
-                ? "PartialBalance_Aggressive"
-                : logicIndex % 3 === 1
-                  ? "PartialBalance_Conservative"
-                  : "PartialBalance_Balanced",
-            close_partial_trail_step_mode: "TrailStepMode_Auto",
+                  ? "PartialMode_Aggressive"
+                  : "PartialMode_Mid",
+            close_partial_profit_threshold: 100 + logicIndex * 25,
 
             // Close Partial 2-4
             close_partial_2: logicIndex % 2 === 0,
-            close_partial_cycle_2: 10 + logicIndex * 5,
             close_partial_mode_2:
               logicIndex % 3 === 0
                 ? "PartialMode_Low"
                 : logicIndex % 3 === 1
-                  ? "PartialMode_High"
-                  : "PartialMode_Balanced",
-            close_partial_balance_2:
-              logicIndex % 2 === 0
-                ? "PartialBalance_Aggressive"
-                : "PartialBalance_Conservative",
+                  ? "PartialMode_Aggressive"
+                  : "PartialMode_Mid",
+            close_partial_profit_threshold_2: 200 + logicIndex * 25,
 
             close_partial_3: logicIndex % 3 === 0,
-            close_partial_cycle_3: 15 + logicIndex * 7,
             close_partial_mode_3:
-              logicIndex % 2 === 0 ? "PartialMode_High" : "PartialMode_Low",
-            close_partial_balance_3: "PartialBalance_Balanced",
+              logicIndex % 2 === 0
+                ? "PartialMode_Aggressive"
+                : "PartialMode_Low",
+            close_partial_profit_threshold_3: 300 + logicIndex * 25,
 
             close_partial_4: logicIndex % 2 === 0,
-            close_partial_cycle_4: 20 + logicIndex * 10,
-            close_partial_mode_4: "PartialMode_Balanced",
-            close_partial_balance_4: "PartialBalance_Aggressive",
+            close_partial_mode_4: "PartialMode_Mid",
+            close_partial_profit_threshold_4: 400 + logicIndex * 25,
 
             // GROUP 1 ONLY fields (triggers)
             ...(groupNum === 1

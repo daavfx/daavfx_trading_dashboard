@@ -45,13 +45,11 @@ interface LogicConfig {
   trigger_seconds?: number;
   trigger_pips?: number;
   partial_close?: boolean;
-  partial_cycle?: number;
   partial_mode?: string;
-  partial_balance?: string;
-  partial_trail_mode?: string;
+  partial_profit_threshold?: number;
   allow_buy?: boolean;
   allow_sell?: boolean;
-  trading_mode?: string;
+  trading_mode?: "Counter Trend" | "Hedge" | "Reverse";
   reset_lot_on_restart?: boolean;
   order_count_reference?: string;
   close_targets?: string;
@@ -80,7 +78,7 @@ interface LogicConfig {
 }
 
 interface LogicConfigPanelProps {
-  mode: "counter_trend" | "trend_following" | "hedge" | "reverse";
+  mode: "counter_trend" | "hedge" | "reverse";
   config: LogicConfig;
   onChange: (field: string, value: any) => void;
   onChangeMode?: (newMode: string) => void;
@@ -244,23 +242,17 @@ const closeTargetOptions = [
 ];
 
 const TRADING_MODES = ["Counter Trend", "Hedge", "Reverse"];
-const TRAIL_METHODS = ["Points", "Percent", "AVG_Points", "AVG_Percent"];
-const TRAIL_STEP_METHODS = ["Step_Points", "Step_Percent", "Step_Pips"];
+const TRAIL_METHODS = ["Points", "AVG_Percent"];
+const TRAIL_STEP_METHODS = ["Step_Points", "Step_Percent"];
 const TRAIL_STEP_MODES = [
   "TrailStepMode_Auto",
   "TrailStepMode_Fixed",
   "TrailStepMode_PerOrder",
-  "TrailStepMode_Disabled",
 ];
 const PARTIAL_MODES = [
   "PartialMode_Low",
-  "PartialMode_High",
-  "PartialMode_Balanced",
-];
-const PARTIAL_BALANCES = [
-  "PartialBalance_Aggressive",
-  "PartialBalance_Balanced",
-  "PartialBalance_Conservative",
+  "PartialMode_Mid",
+  "PartialMode_Aggressive",
 ];
 const TRIGGER_TYPES = [
   "0 Trigger_Immediate",
@@ -794,30 +786,9 @@ const CounterTrendAndReverseUI = ({
               }
             />
           </div>
-          <LabeledField label="Partial Cycle">
-            <Select
-              value={String(localConfig.partial_cycle || 3)}
-              onValueChange={(val) =>
-                handleChange("partial_cycle", parseInt(val))
-              }
-            >
-              <SelectTrigger className="bg-background/50">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"].map(
-                  (opt) => (
-                    <SelectItem key={opt} value={opt}>
-                      {opt}
-                    </SelectItem>
-                  ),
-                )}
-              </SelectContent>
-            </Select>
-          </LabeledField>
           <LabeledField label="Partial Mode">
             <Select
-              value={localConfig.partial_mode || "PartialMode_Balanced"}
+              value={localConfig.partial_mode || "PartialMode_Mid"}
               onValueChange={(val) => handleChange("partial_mode", val)}
             >
               <SelectTrigger className="bg-background/50">
@@ -832,41 +803,18 @@ const CounterTrendAndReverseUI = ({
               </SelectContent>
             </Select>
           </LabeledField>
-          <LabeledField label="Partial Balance">
-            <Select
-              value={localConfig.partial_balance || "PartialBalance_Balanced"}
-              onValueChange={(val) => handleChange("partial_balance", val)}
-            >
-              <SelectTrigger className="bg-background/50">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PARTIAL_BALANCES.map((opt) => (
-                  <SelectItem key={opt} value={opt}>
-                    {opt}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </LabeledField>
-        </div>
-        <div className="grid grid-cols-1 gap-4 mt-4">
-          <LabeledField label="Partial Trail Mode">
-            <Select
-              value={localConfig.partial_trail_mode || "TrailStepMode_Auto"}
-              onValueChange={(val) => handleChange("partial_trail_mode", val)}
-            >
-              <SelectTrigger className="bg-background/50">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {TRAIL_STEP_MODES.map((opt) => (
-                  <SelectItem key={opt} value={opt}>
-                    {opt}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <LabeledField label="Partial Profit Threshold">
+            <Input
+              type="number"
+              value={localConfig.partial_profit_threshold || 0}
+              onChange={(e) =>
+                handleChange(
+                  "partial_profit_threshold",
+                  parseFloat(e.target.value) || 0,
+                )
+              }
+              className="bg-background/50"
+            />
           </LabeledField>
         </div>
       </CategoryCard>
@@ -879,7 +827,7 @@ const CounterTrendAndReverseUI = ({
               Use TP
             </Label>
             <Switch
-              checked={localConfig.use_tp ?? true}
+              checked={localConfig.use_tp ?? false}
               onCheckedChange={(checked) => handleChange("use_tp", checked)}
             />
           </div>
@@ -912,7 +860,7 @@ const CounterTrendAndReverseUI = ({
               Use SL
             </Label>
             <Switch
-              checked={localConfig.use_sl ?? true}
+              checked={localConfig.use_sl ?? false}
               onCheckedChange={(checked) => handleChange("use_sl", checked)}
             />
           </div>
@@ -941,6 +889,10 @@ const CounterTrendAndReverseUI = ({
             />
           </LabeledField>
         </div>
+        <p className="mt-3 text-[10px] text-muted-foreground/80">
+          Trail and TP/SL can run together. The first trigger hit closes.
+          For dummy broker protection, keep TP/SL ON with far values.
+        </p>
       </CategoryCard>
     </div>
   );
@@ -1063,7 +1015,7 @@ export const LogicConfigPanel = ({
     );
   }
 
-  // TREND FOLLOWING MODE - Same as Counter Trend
+  // Default fallback
   return (
     <CounterTrendAndReverseUI
       localConfig={localConfig}

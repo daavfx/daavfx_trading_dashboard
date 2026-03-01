@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { toast } from "sonner";
 import type { MTConfig, Platform, LogicConfig } from "@/types/mt-config";
+import { hydrateMTConfigDefaults } from "@/utils/hydrate-mt-config-defaults";
 
 // Hook for loading/saving config
 export function useMTConfig(platform: Platform) {
@@ -19,9 +20,10 @@ export function useMTConfig(platform: Platform) {
       const raw = localStorage.getItem("daavfx-last-config");
       if (raw) {
         const parsed = JSON.parse(raw) as MTConfig;
-        setConfig(parsed);
+        const hydrated = hydrateMTConfigDefaults(parsed);
+        setConfig(hydrated);
         toast.success("Loaded local configuration");
-        return parsed;
+        return hydrated;
       }
       setConfig(null);
       return null;
@@ -37,16 +39,17 @@ export function useMTConfig(platform: Platform) {
 
   const setConfigOnly = useCallback((newConfig: MTConfig) => {
     // Update local state WITHOUT syncing to MT (for local-only imports)
-    setConfig(newConfig);
+    setConfig(hydrateMTConfigDefaults(newConfig));
   }, []);
 
   const saveConfig = useCallback(async (newConfig: MTConfig) => {
     try {
       setLoading(true);
       setError(null);
+      const hydrated = hydrateMTConfigDefaults(newConfig);
       const nowIso = new Date().toISOString();
       const enrichedConfig: MTConfig = {
-        ...newConfig,
+        ...hydrated,
         last_saved_at: nowIso,
         last_saved_platform: platform,
       };

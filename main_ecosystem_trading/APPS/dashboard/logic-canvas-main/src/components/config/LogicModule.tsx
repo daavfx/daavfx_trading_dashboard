@@ -267,6 +267,25 @@ const categoryStyles: Record<
   },
 };
 
+const normalizeTradingModeValue = (raw: unknown): "Counter Trend" | "Hedge" | "Reverse" => {
+  const mode = String(raw ?? "").trim().toLowerCase();
+  if (mode === "hedge") return "Hedge";
+  if (mode === "reverse") return "Reverse";
+  if (
+    mode === "counter trend" ||
+    mode === "countertrend" ||
+    mode === "counter_trend" ||
+    mode === "counter-trend" ||
+    mode === "trending" ||
+    mode === "trend following" ||
+    mode === "trend_following" ||
+    mode === ""
+  ) {
+    return "Counter Trend";
+  }
+  return "Counter Trend";
+};
+
 const getCategoryIcon = (category: string) => {
   if (category === "Reverse/Hedge")
     return <ArrowLeftRight className="w-3 h-3" />;
@@ -289,6 +308,8 @@ export function LogicModule({
 }: LogicModuleProps) {
   const engineSafe = engine || "";
   const nameSafe = name || "";
+  const isEngineAPower =
+    engineSafe.includes("Engine A") && nameSafe.toUpperCase() === "POWER";
 
   const [trailLevelsVisible, setTrailLevelsVisible] = useState(1);
   const [showAdvancedFields, setShowAdvancedFields] = useState(false);
@@ -338,15 +359,6 @@ export function LogicModule({
   // Active edit direction (single-side editing only)
   const [activeDirection, setActiveDirection] = useState<"buy" | "sell">("buy");
   const fieldValues = fieldValuesBySide[activeDirection] || {};
-  const directionalFields = new Set([
-    "initial_lot",
-    "multiplier",
-    "grid",
-    "trail_value",
-    "trail_start",
-    "trail_step",
-  ]);
-
   // Initialize field values only once using useRef to store initial values
   const initialFieldsRef = useRef<any[]>([]);
 
@@ -371,6 +383,43 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
     updater: SideValues | ((prev: SideValues) => SideValues),
   ) => {
     updateSideValues(activeDirection, updater);
+  };
+
+  const normalizeModeState = (
+    source: SideValues,
+  ): SideValues => {
+    const mode = isEngineAPower
+      ? "Counter Trend"
+      : normalizeTradingModeValue(source["trading_mode"]);
+    const next = { ...source, trading_mode: mode };
+
+    if (mode === "Hedge") {
+      next["hedge_enabled"] = "ON";
+      next["reverse_enabled"] = "OFF";
+      next["hedge_reference"] = next["hedge_reference"] || "Logic_None";
+      next["hedge_scale"] = next["hedge_scale"] ?? 50;
+      next["reverse_reference"] = "Logic_None";
+      next["reverse_scale"] = 100;
+      return next;
+    }
+
+    if (mode === "Reverse") {
+      next["reverse_enabled"] = "ON";
+      next["hedge_enabled"] = "OFF";
+      next["reverse_reference"] = next["reverse_reference"] || "Logic_None";
+      next["reverse_scale"] = next["reverse_scale"] ?? 100;
+      next["hedge_reference"] = "Logic_None";
+      next["hedge_scale"] = 50;
+      return next;
+    }
+
+    next["reverse_enabled"] = "OFF";
+    next["hedge_enabled"] = "OFF";
+    next["reverse_reference"] = "Logic_None";
+    next["hedge_reference"] = "Logic_None";
+    next["reverse_scale"] = 100;
+    next["hedge_scale"] = 50;
+    return next;
   };
 
   const resolveLogicDirection = (logic: any): "buy" | "sell" | null => {
@@ -400,11 +449,23 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
     );
     if (!groupData?.logics) return null;
 
-    const logicNameUpper = String(logicSuffix || baseName || nameSafe).toUpperCase();
-    const candidates = groupData.logics.filter((l: any) => {
+    const desiredNames = new Set<string>([
+      String(baseName || nameSafe).toUpperCase(),
+      String(logicSuffix || "").toUpperCase(),
+    ]);
+    if (desiredNames.has("SCALPER")) desiredNames.add("SCALP");
+    if (desiredNames.has("SCALP")) desiredNames.add("SCALPER");
+
+    const candidatesAll = groupData.logics.filter((l: any) => {
       const candidateName = String(l?.logic_name || "").toUpperCase();
-      return candidateName === logicNameUpper;
+      return desiredNames.has(candidateName);
     });
+    const primaryName = String(baseName || nameSafe).toUpperCase();
+    const candidatesPrimary = candidatesAll.filter(
+      (l: any) => String(l?.logic_name || "").toUpperCase() === primaryName,
+    );
+    const candidates =
+      candidatesPrimary.length > 0 ? candidatesPrimary : candidatesAll;
 
     return (
       candidates.find((l: any) => resolveLogicDirection(l) === targetDirection) ||
@@ -465,16 +526,11 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
 
     const hasBuyRow = Boolean(findDirectionalLogic("buy"));
     const hasSellRow = Boolean(findDirectionalLogic("sell"));
-    const singleRowBuyOn = config["allow_buy" as keyof LogicConfig] === true;
-    const singleRowSellOn = config["allow_sell" as keyof LogicConfig] === true;
-    const defaultDirection: "buy" | "sell" =
-      hasBuyRow
-        ? "buy"
-        : hasSellRow
-          ? "sell"
-          : singleRowSellOn && !singleRowBuyOn
-            ? "sell"
-            : "buy";
+    const defaultDirection: "buy" | "sell" = hasBuyRow
+      ? "buy"
+      : hasSellRow
+        ? "sell"
+        : "buy";
     const buildSideValues = (side: "buy" | "sell") => {
       const directionalRow = findDirectionalLogic(side);
       const sourceLogic = directionalRow || logicConfig || null;
@@ -492,15 +548,7 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
       newInitialFields.forEach((field) => {
         const source = sourceLogic as Record<string, any>;
         let rawValue: any;
-        if (directionalRow) {
-          rawValue = source[field.id];
-        } else if (directionalFields.has(String(field.id))) {
-          const suffix = side === "buy" ? "_b" : "_s";
-          rawValue = source[`${field.id}${suffix}`];
-          if (rawValue === undefined) rawValue = source[field.id];
-        } else {
-          rawValue = source[field.id];
-        }
+        rawValue = source[field.id];
         if (rawValue === undefined) return;
         values[field.id] =
           field.type === "toggle" && typeof rawValue === "boolean"
@@ -513,8 +561,8 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
       return values;
     };
 
-    const buyValues = buildSideValues("buy");
-    const sellValues = buildSideValues("sell");
+    const buyValues = normalizeModeState(buildSideValues("buy"));
+    const sellValues = normalizeModeState(buildSideValues("sell"));
 
     setActiveDirection(defaultDirection);
     setFieldValuesBySide({ buy: buyValues, sell: sellValues });
@@ -530,15 +578,27 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
 
     // Side effects for Trading Mode
     if (id === "trading_mode") {
-      if (value === "Counter Trend") {
+      const mode = isEngineAPower
+        ? "Counter Trend"
+        : normalizeTradingModeValue(value);
+      updates["trading_mode"] = mode;
+      if (mode === "Counter Trend") {
         updates["reverse_enabled"] = "OFF";
         updates["hedge_enabled"] = "OFF";
-      } else if (value === "Hedge") {
+        updates["reverse_reference"] = "Logic_None";
+        updates["hedge_reference"] = "Logic_None";
+        updates["reverse_scale"] = 100;
+        updates["hedge_scale"] = 50;
+      } else if (mode === "Hedge") {
         updates["hedge_enabled"] = "ON";
         updates["reverse_enabled"] = "OFF";
-      } else if (value === "Reverse") {
+        updates["reverse_reference"] = "Logic_None";
+        updates["reverse_scale"] = 100;
+      } else if (mode === "Reverse") {
         updates["reverse_enabled"] = "ON";
         updates["hedge_enabled"] = "OFF";
+        updates["hedge_reference"] = "Logic_None";
+        updates["hedge_scale"] = 50;
       }
     }
 
@@ -557,7 +617,9 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
   };
 
   // Current Mode - Trail Only
-  const tradingMode = fieldValues["trading_mode"] || "Counter Trend";
+  const tradingMode = isEngineAPower
+    ? "Counter Trend"
+    : normalizeTradingModeValue(fieldValues["trading_mode"]);
 
   // Filter and Construct Fields
   let displayFields = initialFieldsRef.current.map((f) => ({
@@ -732,13 +794,18 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
                     use_tp:
                       fieldValues["use_tp"] === "ON" ||
                       fieldValues["use_tp"] === true,
+                    tp_mode: fieldValues["tp_mode"] || "TPSL_Points",
                     tp_value: parseFloat(fieldValues["tp_value"]) || 0.0,
                     use_sl:
                       fieldValues["use_sl"] === "ON" ||
                       fieldValues["use_sl"] === true,
+                    sl_mode: fieldValues["sl_mode"] || "TPSL_Points",
                     sl_value: parseFloat(fieldValues["sl_value"]) || 0.0,
-                    trigger_type: fieldValues["trigger_type"] || "Immediate",
+                    trigger_type:
+                      fieldValues["trigger_type"] || "0 Trigger_Immediate",
                     trigger_bars: parseInt(fieldValues["trigger_bars"]) || 0,
+                    trigger_seconds:
+                      parseInt(fieldValues["trigger_minutes"]) || 0,
                     trigger_pips:
                       parseFloat(fieldValues["trigger_pips"]) || 0.0,
                     grid_behavior:
@@ -754,33 +821,50 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
                     reverse_reference:
                       fieldValues["reverse_reference"] || "Logic_None",
                     partial_close:
+                      fieldValues["close_partial"] === "ON" ||
+                      fieldValues["close_partial"] === true ||
                       fieldValues["partial_close"] === "ON" ||
                       fieldValues["partial_close"] === true,
+                    partial_mode:
+                      fieldValues["close_partial_mode"] ||
+                      fieldValues["partial_mode"] ||
+                      "PartialMode_Mid",
+                    partial_profit_threshold:
+                      parseFloat(
+                        fieldValues["close_partial_profit_threshold"] ??
+                          fieldValues["partial_profit_threshold"] ??
+                          0,
+                      ) || 0,
                     start_level: parseInt(fieldValues["start_level"]) || 0,
                   }}
                   onChange={(field, value) => {
-                    // Map LogicConfigPanel field names to LogicModule field names (snake_case to camelCase)
+                    // Map LogicConfigPanel fields to canonical MT config keys.
                     const fieldMapping: Record<string, string> = {
-                      hedge_reference: "hedgeReference",
-                      hedge_scale: "hedgeScale",
-                      reverse_reference: "reverseReference",
-                      initial_lot: "initialLot",
+                      hedge_reference: "hedge_reference",
+                      hedge_scale: "hedge_scale",
+                      reverse_reference: "reverse_reference",
+                      initial_lot: "initial_lot",
                       enabled: "enabled",
                       multiplier: "multiplier",
                       grid: "grid",
-                      trail_method: "trailMethod",
-                      trail_value: "trailValue",
-                      trail_step: "trailStep",
-                      use_tp: "useTP",
-                      tp_value: "takeProfit",
-                      use_sl: "useSL",
-                      sl_value: "stopLoss",
-                      trigger_type: "triggerType",
-                      trigger_bars: "triggerBars",
-                      trigger_pips: "triggerPips",
-                      grid_behavior: "gridBehavior",
-                      partial_close: "partialClose",
-                      start_level: "startLevel",
+                      trail_method: "trail_method",
+                      trail_value: "trail_value",
+                      trail_step: "trail_step",
+                      use_tp: "use_tp",
+                      tp_mode: "tp_mode",
+                      tp_value: "tp_value",
+                      use_sl: "use_sl",
+                      sl_mode: "sl_mode",
+                      sl_value: "sl_value",
+                      trigger_type: "trigger_type",
+                      trigger_bars: "trigger_bars",
+                      trigger_seconds: "trigger_minutes",
+                      trigger_pips: "trigger_pips",
+                      grid_behavior: "grid_behavior",
+                      partial_close: "close_partial",
+                      partial_mode: "close_partial_mode",
+                      partial_profit_threshold: "close_partial_profit_threshold",
+                      start_level: "start_level",
                     };
 
                     const mappedField = fieldMapping[field] || field;
@@ -816,21 +900,8 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
                         ? "Hedge"
                         : newMode === "reverse"
                           ? "Reverse"
-                          : newMode === "trend_following"
-                            ? "Trend Following"
                             : "Counter Trend";
-                    updateActiveSideValues((prev) => ({
-                      ...prev,
-                      trading_mode: modeValue,
-                    }));
-                    if (onUpdate) {
-                      onUpdate(
-                        "trading_mode",
-                        modeValue,
-                        activeDirection,
-                        getTargetLogicId(activeDirection),
-                      );
-                    }
+                    handleFieldChange("trading_mode", modeValue);
                   }}
                   onDuplicate={() => {
                     // Duplicate current logic config to clipboard or create copy
@@ -851,17 +922,22 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
                         trail_value: "300",
                         trail_step: "150",
                         use_tp: "OFF",
+                        tp_mode: "TPSL_Points",
                         tp_value: "500",
                         use_sl: "OFF",
+                        sl_mode: "TPSL_Points",
                         sl_value: "200",
-                        trigger_type: "Immediate",
+                        trigger_type: "0 Trigger_Immediate",
                         trigger_bars: "0",
+                        trigger_minutes: "0",
                         trigger_pips: "0",
                         grid_behavior: "CounterTrend",
                         hedge_reference: "Logic_None",
                         hedge_scale: "50",
                         reverse_reference: "Logic_None",
                         partial_close: "OFF",
+                        close_partial_mode: "PartialMode_Mid",
+                        close_partial_profit_threshold: "0",
                         enabled: "ON",
                       };
                       updateActiveSideValues((prev) => ({ ...prev, ...defaults }));
@@ -886,7 +962,7 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
                 />
               )}
 
-              {/* Show standard category-based UI for Counter Trend, Trend Following, and Reverse */}
+              {/* Show standard category-based UI for Counter Trend and Reverse */}
               {tradingMode !== "Hedge" &&
                 categories.map((category) => {
                   const categoryFields = filteredFields.filter(
@@ -1094,8 +1170,11 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
 
                         {displayFields
                           .filter(
-                            (f) =>
-                              f.id !== "allow_buy" && f.id !== "allow_sell",
+                            (f) => {
+                              if (f.id === "allow_buy" || f.id === "allow_sell") return false;
+                              if (isEngineAPower && f.id === "trading_mode") return false;
+                              return true;
+                            },
                           )
                           .map((field) => (
                             <ConfigField

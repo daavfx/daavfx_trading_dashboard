@@ -83,7 +83,7 @@ export function GeneralCategories({
 
     const newConfig = JSON.parse(JSON.stringify(generalConfig));
     
-    if ((fieldId === "group_mode" || fieldId === "grid_unit") && typeof value === "string") {
+    if (fieldId === "grid_unit" && typeof value === "string") {
         const n = parseInt(value, 10);
         if (!Number.isNaN(n)) value = n;
     }

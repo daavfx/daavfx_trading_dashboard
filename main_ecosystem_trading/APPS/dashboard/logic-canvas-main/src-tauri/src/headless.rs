@@ -1,9 +1,9 @@
 // Headless Command Handler - CLI interface for automated testing
 // Processes chat commands without UI, returns structured JSON
 
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use regex::Regex;
 use std::collections::HashMap;
 use tinyllm_daavfx::parse_command as tiny_parse_command;
 
@@ -132,9 +132,24 @@ fn get_semantic_rules() -> Vec<SemanticRule> {
                 Some(SemanticOps {
                     description: format!("Increase aggressiveness by {}%", percent),
                     operations: vec![
-                        FieldOperation { field: "multiplier".into(), op: "scale".into(), factor: Some(factor), value: None },
-                        FieldOperation { field: "initial_lot".into(), op: "scale".into(), factor: Some(factor), value: None },
-                        FieldOperation { field: "grid".into(), op: "scale".into(), factor: Some(grid_factor), value: None },
+                        FieldOperation {
+                            field: "multiplier".into(),
+                            op: "scale".into(),
+                            factor: Some(factor),
+                            value: None,
+                        },
+                        FieldOperation {
+                            field: "initial_lot".into(),
+                            op: "scale".into(),
+                            factor: Some(factor),
+                            value: None,
+                        },
+                        FieldOperation {
+                            field: "grid".into(),
+                            op: "scale".into(),
+                            factor: Some(grid_factor),
+                            value: None,
+                        },
                     ],
                 })
             },
@@ -149,9 +164,24 @@ fn get_semantic_rules() -> Vec<SemanticRule> {
                 Some(SemanticOps {
                     description: format!("Increase safety by {}%", percent),
                     operations: vec![
-                        FieldOperation { field: "grid".into(), op: "scale".into(), factor: Some(grid_factor), value: None },
-                        FieldOperation { field: "multiplier".into(), op: "scale".into(), factor: Some(lot_factor), value: None },
-                        FieldOperation { field: "initial_lot".into(), op: "scale".into(), factor: Some(lot_factor), value: None },
+                        FieldOperation {
+                            field: "grid".into(),
+                            op: "scale".into(),
+                            factor: Some(grid_factor),
+                            value: None,
+                        },
+                        FieldOperation {
+                            field: "multiplier".into(),
+                            op: "scale".into(),
+                            factor: Some(lot_factor),
+                            value: None,
+                        },
+                        FieldOperation {
+                            field: "initial_lot".into(),
+                            op: "scale".into(),
+                            factor: Some(lot_factor),
+                            value: None,
+                        },
                     ],
                 })
             },
@@ -170,9 +200,12 @@ fn get_semantic_rules() -> Vec<SemanticRule> {
                 };
                 Some(SemanticOps {
                     description: format!("Double {}", field),
-                    operations: vec![
-                        FieldOperation { field: field.into(), op: "scale".into(), factor: Some(2.0), value: None },
-                    ],
+                    operations: vec![FieldOperation {
+                        field: field.into(),
+                        op: "scale".into(),
+                        factor: Some(2.0),
+                        value: None,
+                    }],
                 })
             },
         },
@@ -190,9 +223,12 @@ fn get_semantic_rules() -> Vec<SemanticRule> {
                 };
                 Some(SemanticOps {
                     description: format!("Halve {}", field),
-                    operations: vec![
-                        FieldOperation { field: field.into(), op: "scale".into(), factor: Some(0.5), value: None },
-                    ],
+                    operations: vec![FieldOperation {
+                        field: field.into(),
+                        op: "scale".into(),
+                        factor: Some(0.5),
+                        value: None,
+                    }],
                 })
             },
         },
@@ -203,23 +239,57 @@ fn get_semantic_rules() -> Vec<SemanticRule> {
                 Some(SemanticOps {
                     description: "Apply aggressive preset (+30% mult, +20% lot, -25% grid)".into(),
                     operations: vec![
-                        FieldOperation { field: "multiplier".into(), op: "scale".into(), factor: Some(1.3), value: None },
-                        FieldOperation { field: "initial_lot".into(), op: "scale".into(), factor: Some(1.2), value: None },
-                        FieldOperation { field: "grid".into(), op: "scale".into(), factor: Some(0.75), value: None },
+                        FieldOperation {
+                            field: "multiplier".into(),
+                            op: "scale".into(),
+                            factor: Some(1.3),
+                            value: None,
+                        },
+                        FieldOperation {
+                            field: "initial_lot".into(),
+                            op: "scale".into(),
+                            factor: Some(1.2),
+                            value: None,
+                        },
+                        FieldOperation {
+                            field: "grid".into(),
+                            op: "scale".into(),
+                            factor: Some(0.75),
+                            value: None,
+                        },
                     ],
                 })
             },
         },
         // "make it safe/conservative"
         SemanticRule {
-            pattern: Regex::new(r"(?:make\s*(?:it\s*)?|go\s*|play\s*(?:it\s*)?)(conservative|safe|safer|defensive)").unwrap(),
+            pattern: Regex::new(
+                r"(?:make\s*(?:it\s*)?|go\s*|play\s*(?:it\s*)?)(conservative|safe|safer|defensive)",
+            )
+            .unwrap(),
             extract: |_| {
                 Some(SemanticOps {
-                    description: "Apply conservative preset (-30% mult, -20% lot, +40% grid)".into(),
+                    description: "Apply conservative preset (-30% mult, -20% lot, +40% grid)"
+                        .into(),
                     operations: vec![
-                        FieldOperation { field: "multiplier".into(), op: "scale".into(), factor: Some(0.7), value: None },
-                        FieldOperation { field: "initial_lot".into(), op: "scale".into(), factor: Some(0.8), value: None },
-                        FieldOperation { field: "grid".into(), op: "scale".into(), factor: Some(1.4), value: None },
+                        FieldOperation {
+                            field: "multiplier".into(),
+                            op: "scale".into(),
+                            factor: Some(0.7),
+                            value: None,
+                        },
+                        FieldOperation {
+                            field: "initial_lot".into(),
+                            op: "scale".into(),
+                            factor: Some(0.8),
+                            value: None,
+                        },
+                        FieldOperation {
+                            field: "grid".into(),
+                            op: "scale".into(),
+                            factor: Some(1.4),
+                            value: None,
+                        },
                     ],
                 })
             },
@@ -232,16 +302,22 @@ fn get_semantic_rules() -> Vec<SemanticRule> {
                     let reduction: f64 = m.as_str().parse().ok()?;
                     Some(SemanticOps {
                         description: format!("Reduce grid by {} pips", reduction),
-                        operations: vec![
-                            FieldOperation { field: "grid".into(), op: "subtract".into(), factor: None, value: Some(reduction) },
-                        ],
+                        operations: vec![FieldOperation {
+                            field: "grid".into(),
+                            op: "subtract".into(),
+                            factor: None,
+                            value: Some(reduction),
+                        }],
                     })
                 } else {
                     Some(SemanticOps {
                         description: "Tighten grid by 20%".into(),
-                        operations: vec![
-                            FieldOperation { field: "grid".into(), op: "scale".into(), factor: Some(0.8), value: None },
-                        ],
+                        operations: vec![FieldOperation {
+                            field: "grid".into(),
+                            op: "scale".into(),
+                            factor: Some(0.8),
+                            value: None,
+                        }],
                     })
                 }
             },
@@ -254,8 +330,12 @@ fn get_semantic_rules() -> Vec<SemanticRule> {
 // ============================================================================
 fn detect_command_type(input: &str) -> &'static str {
     let lower = input.to_lowercase();
-    
-    if lower.starts_with("show") || lower.starts_with("find") || lower.starts_with("list") || lower.starts_with("get") {
+
+    if lower.starts_with("show")
+        || lower.starts_with("find")
+        || lower.starts_with("list")
+        || lower.starts_with("get")
+    {
         return "query";
     }
     if lower.starts_with("set") || lower.starts_with("change") || lower.starts_with("update") {
@@ -273,20 +353,20 @@ fn detect_command_type(input: &str) -> &'static str {
     if lower.starts_with("compare") || lower.starts_with("diff") {
         return "compare";
     }
-    
+
     "unknown"
 }
 
 fn extract_target(input: &str) -> CommandTarget {
     let lower = input.to_lowercase();
     let mut target = CommandTarget::default();
-    
+
     // Extract engines
     let engine_re = Regex::new(r"engine\s*([abc])").unwrap();
     if let Some(caps) = engine_re.captures(&lower) {
         target.engines = Some(vec![caps.get(1).unwrap().as_str().to_uppercase()]);
     }
-    
+
     // Extract groups - range format
     let group_range_re = Regex::new(r"groups?\s*(\d+)\s*-\s*(\d+)").unwrap();
     if let Some(caps) = group_range_re.captures(&lower) {
@@ -305,7 +385,7 @@ fn extract_target(input: &str) -> CommandTarget {
             }
         }
     }
-    
+
     // Extract logics
     let logic_aliases = get_logic_aliases();
     for (alias, logic) in logic_aliases.iter() {
@@ -315,7 +395,7 @@ fn extract_target(input: &str) -> CommandTarget {
             break;
         }
     }
-    
+
     // Extract field
     let field_aliases = get_field_aliases();
     for (alias, field) in field_aliases.iter() {
@@ -325,14 +405,14 @@ fn extract_target(input: &str) -> CommandTarget {
             break;
         }
     }
-    
+
     target
 }
 
 fn extract_params(input: &str, _cmd_type: &str) -> HashMap<String, Value> {
     let mut params = HashMap::new();
     let lower = input.to_lowercase();
-    
+
     // Extract value: "set grid to 600", "set lot = 0.02"
     let value_re = Regex::new(r"(?:to|=|:)\s*([\d.]+)").unwrap();
     if let Some(caps) = value_re.captures(&lower) {
@@ -340,20 +420,20 @@ fn extract_params(input: &str, _cmd_type: &str) -> HashMap<String, Value> {
             params.insert("value".into(), json!(v));
         }
     }
-    
+
     // Boolean toggles
     if lower.contains("enable") || lower.contains(" on") {
         params.insert("value".into(), json!(true));
     } else if lower.contains("disable") || lower.contains(" off") {
         params.insert("value".into(), json!(false));
     }
-    
+
     params
 }
 
 fn parse_semantic_command(input: &str) -> Option<SemanticOps> {
     let lower = input.to_lowercase();
-    
+
     for rule in get_semantic_rules() {
         if let Some(caps) = rule.pattern.captures(&lower) {
             if let Some(ops) = (rule.extract)(&caps) {
@@ -361,7 +441,7 @@ fn parse_semantic_command(input: &str) -> Option<SemanticOps> {
             }
         }
     }
-    
+
     None
 }
 
@@ -374,61 +454,61 @@ pub fn parse_command(input: &str) -> ParsedCommand {
         trimmed
     };
 
-    if let Ok(tiny) = tiny_parse_command(body) {
-        let mut target = CommandTarget::default();
-        if !tiny.engines.is_empty() {
-            target.engines = Some(tiny.engines.clone());
-        }
-        if !tiny.groups.is_empty() {
-            target.groups = Some(tiny.groups.iter().map(|g| *g as i32).collect());
-        }
-        if !tiny.logics.is_empty() {
-            target.logics = Some(tiny.logics.clone());
-        }
-        target.field = tiny.field.clone();
-
-        let mut params = HashMap::new();
-        if let Some(v) = tiny.value {
-            params.insert("value".to_string(), json!(v));
-        }
-
-        let mut cmd_type = match tiny.intent.as_str() {
-            "SET" => "set",
-            "QUERY" => "query",
-            "SEMANTIC" | "FORMULA" => "semantic",
-            "PROGRESSION" => "progression",
-            "COPY" => "copy",
-            "COMPARE" => "compare",
-            _ => "unknown",
-        };
-
-        let mut semantic = None;
-        if (cmd_type == "semantic"
-            || ((cmd_type == "set" || cmd_type == "unknown")
-                && (target.field.is_none() || !params.contains_key("value"))))
-            && parse_semantic_command(body).is_some()
-        {
-            semantic = parse_semantic_command(body);
-            cmd_type = "semantic";
-        }
-
-        if cmd_type != "unknown" || tiny.confidence >= 0.35 {
-            return ParsedCommand {
-                command_type: cmd_type.into(),
-                target,
-                params,
-                semantic,
-            };
-        }
+    let tiny = tiny_parse_command(body);
+    let mut target = CommandTarget::default();
+    if !tiny.engines.is_empty() {
+        target.engines = Some(tiny.engines.clone());
     }
-    
+    if !tiny.groups.is_empty() {
+        target.groups = Some(tiny.groups.iter().map(|g| *g as i32).collect());
+    }
+    if !tiny.logics.is_empty() {
+        target.logics = Some(tiny.logics.clone());
+    }
+    target.field = tiny.field.clone();
+
+    let mut params = HashMap::new();
+    if let Some(v) = tiny.value {
+        params.insert("value".to_string(), json!(v));
+    }
+
+    let mut cmd_type = match tiny.intent.as_str() {
+        "SET" => "set",
+        "QUERY" => "query",
+        "SEMANTIC" | "FORMULA" => "semantic",
+        "PROGRESSION" => "progression",
+        "COPY" => "copy",
+        "COMPARE" => "compare",
+        _ => "unknown",
+    };
+
+    let mut semantic = None;
+    if (cmd_type == "semantic"
+        || ((cmd_type == "set" || cmd_type == "unknown")
+            && (target.field.is_none() || !params.contains_key("value"))))
+        && parse_semantic_command(body).is_some()
+    {
+        semantic = parse_semantic_command(body);
+        cmd_type = "semantic";
+    }
+
+    if cmd_type != "unknown" || tiny.confidence >= 0.35 {
+        return ParsedCommand {
+            command_type: cmd_type.into(),
+            target,
+            params,
+            semantic,
+        };
+    }
+
     let mut cmd_type = detect_command_type(body);
     let target = extract_target(body);
     let params = extract_params(body, cmd_type);
-    
+
     // Try semantic parsing if set/unknown without field/value
-    let semantic = if (cmd_type == "set" || cmd_type == "unknown") 
-        && (target.field.is_none() || !params.contains_key("value")) {
+    let semantic = if (cmd_type == "set" || cmd_type == "unknown")
+        && (target.field.is_none() || !params.contains_key("value"))
+    {
         if let Some(ops) = parse_semantic_command(body) {
             cmd_type = "semantic";
             Some(ops)
@@ -438,7 +518,7 @@ pub fn parse_command(input: &str) -> ParsedCommand {
     } else {
         None
     };
-    
+
     ParsedCommand {
         command_type: cmd_type.into(),
         target,
@@ -496,7 +576,7 @@ pub fn execute_command(cmd: &ParsedCommand) -> CommandResult {
                     "operations": semantic.operations,
                     "target": cmd.target,
                 });
-                
+
                 CommandResult {
                     success: true,
                     message: format!("[SEMANTIC PREVIEW] {}", semantic.description),
@@ -526,7 +606,7 @@ pub fn handle_message_headless(input: &str) -> HeadlessResult {
     let cmd = parse_command(input);
     let result = execute_command(&cmd);
     let status = if result.success { "pass" } else { "fail" };
-    
+
     HeadlessResult {
         input: input.into(),
         parsed: cmd,
@@ -538,7 +618,7 @@ pub fn handle_message_headless(input: &str) -> HeadlessResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_semantic_aggressive() {
         let result = handle_message_headless("make engine A 30% more aggressive");
@@ -546,14 +626,14 @@ mod tests {
         assert_eq!(result.parsed.command_type, "semantic");
         assert!(result.parsed.semantic.is_some());
     }
-    
+
     #[test]
     fn test_query_snapshot() {
         let result = handle_message_headless("show me power group 1 values");
         assert_eq!(result.status, "pass");
         assert_eq!(result.parsed.command_type, "query");
     }
-    
+
     #[test]
     fn test_set_command() {
         let result = handle_message_headless("set grid to 600 for group 1");
@@ -561,7 +641,7 @@ mod tests {
         assert_eq!(result.parsed.command_type, "set");
         assert_eq!(result.parsed.target.field, Some("grid".into()));
     }
-    
+
     #[test]
     fn test_double_lot() {
         let result = handle_message_headless("double the lot for engine A");

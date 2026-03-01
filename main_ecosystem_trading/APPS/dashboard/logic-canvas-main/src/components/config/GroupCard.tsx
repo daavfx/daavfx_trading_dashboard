@@ -160,11 +160,28 @@ export function GroupCard({
                 const groupLogics =
                   engineData?.groups?.find((g: any) => g.group_number === groupNum)
                     ?.logics || [];
-                const matchingLogics = groupLogics.filter(
+                const matchingLogicsAll = groupLogics.filter(
                   (l: any) =>
-                    String(l?.logic_name || "").toUpperCase() ===
-                    logicBaseName.toUpperCase(),
+                    (() => {
+                      const normalizeLogicName = (raw: string) => {
+                        const upper = String(raw || "").toUpperCase();
+                        return upper === "SCALP" ? "SCALPER" : upper;
+                      };
+                      return (
+                        normalizeLogicName(String(l?.logic_name || "")) ===
+                        normalizeLogicName(logicBaseName)
+                        );
+                    })(),
                 );
+                const primaryName = String(logicBaseName || "").toUpperCase();
+                const matchingLogicsPrimary = matchingLogicsAll.filter(
+                  (l: any) =>
+                    String(l?.logic_name || "").toUpperCase() === primaryName,
+                );
+                const matchingLogics =
+                  matchingLogicsPrimary.length > 0
+                    ? matchingLogicsPrimary
+                    : matchingLogicsAll;
                 const foundLogicConfig =
                   matchingLogics.find(
                     (l: any) => resolveLogicDirection(l) === "buy",

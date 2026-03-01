@@ -4,9 +4,7 @@ import { save, open } from "@tauri-apps/plugin-dialog";
 import { toast } from "sonner";
 import type { MTConfig } from "@/types/mt-config";
 import { useMTConfig } from "./useMTConfig";
-import { useSettings } from "@/contexts/SettingsContext";
-import { withUseDirectPriceGrid, normalizeConfigForExport } from "@/utils/unit-mode";
-import { hydrateMTConfigDefaults } from "@/utils/hydrate-mt-config-defaults";
+import { canonicalizeConfigForBackend, normalizeConfigForExport } from "@/utils/unit-mode";
 import {
   generateMassiveCompleteConfig,
 } from "@/lib/config/generateMassiveConfig";
@@ -32,7 +30,6 @@ export function useMTFileOps(
     saveConfig,
     setConfigOnly,
   } = useMTConfig(mtPlatform);
-  const { settings } = useSettings();
   const tauriAvailable =
     typeof window !== "undefined" && Boolean((window as any).__TAURI_INTERNALS__);
   const downloadTextFile = (filename: string, content: string) => {
@@ -55,9 +52,10 @@ export function useMTFileOps(
 
   const loadConfigOnly = useCallback(
     async (newConfig: MTConfig) => {
+      const canonicalConfig = canonicalizeConfigForBackend(newConfig);
       const nowIso = new Date().toISOString();
       const enrichedConfig: MTConfig = {
-        ...newConfig,
+        ...canonicalConfig,
         last_saved_at: nowIso,
         last_saved_platform: mtPlatform,
       };
@@ -77,53 +75,7 @@ export function useMTFileOps(
     }
 
     try {
-      const configToExport = withUseDirectPriceGrid(config, settings);
-      const prepared = hydrateMTConfigDefaults(configToExport);
-
-      const preparedForExport: MTConfig = {
-        ...prepared,
-        general: {
-          ...prepared.general,
-          require_license:
-            String(prepared.general.license_key || "").trim().length > 0
-              ? prepared.general.require_license
-              : false,
-        },
-        engines: (prepared.engines || []).map((e) => ({
-          ...e,
-          groups: (e.groups || []).map((g) => {
-            if (e.engine_id !== "A") return g;
-            if (g.group_number <= 1) return g;
-            if (typeof g.group_power_start === "number") return g;
-            return { ...g, group_power_start: g.group_number };
-          }),
-        })),
-      };
-
-      const ensuredTradable: MTConfig = {
-        ...preparedForExport,
-        engines: (preparedForExport.engines || []).map((e) => {
-          if (e.engine_id !== "A") return e;
-          return {
-            ...e,
-            groups: (e.groups || []).map((g) => {
-              if (g.group_number !== 1) return g;
-              return {
-                ...g,
-                logics: (g.logics || []).map((l: any) => {
-                  if (String(l?.logic_name || "").toLowerCase() !== "power")
-                    return l;
-                  const enabledBuy = l?.enabled_b === true;
-                  const enabledSell = l?.enabled_s === true;
-                  const enabled = l?.enabled === true;
-                  if (enabled || enabledBuy || enabledSell) return l;
-                  return { ...l, enabled: true, allow_buy: true, allow_sell: true };
-                }),
-              };
-            }),
-          };
-        }),
-      };
+      const configToExport = config;
 
       if (tauriAvailable) {
         const filePath = await save({
@@ -132,40 +84,7 @@ export function useMTFileOps(
         });
         if (!filePath) return;
 
-        // Deep clone and convert camelCase to snake_case for Rust backend
-        const configToRust = JSON.parse(JSON.stringify(ensuredTradable));
-        for (const engine of configToRust.engines || []) {
-          for (const group of engine.groups || []) {
-            for (const logic of group.logics || []) {
-              // Convert camelCase to snake_case for all directional fields
-              const fieldConversions: Record<string, string> = {
-                'startLevel': 'start_level',
-                'lastLot': 'last_lot',
-                'initialLotBuy': 'initial_lot_b',
-                'initialLotSell': 'initial_lot_s',
-                'lastLotBuy': 'last_lot_b',
-                'lastLotSell': 'last_lot_s',
-                'multiplierBuy': 'multiplier_b',
-                'multiplierSell': 'multiplier_s',
-                'gridBuy': 'grid_b',
-                'gridSell': 'grid_s',
-                'trailValueBuy': 'trail_value_b',
-                'trailValueSell': 'trail_value_s',
-                'trailStartBuy': 'trail_start_b',
-                'trailStartSell': 'trail_start_s',
-                'trailStepBuy': 'trail_step_b',
-                'trailStepSell': 'trail_step_s',
-              };
-              
-              for (const [camelKey, snakeKey] of Object.entries(fieldConversions)) {
-                if (camelKey in logic) {
-                  logic[snakeKey] = logic[camelKey];
-                  delete logic[camelKey];
-                }
-              }
-            }
-          }
-        }
+        const configToRust = canonicalizeConfigForBackend(configToExport);
 
         await invoke("export_massive_v19_setfile", {
           config: normalizeConfigForExport(configToRust),
@@ -180,7 +99,7 @@ export function useMTFileOps(
     } catch (err) {
       toast.error(`Failed to export .set file: ${err}`);
     }
-  }, [config, mtPlatform, settings, tauriAvailable]);
+  }, [config, mtPlatform, tauriAvailable]);
 
   const refreshActiveSetStatus = useCallback(async () => {
     return null;
@@ -209,7 +128,7 @@ export function useMTFileOps(
           : String(filePath).split(/[/\\\\]/).pop() || String(filePath);
         importedConfig = { ...importedConfig, current_set_name: name };
 
-        await loadConfigOnly(hydrateMTConfigDefaults(importedConfig));
+        await loadConfigOnly(importedConfig);
         toast.success("Loaded .set file locally");
       } else {
         toast.error("Importing .set requires the app backend. Use JSON import in browser mode.");
@@ -285,7 +204,7 @@ export function useMTFileOps(
         }
 
         console.log("[SETFILE] ========== PROCESSING CONFIG ==========");
-        await loadConfigOnly(hydrateMTConfigDefaults(importedConfig));
+        await loadConfigOnly(importedConfig);
         console.log("[SETFILE] ========== LOAD COMPLETE ==========");
 
         toast.success("Loaded .set file locally (not synced to MT)");

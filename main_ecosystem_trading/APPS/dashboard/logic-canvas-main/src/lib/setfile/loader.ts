@@ -2,16 +2,27 @@ import type { MTConfigComplete, LogicConfig } from "@/types/mt-config-complete";
 import { LOGIC_SUFFIX_MAP } from "@/types/mt-config-complete";
 import type { ChangePreview } from "@/lib/chat/types";
 
-function invTrailMethod(n: number): string { return n === 0 ? "Trail_Points" : n === 1 ? "Trail_AVG_Percent" : "Trail_AVG_Points"; }
+function invTrailMethod(n: number): string { return n === 1 ? "AVG_Percent" : "Points"; }
 function invTrailStepMethod(n: number): string { return n === 0 ? "Step_Points" : "Step_Percent"; }
-function invTrailStepMode(n: number): string { switch (n) { case 0: return "TrailStepMode_Auto"; case 1: return "TrailStepMode_Points"; case 2: return "TrailStepMode_Percent"; case 3: return "TrailStepMode_PerOrder"; case 4: return "TrailStepMode_Disabled"; default: return "TrailStepMode_Auto"; } }
+function invTrailStepMode(n: number): string { switch (n) { case 0: return "TrailStepMode_Auto"; case 1: return "TrailStepMode_Fixed"; case 2: return "TrailStepMode_Fixed"; case 3: return "TrailStepMode_PerOrder"; default: return "TrailStepMode_Auto"; } }
 function invTPSLMode(n: number): string { return n === 0 ? "TPSL_Points" : n === 1 ? "TPSL_Price" : "TPSL_Percent"; }
-function invPartialMode(n: number): string { switch (n) { case 0: return "PartialMode_Low"; case 1: return "PartialMode_Mid"; case 2: return "PartialMode_Aggressive"; case 3: return "PartialMode_High"; case 4: return "PartialMode_Balanced"; default: return "PartialMode_Mid"; } }
+function invPartialMode(n: number): string {
+  switch (n) {
+    case 0: return "PartialMode_Low";
+    case 1: return "PartialMode_Mid";
+    case 2: return "PartialMode_Aggressive";
+    // Legacy aliases normalize to canonical active contract.
+    case 3: return "PartialMode_Aggressive";
+    case 4: return "PartialMode_Mid";
+    default: return "PartialMode_Mid";
+  }
+}
 function invPartialBalance(n: number): string { switch (n) { case 0: return "PartialBalance_Negative"; case 1: return "PartialBalance_Balanced"; case 2: return "PartialBalance_Profit"; case 3: return "PartialBalance_Aggressive"; case 4: return "PartialBalance_Conservative"; default: return "PartialBalance_Balanced"; } }
 function invPartialTrigger(n: number): string { switch (n) { case 0: return "PartialTrigger_Cycle"; case 1: return "PartialTrigger_Profit"; case 2: return "PartialTrigger_Time"; case 3: return "PartialTrigger_Both"; default: return "PartialTrigger_Cycle"; } }
 function invEntryTrigger(n: number): string { switch (n) { case 0: return "Trigger_Immediate"; case 1: return "Trigger_AfterBars"; case 2: return "Trigger_AfterSeconds"; case 3: return "Trigger_AfterPips"; case 4: return "Trigger_TimeFilter"; case 5: return "Trigger_NewsFilter"; default: return "Trigger_Immediate"; } }
 function invGridBehavior(n: number): string { return n === 1 ? "GridBehavior_TrendFollowing" : n === 2 ? "GridBehavior_Disabled" : "GridBehavior_CounterTrend"; }
 function invRestartPolicy(n: number): string { switch (n) { case 0: return "Restart_Default"; case 1: return "Restart_Cycle"; case 2: return "Continue_Cycle"; case 3: return "Stop_Trading"; default: return "Restart_Default"; } }
+function invNewsAction(n: number): string { switch (n) { case 0: return "TriggerAction_None"; case 1: return "TriggerAction_StopEA"; case 2: return "TriggerAction_StopEA_KeepTrades"; case 3: return "TriggerAction_CloseAll"; case 4: return "TriggerAction_KeepEA_CloseTrades"; case 5: return "TriggerAction_StopEA_CloseTrades"; case 6: return "TriggerAction_PauseEA_CloseTrades"; case 7: return "TriggerAction_PauseEA_KeepTrades"; default: return "TriggerAction_StopEA_KeepTrades"; } }
 function invBreakevenMode(n: number): string { switch (n) { case 0: return "Breakeven_Disabled"; case 1: return "Breakeven_Points"; case 2: return "Breakeven_Percent"; case 3: return "Breakeven_Price"; default: return "Breakeven_Disabled"; } }
 
 function suffixInverse(): Record<string, { engine: "A" | "B" | "C"; logic: string }> {
@@ -218,6 +229,14 @@ export function computeSetChanges(config: MTConfigComplete, content: string): Ch
     }
   }
 
+  // News filter changes
+  if (parsed.globals.has("NewsAction")) {
+    const newVal = invNewsAction(Number(parsed.globals.get("NewsAction")!));
+    if (config.global.newsAction !== newVal) {
+      changes.push({ engine: "GLOBAL", group: 0, logic: "-", field: "newsAction", currentValue: config.global.newsAction, newValue: newVal });
+    }
+  }
+
   return changes;
 }
 
@@ -347,6 +366,30 @@ export function applySetContent(config: MTConfigComplete, content: string): MTCo
   }
   if (parsed.globals.has("MagicNumber")) {
     newConfig.global.baseMagicNumber = Number(parsed.globals.get("MagicNumber")!);
+  }
+
+  // News filter settings
+  if (parsed.globals.has("NewsAction")) {
+    const val = parsed.globals.get("NewsAction")!;
+    newConfig.global.newsAction = invNewsAction(Number(val));
+  }
+  if (parsed.globals.has("NewsFilterEnabled")) {
+    newConfig.global.newsFilterEnabled = parsed.globals.get("NewsFilterEnabled") === "1";
+  }
+  if (parsed.globals.has("NewsFilterCountries")) {
+    newConfig.global.newsCountries = parsed.globals.get("NewsFilterCountries")!;
+  }
+  if (parsed.globals.has("NewsImpactLevel")) {
+    newConfig.global.newsImpactLevel = Number(parsed.globals.get("NewsImpactLevel")!);
+  }
+  if (parsed.globals.has("MinutesBeforeNews")) {
+    newConfig.global.newsMinutesBefore = Number(parsed.globals.get("MinutesBeforeNews")!);
+  }
+  if (parsed.globals.has("MinutesAfterNews")) {
+    newConfig.global.newsMinutesAfter = Number(parsed.globals.get("MinutesAfterNews")!);
+  }
+  if (parsed.globals.has("NewsCalendarFile")) {
+    newConfig.global.newsCalendarFile = parsed.globals.get("NewsCalendarFile")!;
   }
 
   return newConfig;

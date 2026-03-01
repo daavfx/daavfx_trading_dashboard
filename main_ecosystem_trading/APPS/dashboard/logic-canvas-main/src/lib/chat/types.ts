@@ -144,4 +144,7 @@ export interface ChatMessage {
   command?: ParsedCommand;
   result?: CommandResult;
   showPanel?: string; // Panel to display: "help", "history", etc.
+  // TinyLLM routing
+  pendingInference?: boolean;
+  pendingMessage?: string | null;
 }

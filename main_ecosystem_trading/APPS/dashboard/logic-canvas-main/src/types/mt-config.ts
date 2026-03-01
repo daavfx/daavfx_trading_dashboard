@@ -3,15 +3,16 @@
 
 export type Platform = "MT4" | "MT5";
 
-export type TrailMethod = "Points" | "AVG_Percent" | "AVG_Points" | "Percent";
+export type TrailMethod = "Points" | "AVG_Percent";
 
-export type TrailStepMethod = "Step_Points" | "Step_Percent" | "Step_Pips";
+export type TrailStepMethod = "Step_Points" | "Step_Percent";
 
 // Trail Step Mode - controls how trail steps are applied
-export type TrailStepMode = "TrailStepMode_Auto" | "TrailStepMode_Fixed" | "TrailStepMode_PerOrder" | "TrailStepMode_Disabled";
+export type TrailStepMode = "TrailStepMode_Auto" | "TrailStepMode_Fixed" | "TrailStepMode_PerOrder";
 
 // V9.0: Trade Direction type for buy/sell separation
 export type TradeDirection = "B" | "S" | "Both";
+export type TradingMode = "Counter Trend" | "Hedge" | "Reverse";
 
 // V9.0: Direction-aware configuration for buy/sell separated inputs
 // Each field can have separate values for BUY (_B) and SELL (_S) directions
@@ -77,11 +78,18 @@ export type LogicReference =
   | "Logic_None";  // No reference
 
 // TPSL modes
-export type TPSLMode = "TPSL_Points" | "TPSL_Percent" | "TPSL_Currency";
+export type TPSLMode = "TPSL_Points" | "TPSL_Percent";
 
-// Partial close modes
-export type PartialMode = "PartialMode_Low" | "PartialMode_High" | "PartialMode_Balanced";
-export type PartialBalance = "PartialBalance_Aggressive" | "PartialBalance_Balanced" | "PartialBalance_Conservative";
+// Partial close modes (active contract)
+export type PartialMode = "PartialMode_Low" | "PartialMode_Mid" | "PartialMode_Aggressive";
+// Legacy-only compatibility values; not part of active UI/export contract.
+export type LegacyPartialBalance =
+  | "PartialBalance_Negative"
+  | "PartialBalance_Balanced"
+  | "PartialBalance_Profit"
+  | "PartialBalance_Aggressive"
+  | "PartialBalance_Conservative";
+export type PartialBalance = LegacyPartialBalance;
 
 // Reverse Lot Mode - how to calculate reversed lot size
 export type ReverseLotMode = "Reverse_UseScale" | "Reverse_UseGroup1Params";
@@ -124,7 +132,6 @@ export interface GeneralConfig {
   use_direct_price_grid: boolean;
 
   // Clean EA math controls
-  group_mode?: number; // 0=Independent, 1=Progressive
   grid_unit?: number; // 0=Points, 1=Pips
   pip_factor?: number; // 0=Auto
   
@@ -213,8 +220,22 @@ export interface NewsFilterConfig {
   impact_level: number; // 1=Low, 2=Med, 3=High
   minutes_before: number;
   minutes_after: number;
-  action: string; // ENUM_TRIGGER_ACTION
+  stop_ea: boolean; // Stop EA during news events
+  close_trades: boolean; // Close open trades when news hits
+  auto_restart: boolean; // Auto-restart EA after news window passes
   calendar_file?: string;
+  check_interval?: number;
+  alert_minutes?: number;
+  filter_high_only?: boolean;
+  filter_weekends?: boolean;
+  use_local_cache?: boolean;
+  cache_duration?: number;
+  fallback_on_error?: string;
+  filter_currencies?: string;
+  include_speeches?: boolean;
+  include_reports?: boolean;
+  visual_indicator?: boolean;
+  alert_before_news?: boolean;
 }
 
 export interface EngineConfig {
@@ -291,7 +312,7 @@ export interface LogicConfig {
   hedge_scale: number;                  // gInput_G{group}_Scale_{logic}_Hedge (e.g., 50.0 = 50%)
   reverse_reference: LogicReference;    // gInput_G{group}_{logic}_ReverseReference - which logic to reverse against
   hedge_reference: LogicReference;      // gInput_G{group}_{logic}_HedgeReference - which logic to hedge against
-  trading_mode?: string;
+  trading_mode?: TradingMode;
   
   // ===== TRAIL STEP ADVANCED (3 fields) =====
   trail_step_mode: TrailStepMode;       // gInput_TrailStepMode_{suffix} - how trail steps are applied
@@ -335,28 +356,34 @@ export interface LogicConfig {
   trail_step_balance_7?: number;
   trail_step_mode_7?: TrailStepMode;
 
-  // ===== CLOSE PARTIAL (5 fields) =====
+  // ===== CLOSE PARTIAL (active contract) =====
   close_partial: boolean;               // gInput_ClosePartial_{suffix}
-  close_partial_cycle: number;          // gInput_ClosePartialCycle_{suffix}
   close_partial_mode: PartialMode;      // gInput_ClosePartialMode_{suffix} (enum)
-  close_partial_balance: PartialBalance; // gInput_ClosePartialBalance_{suffix} (enum)
-  close_partial_trail_step_mode: TrailStepMode; // gInput_TrailStepMode_{suffix} for partial close
+  close_partial_profit_threshold: number; // gInput_ClosePartialProfitThreshold_{suffix}
+
+  // Legacy compatibility fields - ignored by active runtime contract.
+  close_partial_cycle?: number;
+  close_partial_balance?: LegacyPartialBalance;
+  close_partial_trail_step_mode?: TrailStepMode;
 
   // ===== CLOSE PARTIAL EXTENDED (Levels 2-4) =====
   close_partial_2?: boolean;
-  close_partial_cycle_2?: number;
   close_partial_mode_2?: PartialMode;
-  close_partial_balance_2?: PartialBalance;
+  close_partial_profit_threshold_2?: number;
+  close_partial_cycle_2?: number;
+  close_partial_balance_2?: LegacyPartialBalance;
 
   close_partial_3?: boolean;
-  close_partial_cycle_3?: number;
   close_partial_mode_3?: PartialMode;
-  close_partial_balance_3?: PartialBalance;
+  close_partial_profit_threshold_3?: number;
+  close_partial_cycle_3?: number;
+  close_partial_balance_3?: LegacyPartialBalance;
 
   close_partial_4?: boolean;
-  close_partial_cycle_4?: number;
   close_partial_mode_4?: PartialMode;
-  close_partial_balance_4?: PartialBalance;
+  close_partial_profit_threshold_4?: number;
+  close_partial_cycle_4?: number;
+  close_partial_balance_4?: LegacyPartialBalance;
   
   // ===== GROUP 1 ONLY (4 fields - optional for Groups 2-20) =====
   trigger_type?: string;                // gInput_G1_TriggerType_P (Group 1 ONLY!)
@@ -396,7 +423,7 @@ export function isValidPlatform(platform: string): platform is Platform {
 }
 
 export function isValidTrailMethod(method: string): method is TrailMethod {
-  return ["Points", "AVG_Percent", "AVG_Points", "Percent"].includes(method);
+  return ["Points", "AVG_Percent"].includes(method);
 }
 
 export function isValidLogicReference(ref: string): ref is LogicReference {
@@ -404,7 +431,7 @@ export function isValidLogicReference(ref: string): ref is LogicReference {
 }
 
 export function isValidTrailStepMode(mode: string): mode is TrailStepMode {
-  return ["TrailStepMode_Auto", "TrailStepMode_Fixed", "TrailStepMode_PerOrder", "TrailStepMode_Disabled"].includes(mode);
+  return ["TrailStepMode_Auto", "TrailStepMode_Fixed", "TrailStepMode_PerOrder"].includes(mode);
 }
 
 // All 21 logic identifiers used across the EA

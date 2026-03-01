@@ -6,6 +6,7 @@ import type {
   NewsFilterConfig,
   SessionConfig,
   EngineConfig,
+  TradingMode,
 } from "@/types/mt-config";
 
 const defaultRiskManagement: RiskManagementConfig = {
@@ -53,6 +54,18 @@ const defaultNewsFilter: NewsFilterConfig = {
   minutes_after: 30,
   action: "TriggerAction_StopEA_KeepTrades",
   calendar_file: "DAAVFX_NEWS.csv",
+  check_interval: 60,
+  alert_minutes: 5,
+  filter_high_only: true,
+  filter_weekends: false,
+  use_local_cache: true,
+  cache_duration: 3600,
+  fallback_on_error: "Fallback_Continue",
+  filter_currencies: "",
+  include_speeches: true,
+  include_reports: true,
+  visual_indicator: true,
+  alert_before_news: false,
 };
 
 const defaultGeneral: GeneralConfig = {
@@ -66,7 +79,6 @@ const defaultGeneral: GeneralConfig = {
   allow_sell: true,
   enable_logs: false,
   use_direct_price_grid: false,
-  group_mode: 1,
   grid_unit: 0,
   pip_factor: 0,
   compounding_enabled: false,
@@ -115,6 +127,345 @@ function normalizeTimeFilters(
   };
 }
 
+const DIRECTIONAL_NUMERIC_FIELDS = [
+  "initial_lot",
+  "multiplier",
+  "grid",
+  "trail_value",
+  "trail_start",
+  "trail_step",
+] as const;
+
+const normalizeTradingMode = (raw: unknown): TradingMode => {
+  const mode = String(raw ?? "").trim().toLowerCase();
+  if (mode === "hedge") return "Hedge";
+  if (mode === "reverse") return "Reverse";
+  if (
+    mode === "counter trend" ||
+    mode === "countertrend" ||
+    mode === "counter_trend" ||
+    mode === "counter-trend" ||
+    mode === "trend following" ||
+    mode === "trend_following" ||
+    mode === "trending" ||
+    mode === ""
+  ) {
+    return "Counter Trend";
+  }
+  return "Counter Trend";
+};
+
+const parseExplicitTradingMode = (raw: unknown): TradingMode | null => {
+  if (raw === undefined || raw === null) return null;
+  if (String(raw).trim() === "") return null;
+  return normalizeTradingMode(raw);
+};
+
+const parseBool = (raw: unknown): boolean => {
+  if (typeof raw === "boolean") return raw;
+  if (typeof raw === "number") return raw !== 0;
+  const v = String(raw ?? "")
+    .trim()
+    .toLowerCase();
+  return v === "1" || v === "true" || v === "on" || v === "yes";
+};
+
+const parseScale = (raw: unknown, fallback: number): number => {
+  if (typeof raw === "number" && Number.isFinite(raw)) return raw;
+  const n = parseFloat(String(raw ?? ""));
+  return Number.isFinite(n) ? n : fallback;
+};
+
+const normalizeTrailMethod = (raw: unknown): "Points" | "AVG_Percent" => {
+  const mode = String(raw ?? "").trim().toLowerCase();
+  if (mode === "avg_percent" || mode === "trail_avg_percent") return "AVG_Percent";
+  return "Points";
+};
+
+const normalizeTrailStepMethod = (raw: unknown): "Step_Points" | "Step_Percent" => {
+  const mode = String(raw ?? "").trim().toLowerCase();
+  if (mode === "step_percent") return "Step_Percent";
+  return "Step_Points";
+};
+
+const normalizeTrailStepMode = (
+  raw: unknown,
+): "TrailStepMode_Auto" | "TrailStepMode_Fixed" | "TrailStepMode_PerOrder" => {
+  const mode = String(raw ?? "").trim().toLowerCase();
+  if (mode === "trailstepmode_perorder") return "TrailStepMode_PerOrder";
+  if (
+    mode === "trailstepmode_fixed" ||
+    mode === "trailstepmode_points" ||
+    mode === "trailstepmode_percent"
+  ) {
+    return "TrailStepMode_Fixed";
+  }
+  return "TrailStepMode_Auto";
+};
+
+const normalizePartialMode = (
+  raw: unknown,
+): "PartialMode_Low" | "PartialMode_Mid" | "PartialMode_Aggressive" => {
+  const mode = String(raw ?? "").trim().toLowerCase();
+  if (mode === "partialmode_low") return "PartialMode_Low";
+  if (mode === "partialmode_aggressive" || mode === "partialmode_high") {
+    return "PartialMode_Aggressive";
+  }
+  if (mode === "partialmode_mid" || mode === "partialmode_balanced") {
+    return "PartialMode_Mid";
+  }
+  return "PartialMode_Mid";
+};
+
+const isEngineAPowerLogic = (engineId: string, logicName: unknown): boolean =>
+  String(engineId).trim().toUpperCase() === "A" &&
+  normalizeLogicName(logicName) === "POWER";
+
+const normalizeModeState = (
+  row: Record<string, any>,
+  engineId: string,
+): Record<string, any> => {
+  const explicitMode = parseExplicitTradingMode(row.trading_mode);
+  const reverseEnabled = parseBool(row.reverse_enabled);
+  const hedgeEnabled = parseBool(row.hedge_enabled);
+
+  let mode: TradingMode;
+  if (explicitMode) {
+    mode = explicitMode;
+  } else if (hedgeEnabled && !reverseEnabled) {
+    mode = "Hedge";
+  } else if (reverseEnabled && !hedgeEnabled) {
+    mode = "Reverse";
+  } else {
+    mode = "Counter Trend";
+  }
+
+  // Invalid legacy conflict: both enabled with no explicit mode.
+  if (!explicitMode && reverseEnabled && hedgeEnabled) {
+    mode = "Counter Trend";
+  }
+
+  if (isEngineAPowerLogic(engineId, row.logic_name)) {
+    mode = "Counter Trend";
+  }
+
+  const out = { ...row, trading_mode: mode };
+  if (mode === "Hedge") {
+    out.hedge_enabled = true;
+    out.reverse_enabled = false;
+    out.hedge_reference = String(out.hedge_reference ?? "Logic_None");
+    out.hedge_scale = parseScale(out.hedge_scale, 50);
+    out.reverse_reference = "Logic_None";
+    out.reverse_scale = 100;
+    return out;
+  }
+
+  if (mode === "Reverse") {
+    out.reverse_enabled = true;
+    out.hedge_enabled = false;
+    out.reverse_reference = String(out.reverse_reference ?? "Logic_None");
+    out.reverse_scale = parseScale(out.reverse_scale, 100);
+    out.hedge_reference = "Logic_None";
+    out.hedge_scale = 50;
+    return out;
+  }
+
+  // Counter Trend (and Engine A POWER): force neutral reverse/hedge state.
+  out.reverse_enabled = false;
+  out.hedge_enabled = false;
+  out.reverse_reference = "Logic_None";
+  out.hedge_reference = "Logic_None";
+  out.reverse_scale = 100;
+  out.hedge_scale = 50;
+  return out;
+};
+
+const normalizeTrailContract = (row: Record<string, any>): Record<string, any> => {
+  const out = { ...row };
+  out.trail_method = normalizeTrailMethod(out.trail_method);
+  out.trail_step_method = normalizeTrailStepMethod(out.trail_step_method);
+  out.trail_step_mode = normalizeTrailStepMode(out.trail_step_mode);
+  out.close_partial_mode = normalizePartialMode(out.close_partial_mode);
+
+  for (let level = 2; level <= 7; level += 1) {
+    const methodKey = `trail_step_method_${level}`;
+    const modeKey = `trail_step_mode_${level}`;
+    if (out[methodKey] !== undefined && out[methodKey] !== null && out[methodKey] !== "") {
+      out[methodKey] = normalizeTrailStepMethod(out[methodKey]);
+    }
+    if (out[modeKey] !== undefined && out[modeKey] !== null && out[modeKey] !== "") {
+      out[modeKey] = normalizeTrailStepMode(out[modeKey]);
+    }
+  }
+
+  if (out.close_partial_profit_threshold === undefined) {
+    out.close_partial_profit_threshold = 0;
+  }
+  for (let level = 2; level <= 4; level += 1) {
+    const modeKey = `close_partial_mode_${level}`;
+    const thresholdKey = `close_partial_profit_threshold_${level}`;
+    if (out[modeKey] !== undefined && out[modeKey] !== null && out[modeKey] !== "") {
+      out[modeKey] = normalizePartialMode(out[modeKey]);
+    }
+    if (out[thresholdKey] === undefined) {
+      out[thresholdKey] = 0;
+    }
+  }
+
+  delete out.close_partial_cycle;
+  delete out.close_partial_balance;
+  delete out.close_partial_trail_step_mode;
+  delete out.close_partial_cycle_2;
+  delete out.close_partial_balance_2;
+  delete out.close_partial_cycle_3;
+  delete out.close_partial_balance_3;
+  delete out.close_partial_cycle_4;
+  delete out.close_partial_balance_4;
+
+  return out;
+};
+
+const normalizeLogicName = (raw: unknown): string => {
+  const upper = String(raw ?? "").trim().toUpperCase();
+  return upper === "SCALP" ? "SCALPER" : upper;
+};
+
+const inferLogicDirection = (logic: Record<string, any>): "buy" | "sell" | null => {
+  const direction = String(logic?.direction ?? "").trim().toUpperCase();
+  if (direction === "B" || direction === "BUY") return "buy";
+  if (direction === "S" || direction === "SELL") return "sell";
+
+  const logicId = String(logic?.logic_id ?? "").trim().toUpperCase();
+  if (logicId.includes("_B_") || logicId.endsWith("_B")) return "buy";
+  if (logicId.includes("_S_") || logicId.endsWith("_S")) return "sell";
+
+  if (logic?.allow_buy === true && logic?.allow_sell !== true) return "buy";
+  if (logic?.allow_sell === true && logic?.allow_buy !== true) return "sell";
+  return null;
+};
+
+const forceDirectionalLogicId = (
+  existingId: unknown,
+  engineId: string,
+  logicName: string,
+  groupNumber: number,
+  side: "buy" | "sell",
+): string => {
+  const token = side === "buy" ? "B" : "S";
+  const id = String(existingId ?? "").trim();
+
+  if (id) {
+    const withToken = id
+      .replace(/_B_/gi, `_${token}_`)
+      .replace(/_S_/gi, `_${token}_`)
+      .replace(/_B$/gi, `_${token}`)
+      .replace(/_S$/gi, `_${token}`);
+    if (withToken !== id) return withToken;
+  }
+
+  const safeLogic = normalizeLogicName(logicName).replace(/[^A-Z0-9]+/g, "_") || "LOGIC";
+  return `${engineId}_${safeLogic}_${token}_G${groupNumber}`;
+};
+
+const applyDirectionalNumericValues = (
+  row: Record<string, any>,
+  side: "buy" | "sell",
+): Record<string, any> => {
+  const suffix = side === "buy" ? "_b" : "_s";
+  const out = { ...row };
+  for (const field of DIRECTIONAL_NUMERIC_FIELDS) {
+    const scoped = out[`${field}${suffix}`];
+    if (typeof scoped === "number") out[field] = scoped;
+  }
+  return out;
+};
+
+const normalizeGroupLogics = (
+  logics: any[],
+  engineId: string,
+  groupNumber: number,
+): any[] => {
+  const rows = (Array.isArray(logics) ? logics : []).map((l: any) => {
+    const normalizedName = normalizeLogicName(l?.logic_name);
+    const startLevelValue = l?.start_level ?? l?.startLevel;
+    const { startLevel, ...rest } = l ?? {};
+    return {
+      ...rest,
+      ...(normalizedName ? { logic_name: normalizedName } : {}),
+      ...(typeof startLevelValue === "number" ? { start_level: startLevelValue } : {}),
+    };
+  });
+
+  // Already directional model: keep values as-is and only ensure direction flags/ids are coherent.
+  if (
+    rows.length > 0 &&
+    rows.every((row: any) => inferLogicDirection(row) !== null)
+  ) {
+    return rows.map((row: any) => {
+      const dir = inferLogicDirection(row);
+      const side = dir === "sell" ? "sell" : "buy";
+      const withDirectionalNumbers = applyDirectionalNumericValues(row, side);
+      return normalizeTrailContract(normalizeModeState({
+        ...withDirectionalNumbers,
+        allow_buy: side === "buy",
+        allow_sell: side === "sell",
+        logic_id: forceDirectionalLogicId(
+          row.logic_id,
+          engineId,
+          String(row.logic_name ?? ""),
+          groupNumber,
+          side,
+        ),
+      }, engineId));
+    });
+  }
+
+  // Normalize any non-directional row shape into explicit buy/sell rows.
+  const grouped = new Map<string, any[]>();
+  for (const row of rows) {
+    const key = normalizeLogicName(row?.logic_name);
+    if (!grouped.has(key)) grouped.set(key, []);
+    grouped.get(key)!.push(row);
+  }
+
+  const materialized: any[] = [];
+  for (const [, bucket] of grouped) {
+    const base = bucket[0];
+    if (!base) continue;
+    const buySource = bucket.find((row) => inferLogicDirection(row) === "buy") ?? base;
+    const sellSource = bucket.find((row) => inferLogicDirection(row) === "sell") ?? base;
+
+    const buyRow = applyDirectionalNumericValues({ ...buySource }, "buy");
+    buyRow.allow_buy = true;
+    buyRow.allow_sell = false;
+    buyRow.logic_id = forceDirectionalLogicId(
+      buySource.logic_id,
+      engineId,
+      String(buySource.logic_name ?? ""),
+      groupNumber,
+      "buy",
+    );
+
+    const sellRow = applyDirectionalNumericValues({ ...sellSource }, "sell");
+    sellRow.allow_buy = false;
+    sellRow.allow_sell = true;
+    sellRow.logic_id = forceDirectionalLogicId(
+      sellSource.logic_id,
+      engineId,
+      String(sellSource.logic_name ?? ""),
+      groupNumber,
+      "sell",
+    );
+
+    materialized.push(
+      normalizeTrailContract(normalizeModeState(buyRow, engineId)),
+      normalizeTrailContract(normalizeModeState(sellRow, engineId)),
+    );
+  }
+
+  return materialized;
+};
+
 function normalizeEngines(engines: EngineConfig[] | undefined): EngineConfig[] {
   if (!Array.isArray(engines)) return [];
   return engines.map((e) => ({
@@ -123,82 +474,10 @@ function normalizeEngines(engines: EngineConfig[] | undefined): EngineConfig[] {
       ? e.groups.map((g: any) => {
         const baseGroup: any = {
           ...g,
-          logics: Array.isArray(g?.logics) ? g.logics : [],
+          logics: Array.isArray(g?.logics)
+            ? normalizeGroupLogics(g.logics, String(e?.engine_id ?? "A"), Number(g?.group_number ?? 0))
+            : [],
         };
-
-        if (
-          e.engine_id === "A" &&
-          baseGroup?.group_number > 1 &&
-          typeof baseGroup.group_power_start !== "number"
-        ) {
-          baseGroup.group_power_start = baseGroup.group_number;
-        }
-
-        baseGroup.logics = baseGroup.logics.map((l: any) => {
-          const logicName = String(l?.logic_name || "").trim();
-          const logicId = String(l?.logic_id || "").toUpperCase();
-          
-          // Check if this is Power logic by checking logic_name OR logic_id
-          // logic_id format: "A_Power_B_G1" or "B_Power_S_G2" etc. (note: no underscore between engine and Power)
-          const isPowerLogic = logicName.toLowerCase() === "power" || 
-            logicId.includes("_POWER_") || 
-            logicId.startsWith("A_POWER") || logicId.startsWith("A_Power") ||
-            logicId.startsWith("B_POWER") || logicId.startsWith("B_Power") ||
-            logicId.startsWith("C_POWER") || logicId.startsWith("C_Power");
-          
-          // B-Power: Power logic in Engine B (logic_id starts with "B_Power" or engine_id is "B")
-          // C-Power: Power logic in Engine C (logic_id starts with "C_Power" or engine_id is "C")
-          // A-Power: Power logic in Engine A (logic_id starts with "A_Power")
-          const isBPower = isPowerLogic && (logicId.startsWith("B_POWER") || logicId.startsWith("B_Power") || l?.engine_id === "B");
-          const isCPower = isPowerLogic && (logicId.startsWith("C_POWER") || logicId.startsWith("C_Power") || l?.engine_id === "C");
-          const isAPower = isPowerLogic && !isBPower && !isCPower;
-          
-          // Power A should be 0, B-Power/C-Power should be 4 (user expects 4), others should be 1
-          // For B-Power/C-Power: FORCE correct value (4) regardless of what's saved - 0 is ALWAYS wrong
-          // For A-Power: use 0
-          // For others: use 1 (default) or preserve user's value
-          let normalizedStartLevel = 1;
-          if (isAPower) {
-            normalizedStartLevel = 0;
-          } else if (isBPower || isCPower) {
-            normalizedStartLevel = 4; // User expects 4 for B-Power/C-Power - FORCE this!
-          }
-
-          // For B-Power/C-Power: ALWAYS use normalized value (4), never preserve wrong 0
-          // For others: preserve user's value if set, otherwise use default
-          const existingStartLevel = l.startLevel ?? l.start_level;
-          let userStartLevel: number;
-          
-          if (isBPower || isCPower) {
-            // FORCE correct value for B-Power/C-Power - 0 is always wrong
-            userStartLevel = normalizedStartLevel;
-          } else if (typeof existingStartLevel === 'number') {
-            // For other logics, preserve user's value if set
-            userStartLevel = existingStartLevel;
-          } else {
-            userStartLevel = normalizedStartLevel;
-          }
-
-          // Only apply Power logic defaults - for non-Power logics, preserve user's values
-          if (isPowerLogic) {
-            return {
-              ...l,
-              enabled: true,
-              trigger_type: "Trigger_Immediate",
-              trigger_bars: 0,
-              trigger_minutes: 0,
-              trigger_pips: 0,
-              order_count_reference: "Logic_Power",
-              startLevel: userStartLevel,
-            };
-          }
-
-          // For non-Power logics: preserve ALL user values, only fix startLevel if needed
-          return {
-            ...l,
-            startLevel: userStartLevel,
-          };
-        });
 
         return baseGroup;
       })

@@ -12,6 +12,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { toast } from "sonner";
 import type { MTConfig } from "@/types/mt-config";
+import { canonicalizeConfigForBackend } from "@/utils/unit-mode";
 
 interface EmptyStateProps {
   onLoadSetfile: (config?: MTConfig) => void;
@@ -97,24 +98,7 @@ export function EmptyState({ onLoadSetfile, onChooseEngine }: EmptyStateProps) {
         current_set_name: name,
       };
 
-      config = {
-        ...config,
-        engines: (config.engines || []).map((e) => ({
-          ...e,
-          groups: (e.groups || []).map((g) => ({
-            ...g,
-            logics: (g.logics || []).map((l: any) => {
-              const hedge = l.hedge_enabled === true;
-              const reverse = l.reverse_enabled === true;
-              const trading_mode =
-                hedge ? "Hedge" : reverse ? "Reverse" : (l.trading_mode ?? "Counter Trend");
-              return { ...l, trading_mode };
-            }),
-          })),
-        })),
-      };
-
-      onLoadSetfile(config);
+      onLoadSetfile(canonicalizeConfigForBackend(config));
     } catch (err) {
       toast.error(`Import failed: ${err}`);
     }
