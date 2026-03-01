@@ -7,6 +7,9 @@ mod chat_commands;
 mod chat_preprocessor;
 mod trading_transformer;
 mod diffusion_refine;
+mod tinyllm_command;
+
+use tauri::Emitter;
 
 #[cfg(feature = "tauri-app")]
 use mt_bridge::MTBridgeState;
@@ -46,6 +49,28 @@ pub fn run() {
     .manage(TransformerState::default())
     .manage(DiffusionState::default())
     .setup(|app| {
+      // Start silicon monitoring - emits every 2 seconds
+      let app_handle = app.handle().clone();
+      std::thread::spawn(move || {
+        loop {
+          std::thread::sleep(std::time::Duration::from_secs(2));
+          let snapshot = tinyllm_daavfx::get_hardware_snapshot(10);
+          let status = tinyllm_command::SiliconStatus {
+            cpu_usage: snapshot.cpu.usage_percent,
+            ram_used_bytes: snapshot.memory.used_bytes,
+            ram_total_bytes: snapshot.memory.total_bytes,
+            ram_usage_percent: snapshot.memory.usage_percent,
+            stress_overall: snapshot.stress.overall,
+            recommended_steps: snapshot.recommended_steps,
+            timestamp: std::time::SystemTime::now()
+              .duration_since(std::time::UNIX_EPOCH)
+              .unwrap_or_default()
+              .as_secs(),
+          };
+          let _ = app_handle.emit("silicon:update", &status);
+        }
+      });
+
       if cfg!(debug_assertions) {
         app.handle().plugin(
           tauri_plugin_log::Builder::default()
@@ -84,6 +109,9 @@ pub fn run() {
       chat_commands::extract_parameter,
       // Chat preprocessor commands
       chat_preprocessor::preprocess_command,
+      // TinyLLM commands
+      tinyllm_command::process_command,
+      tinyllm_command::get_silicon_status,
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
