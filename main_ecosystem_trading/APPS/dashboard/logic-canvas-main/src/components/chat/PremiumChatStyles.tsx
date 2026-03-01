@@ -356,13 +356,6 @@ export function WelcomeMessage({ onCompose }: WelcomeMessageProps) {
           color="amber"
           onCompose={onCompose}
         />
-        <CommandCard
-          icon={Zap}
-          title="Semantic"
-          examples={["30% more aggressive", "make it safer"]}
-          color="purple"
-          onCompose={onCompose}
-        />
       </div>
 
       <LabeledDivider label="Pro Tips" />

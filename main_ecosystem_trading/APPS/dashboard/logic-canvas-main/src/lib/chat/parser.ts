@@ -298,20 +298,11 @@ export function parseCommand(input: string): ParsedCommand {
     params.startValue = groups[0];
     params.endValue = groups[groups.length - 1];
   }
-  
-  // SEMANTIC ENGINE INTEGRATION:
-  // If command is "set" or "unknown" but missing field/value, try semantic parsing
-  // This handles: "30% more aggressive", "make it safer", "double the lot"
-  let semantic: SemanticCommand | undefined;
-  if ((type === "set" || type === "unknown") && (!target.field || params.value === undefined)) {
-    const semanticResult = parseSemanticCommand(raw);
-    if (semanticResult) {
-      semantic = semanticResult;
-      type = "semantic";
-    }
-  }
-  
-  return { type, target, params, raw: original, semantic };
+   
+  // Rust backend handles all parsing via process_command
+  // Local parser is fallback only
+
+  return { type, target, params, raw: original };
 }
 
 function detectCommandType(input: string): CommandType {
@@ -680,16 +671,15 @@ export function getSuggestions(input: string): string[] {
       "set trail to 500",
       "show trail for all groups"
     );
-  } else if (lower.includes("risk") || lower.includes("safe") || lower.includes("aggressive")) {
+  // FACTUAL COMMANDS ONLY - no subjective language
+  } else if (lower.includes("grid") || lower.includes("lot")) {
     suggestions.push(
-      "make it aggressive",
-      "make it conservative",
-      "30% more aggressive",
-      "low risk mode",
-      "high risk mode",
-      "make it 50% safer"
+      "set grid to 500",
+      "add 30% to grid",
+      "reduce grid by 20%",
+      "set lot to 0.02"
     );
-  } else if (lower.includes("mode") || lower.includes("preset")) {
+  } else if (lower.includes("trail")) {
     suggestions.push(
       "scalping mode",
       "swing mode",

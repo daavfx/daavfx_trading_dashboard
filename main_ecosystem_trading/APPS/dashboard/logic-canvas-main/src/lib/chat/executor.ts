@@ -174,73 +174,22 @@ export class CommandExecutor {
     ].join("\n");
   }
 
-  // Full help message for panel display
+  // FACTUAL HELP MESSAGE - SHORT VERSION
   private getHelpMessage(): string {
     return [
-      "Command guide:",
+      "Commands:",
+      "• set grid to 500 for G1",
+      "• add 30% to lot for POWER", 
+      "• show grid for all",
+      "• enable reverse on G3",
       "",
-      "# Query & Analysis",
-      "• show ... — View settings: \"show grid for all groups\" or \"show engine A\"",
-      "• find ... — Search values: \"find high grid\" (shows groups with grid > 500)",
-      "• analyze ... — Deep dive: \"analyze power\" (detailed engine diagnostics)",
-      "",
-      "# Configuration Sets",
-      "• set ... — Direct update: \"set grid to 600 for groups 1-8\"",
-      "• bulk set ... — Conditional: \"set multiplier to 1.5 where grid > 500\"",
-      "• enable/disable — Toggle: \"enable reverse for power groups 1-5\"",
-      "",
-      "# Progression Logic",
-      "• fibonacci — Math sequence: \"create progression for grid from 600 to 3000 fibonacci groups 1-8\"",
-      "• linear — Even steps: \"create linear progression for lot from 0.01 to 0.08 groups 1-8\"",
-      "• exponential — Multiplier: \"create exponential progression for lot from 0.01 factor 1.5 groups 1-8\"",
-      "",
-      "# Risk & Safety Protocols",
-      "• equity stop — Hard limit: \"set equity_stop_value to 35%\"",
-      "• drawdown — Soft limit: \"set max_drawdown_percent to 25%\"",
-      "• news filter — Event safety: \"enable news_filter for all\"",
-      "",
-      "# Replication & Compare",
-      "• copy ... — Clone settings: \"copy power settings from group 1 to groups 2-8\"",
-      "• compare ... — Diff tool: \"compare grid between group 1 and group 5\"",
-      "",
-      "# Setfile Loader",
-      "• import set — Paste .set content to preview and apply: \"import set\" then triple-backticks block",
-      "• Round-trip verification included (exact key/value diff)",
-      "",
-      "# Meta Controls",
-      "• apply / cancel — Transaction Plan approval workflow",
-      "• apply 1-3 — Apply part of the pending plan",
-      "• apply 2,5,7 — Apply selected items from the pending plan",
-      "• apply remaining / apply all — Apply the rest of the pending plan",
-      "• undo / redo — Undo or re-apply the last plan (supports counts: undo 2, redo 3)",
-      "• history / plans — Show recently applied plans (history 5)",
-      "• /help — Show this comprehensive command reference",
+      "Format: set/add/show/enable/disable + parameter + value + target",
+      "Example: set grid to 600 for groups 1-8",
     ].join("\n");
   }
 
-  // Greeting detection and response for conversational chat
-  private readonly GREETING_PATTERNS = [
-    /^hi\s*$/i,
-    /^hey\s*$/i,
-    /^hello\s*$/i,
-    /^yo\s*$/i,
-    /^what's\s*up\s*$/i,
-    /^wassup\s*$/i,
-    /^bro\s*$/i,
-    /^sup\s*$/i,
-    /^hi\s+there/i,
-    /^hey\s+there/i,
-  ];
-
-  private readonly GREETING_RESPONSES = [
-    "Hey! 👋 What's good? Ready to configure some grids?",
-    "Yo! Let's get it — what do you need?",
-    "What's good! I'm here to help with your trading config.",
-    "Hey boss! What are we adjusting today?",
-    "Hey! Ready to make some moves? Just tell me what you need.",
-    "Yo! Let's build some grids. What do you want to do?",
-    "What's up! Need help with your config?",
-    "Hey there! I can help you set grids, lot sizes, multipliers and more.",
+  // GREETINGS GO TO RUST - return unknown for command terminal
+  // No conversational responses - it's a strict command terminal
   ];
 
   private isGreeting(input: string): boolean {
@@ -832,12 +781,12 @@ export class CommandExecutor {
       };
     }
 
-    // Check for greetings FIRST before unknown command
+    // GREETINGS ARE UNKNOWN - strict command terminal
+    // Rust backend handles this, local parser returns unknown
     if (this.isGreeting(command.raw)) {
       return {
-        success: true,
-        message: this.getGreetingResponse(),
-        isGreeting: true,
+        success: false,
+        message: "Unknown command. Try: 'set grid to 500 for G1'",
       };
     }
 
@@ -900,17 +849,16 @@ export class CommandExecutor {
       case "import":
         return this.executeImport(command);
       case "unknown":
-        // Check for greetings first - return conversational response instead of help
+        // GREETINGS ARE UNKNOWN - strict command terminal
         if (this.isGreeting(command.raw)) {
           return {
-            success: true,
-            message: this.getGreetingResponse(),
-            isGreeting: true,
+            success: false,
+            message: "Unknown command. Try: 'set grid to 500 for G1'",
           };
         }
         return {
           success: false,
-          message: `I didn't understand: "${command.raw}".\n\n${this.getHelpMessage()}`,
+          message: `Unknown command. Try: 'set grid to 500 for G1'`,
         };
       default:
         return { success: false, message: `Unknown command: ${command.raw}` };

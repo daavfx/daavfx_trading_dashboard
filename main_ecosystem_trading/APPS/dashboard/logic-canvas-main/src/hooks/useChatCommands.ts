@@ -52,7 +52,7 @@ export function useChatCommands({
       id: "welcome",
       role: "system",
       content:
-        "Hey! 👋 I'm Ryiuk. I can help you configure your trading grids, set lot sizes, adjust multipliers, and more.\n\nJust tell me what you need in natural language, like:\n• \"set grid to 600 for groups 1-8\"\n• \"make it more aggressive\"\n• \"show me the power settings\"\n\nOr just say hi — I'm here to chat too! 😎",
+        "Ryiuk: Type commands like 'set grid to 500 for G1', 'add 30% to lot for POWER', 'show grid for all'. Only factual commands accepted - no vague language.",
       timestamp: Date.now(),
     },
   ]);

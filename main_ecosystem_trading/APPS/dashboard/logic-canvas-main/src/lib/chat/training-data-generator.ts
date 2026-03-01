@@ -201,18 +201,15 @@ export function generateTrainingExamples(fields: SetField[]): {
     intent: 'SET'
   });
   
-  // GENERATE SEMANTIC EXAMPLES
-  const semanticPatterns = [
-    { text: 'make it more aggressive', intent: 'SEMANTIC' },
-    { text: 'make it safer', intent: 'SEMANTIC' },
-    { text: 'more aggressive', intent: 'SEMANTIC' },
-    { text: 'more conservative', intent: 'SEMANTIC' },
-    { text: 'increase risk', intent: 'SEMANTIC' },
-    { text: 'decrease risk', intent: 'SEMANTIC' },
-    { text: 'be more aggressive', intent: 'SEMANTIC' },
-    { text: 'be safer', intent: 'SEMANTIC' },
+  // FACTUAL OPERATION EXAMPLES ONLY
+  const factualPatterns = [
+    { text: 'add 30% to grid', intent: 'SET' },
+    { text: 'reduce grid by 20%', intent: 'SET' },
+    { text: 'double the lot', intent: 'SET' },
+    { text: 'tighten grid', intent: 'SET' },
+    { text: 'bump grid g2', intent: 'SET' },
   ];
-  examples.push(...semanticPatterns);
+  examples.push(...factualPatterns);
   
   // GENERATE QUERY EXAMPLES
   const queryPatterns = [

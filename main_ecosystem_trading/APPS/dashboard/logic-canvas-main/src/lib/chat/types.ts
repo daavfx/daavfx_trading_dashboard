@@ -3,11 +3,10 @@
 import type { SemanticCommand } from "./semanticEngine";
 
 export type CommandType =
-  | "query"       // "show groups with X", "find all grid > 500"
+  | "query"       // "show grid for groups 1-5"
   | "set"         // "set grid to 600 for groups 1-8"
-  | "semantic"    // "30% more aggressive", "make it safer" - handled by semantic engine
   | "progression" // "create progression from 600 to 3000 fibonacci"
-  | "copy"        // "copy power settings from group 1 to groups 2-5"
+  | "copy"        // "copy settings from group 1 to groups 2-5"
   | "compare"     // "compare grid between group 1 and group 5"
   | "reset"       // "reset group 3 to defaults"
   | "formula"     // "apply formula grid * 1.5 to groups 2-8"
