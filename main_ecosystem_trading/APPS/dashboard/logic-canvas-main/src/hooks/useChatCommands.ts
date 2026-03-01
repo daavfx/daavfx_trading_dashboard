@@ -7,10 +7,11 @@ import { useState, useCallback, useEffect } from "react";
 const MAX_CHAT_MESSAGES = 100;
 import { parseCommand, getSuggestions, commandExecutor } from "@/lib/chat";
 import type { ChatMessage, CommandResult } from "@/lib/chat/types";
+import type { RoutingResponse } from "@/lib/chat/routing";
 import type { MTConfig } from "@/types/mt-config";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useChatState } from "@/contexts/ChatStateContext";
-import { withUseDirectPriceGrid, normalizeConfigForExport } from "@/utils/unit-mode";
+import { canonicalizeConfigForBackend, normalizeConfigForExport } from "@/utils/unit-mode";
 import { save, open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { toast } from "sonner";
@@ -220,9 +221,7 @@ export function useChatCommands({
             return;
           }
 
-          const configToExport = config
-            ? withUseDirectPriceGrid(config, settings)
-            : config;
+          const configToExport = config ? canonicalizeConfigForBackend(config) : config;
           if (isJson) {
             await invoke("export_json_file", {
               config: normalizeConfigForExport(configToExport),
@@ -321,7 +320,7 @@ export function useChatCommands({
             current_set_name: name,
           };
 
-          onConfigChange(newConfig);
+          onConfigChange(canonicalizeConfigForBackend(newConfig));
           const assistantMessage: ChatMessage = {
             id: `assistant-${Date.now()}`,
             role: "assistant",
@@ -356,7 +355,60 @@ export function useChatCommands({
       }
 
       // Parse and Execute
-      const parsed = parseCommand(trimmed);
+      // TinyLLM Routing - call backend FIRST - this is the source of truth
+      let routingResponse: RoutingResponse | null = null;
+      let useRustParsing = false;
+      
+      try {
+        routingResponse = await invoke<RoutingResponse>('process_command', { input: trimmed });
+        
+        // If Rust parsed successfully, use that result
+        const isUnknownCommand = routingResponse?.output?.toLowerCase().includes('unknown command') ?? false;
+        const isLearnedPattern = routingResponse?.output?.toLowerCase().includes('learned pattern') ?? false;
+        
+        if (!isUnknownCommand && routingResponse) {
+          useRustParsing = true;
+          
+          // If learned suggestion, show it but don't execute yet
+          if (routingResponse.learned_suggestion && !isLearnedPattern) {
+            const assistantMessage: ChatMessage = {
+              id: `assistant-${Date.now()}`,
+              role: "assistant",
+              content: `Did you mean: ${routingResponse.learned_suggestion}?`,
+              timestamp: Date.now(),
+            };
+            setMessages((prev) => [
+              ...prev.slice(-(MAX_CHAT_MESSAGES - 1)),
+              assistantMessage,
+            ]);
+            return;
+          }
+        }
+        
+        if (isUnknownCommand) {
+          // Return the format hint from Rust
+          const assistantMessage: ChatMessage = {
+            id: `assistant-${Date.now()}`,
+            role: "assistant",
+            content: routingResponse?.output ?? "Unknown command. Try: 'set grid to 500 for G1'",
+            timestamp: Date.now(),
+          };
+          setMessages((prev) => [
+            ...prev.slice(-(MAX_CHAT_MESSAGES - 1)),
+            assistantMessage,
+          ]);
+          return;
+        }
+      } catch (e) {
+        console.warn('TinyLLM routing unavailable, using fallback:', e);
+      }
+
+      // If Rust parsing succeeded and it's a direct command, execute it; otherwise use local parser
+      let parsed = useRustParsing 
+        ? { type: "unknown" as const, target: { engines: [], groups: [], logics: [] }, changes: [] }
+        : parseCommand(trimmed);
+        
+      const showPendingBanner = routingResponse?.pending_inference === true;
 
       const normalizeLogicToken = (token: string): { engine: string | null; name: string } => {
         const trimmedToken = String(token).trim();
@@ -511,6 +563,9 @@ export function useChatCommands({
         timestamp: Date.now(),
         command: command.type !== "unknown" ? command : undefined,
         result,
+        // Show pending inference banner if route is Hybrid or Escalate
+        pendingInference: showPendingBanner,
+        pendingMessage: showPendingBanner ? (routingResponse?.message ?? "Full inference pending") : null,
       };
 
       setMessages((prev) => [

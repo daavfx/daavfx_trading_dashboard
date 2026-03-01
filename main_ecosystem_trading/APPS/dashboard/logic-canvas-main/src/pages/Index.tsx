@@ -44,7 +44,7 @@ import {
 import { hydrateMTConfigDefaults } from "@/utils/hydrate-mt-config-defaults";
 import { useSettings } from "@/contexts/SettingsContext";
 import { ChatStateProvider, useChatState } from "@/contexts/ChatStateContext";
-import { withUseDirectPriceGrid, normalizeConfigForExport } from "@/utils/unit-mode";
+import { canonicalizeConfigForBackend, normalizeConfigForExport } from "@/utils/unit-mode";
 import type { TransactionPlan, ChangePreview } from "@/lib/chat/types";
 import { VersionControlPanel } from "@/components/version-control/VersionControlPanel";
 import { AnalyticsPanel } from "@/components/visual-enhancements/AnalyticsPanel";
@@ -74,7 +74,6 @@ const mockGeneralConfig: GeneralConfig = {
   allow_sell: true,
   enable_logs: true,
   use_direct_price_grid: false,
-  group_mode: 1,
   grid_unit: 0,
   pip_factor: 0,
   compounding_enabled: false,
@@ -127,7 +126,21 @@ const mockGeneralConfig: GeneralConfig = {
     impact_level: 3,
     minutes_before: 30,
     minutes_after: 30,
-    action: "TriggerAction_StopEA_KeepTrades",
+    stop_ea: true,
+    close_trades: false,
+    auto_restart: true,
+    check_interval: 60,
+    alert_minutes: 5,
+    filter_high_only: true,
+    filter_weekends: false,
+    use_local_cache: true,
+    cache_duration: 3600,
+    fallback_on_error: "Fallback_Continue",
+    filter_currencies: "",
+    include_speeches: true,
+    include_reports: true,
+    visual_indicator: true,
+    alert_before_news: false,
     calendar_file: "DAAVFX_NEWS.csv",
   },
   reverse_magic_base: 0,
@@ -665,33 +678,7 @@ function Index() {
         configToSave.general.magic_number = data.magicNumber;
       }
 
-      // Apply strategy type logic
-      // Strategy type now controls which directions are enabled on export.
-      // We do NOT overwrite buy/sell values anymore so they can stay independent.
-      if (data.strategyType === "sell") {
-        configToSave.general.allow_buy = false;
-        configToSave.general.allow_sell = true;
-        configToSave.engines?.forEach((engine: any) => {
-          engine.groups?.forEach((group: any) => {
-            group.logics?.forEach((logic: any) => {
-              logic.allow_buy = false;
-              logic.allow_sell = true;
-            });
-          });
-        });
-      } else {
-        // Default/fallback to BUY-only scope for save/export intent.
-        configToSave.general.allow_buy = true;
-        configToSave.general.allow_sell = false;
-        configToSave.engines?.forEach((engine: any) => {
-          engine.groups?.forEach((group: any) => {
-            group.logics?.forEach((logic: any) => {
-              logic.allow_buy = true;
-              logic.allow_sell = false;
-            });
-          });
-        });
-      }
+      // Single source of truth: do not rewrite allow_buy / allow_sell on save/export.
 
       // 1. Export to file if path provided
       if (data.exportPath) {
@@ -705,18 +692,19 @@ function Index() {
           ? `${data.exportPath}${fileName}`
           : `${data.exportPath}${separator}${fileName}`;
 
-        const configToExport = withUseDirectPriceGrid(configToSave, settings);
+        const configToExport = configToSave;
+        const backendConfig = canonicalizeConfigForBackend(configToExport);
 
         if (data.format === "json") {
           await invoke("export_json_file", {
-            config: normalizeConfigForExport(configToExport),
+            config: normalizeConfigForExport(backendConfig),
             filePath: fullPath,
             tags: data.tags,
             comments: data.comments,
           });
         } else {
           await invoke("export_massive_v19_setfile", {
-            config: normalizeConfigForExport(configToExport),
+            config: normalizeConfigForExport(backendConfig),
             filePath: fullPath,
             platform: platform === "mt5" ? "MT5" : "MT4",
           });
@@ -726,9 +714,10 @@ function Index() {
 
       // 2. Save to Vault if requested
       if (data.saveToVault) {
-        const configToVault = withUseDirectPriceGrid(configToSave, settings);
+        const configToVault = configToSave;
+        const backendConfig = canonicalizeConfigForBackend(configToVault);
         await invoke("save_to_vault", {
-          config: normalizeConfigForExport(configToVault),
+          config: normalizeConfigForExport(backendConfig),
           name: data.name,
           category: data.category,
           tags: data.tags.length > 0 ? data.tags : null,
@@ -1110,7 +1099,14 @@ function Index() {
                                                     // Strip engine prefix (B or C) from UI logic name to match config
                                                     // "BPOWER" -> "Power", "BREPOWER" -> "Repower", etc.
                                                     const logicBaseName = logic.replace(/^(B|C)/i, '');
-                                                    if (l.logic_name?.toUpperCase() !== logicBaseName.toUpperCase()) return l;
+                                                    const normalizeLogicName = (raw: string) => {
+                                                      const upper = String(raw || "").toUpperCase();
+                                                      return upper === "SCALP" ? "SCALPER" : upper;
+                                                    };
+                                                    if (
+                                                      normalizeLogicName(l.logic_name || "") !==
+                                                      normalizeLogicName(logicBaseName)
+                                                    ) return l;
 
                                                     const rowDirection = (() => {
                                                       const dirRaw = String((l as any).direction || "").toUpperCase();
@@ -1123,41 +1119,19 @@ function Index() {
                                                       if ((l as any).allow_sell === true && (l as any).allow_buy !== true) return "sell";
                                                       return null;
                                                     })();
-
-                                                    const directionalFields = new Set([
-                                                      "initial_lot",
-                                                      "multiplier",
-                                                      "grid",
-                                                      "trail_value",
-                                                      "trail_start",
-                                                      "trail_step",
-                                                    ]);
-                                                    const isDirectionalField = directionalFields.has(field);
                                                     const rowLogicId = String((l as any).logic_id || "");
-                                                    const wantsDirection = direction === "buy" || direction === "sell";
-                                                    const normalizedTargetLogicId = String(targetLogicId || "");
 
-                                                    // Primary targeting: explicit logic row id from active canvas side.
-                                                    if (
-                                                      normalizedTargetLogicId &&
-                                                      rowLogicId &&
-                                                      rowLogicId !== normalizedTargetLogicId
-                                                    ) {
-                                                      return l;
-                                                    }
+                                                    const wantsDirection = direction === "buy" || direction === "sell";
+                                                    // Keep all same-logic rows in sync for the selected side.
+                                                    // This prevents legacy alias rows (SCALP/SCALPER) from drifting.
 
                                                     if (wantsDirection) {
                                                       if (rowDirection && rowDirection !== direction) {
                                                         return l;
                                                       }
-
-                                                      // Single-row model: write only side-specific suffix field.
-                                                      if (!rowDirection && isDirectionalField) {
-                                                        const suffix = direction === "buy" ? "_b" : "_s";
-                                                        return {
-                                                          ...l,
-                                                          [`${field}${suffix}`]: processedValue,
-                                                        };
+                                                      // Direction metadata is required to avoid accidental cross-side rewrites.
+                                                      if (!rowDirection && !rowLogicId) {
+                                                        return l;
                                                       }
                                                     }
 
@@ -1282,7 +1256,7 @@ function Index() {
                 onLoadSetfile={(loadedConfig) => {
                   setHasStarted(true);
                   if (loadedConfig) {
-                    handleSaveConfig(hydrateMTConfigDefaults(loadedConfig));
+                    handleSaveConfig(canonicalizeConfigForBackend(loadedConfig));
                     setSelectedEngines(["Engine A"]);
                     setSelectedGroups(["Group 1"]);
                     setSelectedLogics(["POWER"]);
@@ -1309,7 +1283,7 @@ function Index() {
             viewMode !== "undo-redo" &&
             viewMode !== "memory" &&
             viewMode !== "grouping" &&
-            viewMode !== "collaboration" && viewMode !== "chat" && (
+            viewMode !== "collaboration" && (
               <>
                 <ResizableHandle withHandle />
 
