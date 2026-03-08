@@ -43,6 +43,38 @@ interface GeneralCategoriesProps {
   mode?: 1 | 2;
 }
 
+const GENERAL_FIELD_KEY_MAP = {
+  grid_unit: "grid_unit",
+  point_factor: "pip_factor",
+  magic_number: "magic_number",
+  magic_number_buy: "magic_number_buy",
+  magic_number_sell: "magic_number_sell",
+  magic_number_reverse_base: "reverse_magic_base",
+  magic_number_hedge_base: "hedge_magic_base",
+  hedge_magic_independent: "hedge_magic_independent",
+  max_slippage_points: "max_slippage_points",
+  enable_logs: "enable_logs",
+  config_file_name: "config_file_name",
+  config_file_is_common: "config_file_is_common",
+} as const satisfies Record<string, keyof GeneralConfig>;
+
+const RESTART_POLICY_FIELD_KEY_MAP = {
+  power_a_policy: "restart_policy_power",
+  non_power_policy: "restart_policy_non_power",
+  close_non_power_on_power_close: "close_non_power_on_power_close",
+} as const satisfies Record<string, keyof GeneralConfig>;
+
+const SUPPORTED_RISK_FIELD_IDS = new Set([
+  "enabled",
+  "spread_filter_enabled",
+  "max_spread_points",
+  "equity_stop_enabled",
+  "equity_stop_value",
+  "drawdown_stop_enabled",
+  "max_drawdown_percent",
+  "risk_action",
+]);
+
 export const generalCategoriesList = [
   { id: "risk_management", label: "Risk Management", icon: Shield, color: "text-red-400" },
   { id: "compounding", label: "Compounding", icon: TrendingUp, color: "text-indigo-400" },
@@ -50,7 +82,6 @@ export const generalCategoriesList = [
   { id: "news", label: "News Filter", icon: Newspaper, color: "text-amber-400" },
   { id: "time", label: "Time Filter", icon: Clock, color: "text-blue-400" },
   { id: "general", label: "General", icon: Settings2, color: "text-slate-400" },
-  { id: "ui", label: "UI Settings", icon: Palette, color: "text-teal-400" },
   { id: "logs", label: "Logs", icon: Terminal, color: "text-green-400" },
 ] as const;
 
@@ -69,6 +100,12 @@ export function GeneralCategories({
     "Buy",
   );
 
+  const getGeneralFieldKey = (fieldId: string): keyof GeneralConfig | null =>
+    GENERAL_FIELD_KEY_MAP[fieldId] ?? null;
+
+  const getRestartPolicyFieldKey = (fieldId: string): keyof GeneralConfig | null =>
+    RESTART_POLICY_FIELD_KEY_MAP[fieldId] ?? null;
+
   const toggleCategory = (id: string) => {
     setExpandedCategories((prev) =>
       prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
@@ -83,7 +120,7 @@ export function GeneralCategories({
 
     const newConfig = JSON.parse(JSON.stringify(generalConfig));
     
-    if ((fieldId === "group_mode" || fieldId === "grid_unit") && typeof value === "string") {
+    if (fieldId === "grid_unit" && typeof value === "string") {
         const n = parseInt(value, 10);
         if (!Number.isNaN(n)) value = n;
     }
@@ -94,6 +131,9 @@ export function GeneralCategories({
             newConfig.allow_sell = false;
         } else if (value === "Sell Only") {
             newConfig.allow_buy = false;
+            newConfig.allow_sell = true;
+        } else if (value === "Buy & Sell") {
+            newConfig.allow_buy = true;
             newConfig.allow_sell = true;
         } else {
             newConfig.allow_buy = false;
@@ -134,18 +174,24 @@ export function GeneralCategories({
          else setNews("news_filter_s");
     } else if (categoryId === "compounding") {
          newConfig[`compounding_${fieldId}`] = value;
+    } else if (categoryId === "restart_policy") {
+         const restartFieldKey = getRestartPolicyFieldKey(fieldId);
+         if (!restartFieldKey) return;
+         newConfig[restartFieldKey] = value;
     } else if (categoryId === "logs") {
          newConfig[fieldId] = value === "ON";
     } else {
-         newConfig[fieldId] = value;
+         const generalFieldKey = getGeneralFieldKey(fieldId);
+         if (!generalFieldKey) return;
+         newConfig[generalFieldKey] = value;
     }
     
     onConfigChange(newConfig);
   };
 
-  const getScopedValue = <T,>(base: T | undefined, buy: T | undefined, sell: T | undefined): T | undefined => {
-    if (generalEditScope === "Buy") return buy ?? base;
-    return sell ?? base;
+  const getScopedValue = <T,>(buy: T | undefined, sell: T | undefined): T | undefined => {
+    if (generalEditScope === "Buy") return buy;
+    return sell;
   };
 
   const renderModeSelectors = () => (
@@ -204,14 +250,15 @@ export function GeneralCategories({
     switch (categoryId) {
       case "risk_management":
         const riskScoped = getScopedValue(
-          generalConfig.risk_management,
           generalConfig.risk_management_b,
           generalConfig.risk_management_s,
         );
-        return generalInputs.risk_management.fields.map(field => ({
+        return generalInputs.risk_management.fields
+          .filter((field) => SUPPORTED_RISK_FIELD_IDS.has(field.id))
+          .map(field => ({
           id: field.id,
           label: field.mt4_variable.replace("gInput_", "").replace(/([A-Z])/g, ' $1').trim(),
-          value: (riskScoped as any)?.[field.id] ?? field.default,
+          value: (riskScoped as any)?.[field.id],
           type: mapType(field.type),
           unit: (field as any).unit,
           description: field.description,
@@ -221,7 +268,6 @@ export function GeneralCategories({
 
       case "time":
         const timeScoped = getScopedValue(
-          generalConfig.time_filters,
           generalConfig.time_filters_b,
           generalConfig.time_filters_s,
         );
@@ -236,11 +282,11 @@ export function GeneralCategories({
              if (propName === "header") {
                value = ""; 
              } else {
-              value = (timeScoped as any)?.sessions?.[sessionIndex]?.[propName] ?? field.default;
+              value = (timeScoped as any)?.sessions?.[sessionIndex]?.[propName];
              }
           } else {
              // Priority settings
-             value = (timeScoped as any)?.priority_settings?.[field.id] ?? field.default;
+             value = (timeScoped as any)?.priority_settings?.[field.id];
           }
 
           return {
@@ -257,14 +303,13 @@ export function GeneralCategories({
 
       case "news":
         const newsScoped = getScopedValue(
-          generalConfig.news_filter,
           generalConfig.news_filter_b,
           generalConfig.news_filter_s,
         );
         return generalInputs.news_filter.fields.map(field => ({
           id: field.id,
           label: field.mt4_variable.replace("gInput_", "").replace(/([A-Z])/g, ' $1').trim(),
-          value: (newsScoped as any)?.[field.id] ?? field.default,
+          value: (newsScoped as any)?.[field.id],
           type: mapType(field.type),
           unit: (field as any).unit,
           description: field.description,
@@ -273,65 +318,46 @@ export function GeneralCategories({
         }));
 
       case "license":
-        return generalInputs.license.fields.map(field => ({
-          id: field.id,
-          label: field.mt4_variable.replace("gInput_", "").replace(/([A-Z])/g, ' $1').trim(),
-          value: generalConfig[field.id as keyof GeneralConfig] ?? field.default,
-          type: mapType(field.type),
-          unit: (field as any).unit,
-          description: field.description,
-          onChange: createHandler(field.id)
-        }));
+        return [];
         
       case "general":
+        // Show only contract-backed general fields without Buy/Sell toggle.
         const fields = generalInputs.global_system.fields
             .filter(f => f.id !== "allow_buy" && f.id !== "allow_sell")
             .filter(f => f.id !== "magic_number_buy" && f.id !== "magic_number_sell")
-            .map(field => ({
+            .filter((field) => getGeneralFieldKey(field.id) !== null)
+            .map(field => {
+              const configKey = getGeneralFieldKey(field.id)!;
+              return {
               id: field.id,
-              label: field.mt4_variable.replace("gInput_", "").replace(/([A-Z])/g, ' $1').trim(),
-              value: generalConfig[field.id as keyof GeneralConfig] ?? field.default,
+              label: (field as any).label || field.mt4_variable.replace("gInput_", "").replace(/([A-Z])/g, ' $1').trim(),
+              value: generalConfig[configKey],
               type: mapType(field.type),
               unit: (field as any).unit,
               description: field.description,
               onChange: createHandler(field.id)
-            }));
-            
-        if (generalEditScope === "Sell") {
-          fields.unshift({
-            id: "magic_number_sell",
-            label: "Magic Number (Sell)",
-            value: generalConfig.magic_number_sell,
-            type: "number" as const,
-            description: "Terminal-facing magic number for Buy/Sell cycles",
-            onChange: createHandler("magic_number_sell"),
-          });
-        } else {
-          fields.unshift({
-            id: "magic_number_buy",
-            label: "Magic Number (Buy)",
-            value: generalConfig.magic_number_buy,
-            type: "number" as const,
-            description: "Terminal-facing magic number for Buy/Sell cycles",
-            onChange: createHandler("magic_number_buy"),
-          });
-        }
-
-        // Compute direction
-        let direction = "Disabled";
-        if (generalConfig.allow_buy && generalConfig.allow_sell) direction = "Buy Only";
-        else if (generalConfig.allow_buy) direction = "Buy Only";
-        else if (generalConfig.allow_sell) direction = "Sell Only";
+            };
+            });
         
+        // Add both magic numbers without Buy/Sell switch
         fields.unshift({
-            id: "trading_direction",
-            label: "Trading Direction",
-            value: direction,
-            type: "segmented" as any,
-            description: "Control whether the EA can open Buy or Sell trades",
-            options: ["Buy Only", "Sell Only", "Disabled"],
-            onChange: createHandler("trading_direction")
-        } as any);
+          id: "magic_number_sell",
+          label: "Magic Number (Sell)",
+          value: generalConfig.magic_number_sell,
+          type: "number" as const,
+          description: "Magic number for SELL direction trades",
+          onChange: createHandler("magic_number_sell"),
+        });
+        fields.unshift({
+          id: "magic_number_buy",
+          label: "Magic Number (Buy)",
+          value: generalConfig.magic_number_buy,
+          type: "number" as const,
+          description: "Magic number for BUY direction trades",
+          onChange: createHandler("magic_number_buy"),
+        });
+
+        // Note: Trading Direction (allow_buy/allow_sell) is controlled in terminal only
         
         return fields;
         
@@ -339,8 +365,7 @@ export function GeneralCategories({
         return generalInputs.compounding.fields.map(field => ({
           id: field.id,
           label: field.mt4_variable.replace("gInput_", "").replace(/([A-Z])/g, ' $1').trim(),
-          // Prefix with 'compounding_' because they are flattened in GeneralConfig but names in generalInputs are 'enabled', 'type' etc.
-          value: generalConfig[`compounding_${field.id}` as keyof GeneralConfig] ?? field.default,
+          value: generalConfig[`compounding_${field.id}` as keyof GeneralConfig],
           type: mapType(field.type),
           unit: (field as any).unit,
           description: field.description,
@@ -349,16 +374,21 @@ export function GeneralCategories({
         }));
         
       case "restart_policy":
-        return generalInputs.restart_policies.fields.map(field => ({
+        return generalInputs.restart_policies.fields
+          .filter((field) => getRestartPolicyFieldKey(field.id) !== null)
+          .map(field => {
+          const configKey = getRestartPolicyFieldKey(field.id)!;
+          return {
           id: field.id,
           label: field.mt4_variable.replace("gInput_", "").replace(/([A-Z])/g, ' $1').trim(),
-          value: generalConfig[field.id as keyof GeneralConfig] ?? field.default,
+          value: generalConfig[configKey],
           type: mapType(field.type),
           unit: (field as any).unit,
           description: field.description,
           options: (field as any).options,
           onChange: createHandler(field.id)
-        }));
+        };
+        });
 
       case "logs":
          return [
@@ -366,10 +396,7 @@ export function GeneralCategories({
          ];
          
       case "ui":
-        return [
-          { id: "theme", label: "Theme", value: "Dark", type: "text" as const, description: "UI Theme" },
-          { id: "language", label: "Language", value: "English", type: "text" as const, description: "UI Language" }
-        ];
+        return [];
 
       default:
         return [];
@@ -723,7 +750,7 @@ export function GeneralCategories({
                   Global System Parameters
                </CardTitle>
                <CardDescription className="text-xs">
-                  Core settings affecting the entire trading operation
+                  Core settings affecting the entire trading operation (shared by Buy & Sell)
                </CardDescription>
             </CardHeader>
             <CardContent>
@@ -845,7 +872,7 @@ export function GeneralCategories({
 
     return (
       <div className="space-y-3">
-        {renderModeSelectors()}
+        {selectedCategory !== "general" && renderModeSelectors()}
         {content}
       </div>
     );
@@ -872,7 +899,7 @@ export function GeneralCategories({
         </div>
       </div>
 
-      {renderModeSelectors()}
+      {category.id !== 'general' && renderModeSelectors()}
 
       {generalCategoriesList.map((category) => {
         const Icon = category.icon;

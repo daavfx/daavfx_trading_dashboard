@@ -22,49 +22,43 @@ import {
   RefreshCw,
   Eye,
   EyeOff,
-  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 interface LogicConfig {
-  enabled: boolean;
+  enabled?: boolean;
   logic_name: string;
-  initial_lot: number;
+  engine?: string; // "A", "B", "C" - for determining Power A/B/C
+  initial_lot?: number;
   last_lot?: number;
-  multiplier: number;
-  grid: number;
+  start_level?: number;
+  multiplier?: number;
+  grid?: number;
   trail_method?: string;
   trail_value?: number;
   trail_start?: number;
   trail_step?: number;
   trail_step_method?: string;
   trigger_type?: string;
+  trigger_mode?: string;
   trigger_bars?: number;
   trigger_seconds?: number;
   trigger_pips?: number;
   partial_close?: boolean;
-  partial_cycle?: number;
   partial_mode?: string;
-  partial_balance?: string;
-  partial_trail_mode?: string;
+  partial_profit_threshold?: number;
   allow_buy?: boolean;
   allow_sell?: boolean;
-  trading_mode?: string;
+  trading_mode?: "Counter Trend" | "Hedge" | "Reverse";
   reset_lot_on_restart?: boolean;
   order_count_reference?: string;
+  group_order_count_reference?: string;
   close_targets?: string;
   // Trail Advanced
   trail_levels?: number;
   trail_step_mode?: string;
   trail_step_cycle?: number;
-  // TPSL
-  use_tp?: boolean;
-  tp_mode?: string;
-  tp_value?: number;
-  use_sl?: boolean;
-  sl_mode?: string;
-  sl_value?: number;
   // Reverse Reference - ONLY FIELD ADDED FOR REVERSE
   reverse_reference?: string;
   // Grid behavior
@@ -79,7 +73,7 @@ interface LogicConfig {
 }
 
 interface LogicConfigPanelProps {
-  mode: "counter_trend" | "trend_following" | "hedge" | "reverse";
+  mode: "counter_trend" | "hedge" | "reverse";
   config: LogicConfig;
   onChange: (field: string, value: any) => void;
   onChangeMode?: (newMode: string) => void;
@@ -211,6 +205,7 @@ const CategoryCard = ({
 const logicOptions = [
   { value: "Logic_None", label: "Select Reference Logic..." },
   { value: "Logic_Self", label: "Logic Self" },
+  // Engine A
   { value: "Logic_Power", label: "Power A (Engine A)" },
   { value: "Logic_Repower", label: "Repower (Engine A)" },
   { value: "Logic_Scalp", label: "Scalp (Engine A)" },
@@ -218,6 +213,7 @@ const logicOptions = [
   { value: "Logic_STO", label: "STO (Engine A)" },
   { value: "Logic_SCA", label: "SCA (Engine A)" },
   { value: "Logic_RPO", label: "RPO (Engine A)" },
+  // Engine B
   { value: "Logic_BPower", label: "Power B (Engine B)" },
   { value: "Logic_BRepower", label: "Repower B (Engine B)" },
   { value: "Logic_BScalp", label: "Scalp B (Engine B)" },
@@ -225,6 +221,7 @@ const logicOptions = [
   { value: "Logic_BSTO", label: "STO B (Engine B)" },
   { value: "Logic_BSCA", label: "SCA B (Engine B)" },
   { value: "Logic_BRPO", label: "RPO B (Engine B)" },
+  // Engine C
   { value: "Logic_CPower", label: "Power C (Engine C)" },
   { value: "Logic_CRepower", label: "Repower C (Engine C)" },
   { value: "Logic_CScalp", label: "Scalp C (Engine C)" },
@@ -238,28 +235,25 @@ const logicOptions = [
 const closeTargetOptions = [
   { value: "Logic_A_Power", label: "A-Power" },
   { value: "Logic_A_Repower", label: "A-Repower" },
-  { value: "Logic_A_Scalp", label: "A-Scalp" },
-  { value: "Logic_A_Stopper", label: "A-Stopper" },
 ];
 
 const TRADING_MODES = ["Counter Trend", "Hedge", "Reverse"];
-const TRAIL_METHODS = ["Points", "Percent", "AVG_Points", "AVG_Percent"];
-const TRAIL_STEP_METHODS = ["Step_Points", "Step_Percent", "Step_Pips"];
+const TRAIL_METHODS = ["Points", "AVG_Percent"];
+const TRAIL_STEP_METHODS = ["Step_Points", "Step_Percent"];
+
+// Helper to get the correct unit suffix based on trail method
+const getTrailUnitSuffix = (trailMethod: string | undefined): string => {
+  return trailMethod === "AVG_Percent" ? "%" : "points";
+};
 const TRAIL_STEP_MODES = [
   "TrailStepMode_Auto",
   "TrailStepMode_Fixed",
   "TrailStepMode_PerOrder",
-  "TrailStepMode_Disabled",
 ];
 const PARTIAL_MODES = [
   "PartialMode_Low",
-  "PartialMode_High",
-  "PartialMode_Balanced",
-];
-const PARTIAL_BALANCES = [
-  "PartialBalance_Aggressive",
-  "PartialBalance_Balanced",
-  "PartialBalance_Conservative",
+  "PartialMode_Mid",
+  "PartialMode_Aggressive",
 ];
 const TRIGGER_TYPES = [
   "0 Trigger_Immediate",
@@ -268,17 +262,57 @@ const TRIGGER_TYPES = [
   "3 Trigger_AfterPips",
   "4 Trigger_TimeFilter",
   "5 Trigger_NewsFilter",
+  "6 Trigger_PowerAOppositeCount",
+];
+const TRIGGER_MODES = [
+  "TriggerMode_OnTick",
+  "TriggerMode_FirstTick",
+  "TriggerMode_WaitBar",
 ];
 const ORDER_COUNT_REFS = [
+  // Engine A
+  "Logic_Power", "Logic_Repower", "Logic_Scalp", "Logic_Stopper", "Logic_STO", "Logic_SCA", "Logic_RPO",
+  // Engine B
+  "Logic_BPower", "Logic_BRepower", "Logic_BScalp", "Logic_BStopper", "Logic_BSTO", "Logic_BSCA", "Logic_BRPO",
+  // Engine C
+  "Logic_CPower", "Logic_CRepower", "Logic_CScalp", "Logic_CStopper", "Logic_CSTO", "Logic_CSCA", "Logic_CRPO",
+  // Special
   "Logic_Self",
-  "Logic_Power",
-  "Logic_Repower",
-  "Logic_Scalp",
-  "Logic_Stopper",
-  "Logic_STO",
-  "Logic_SCA",
-  "Logic_RPO",
+  "Logic_None",
 ];
+
+const hasFormValue = (value: unknown): boolean =>
+  value !== undefined && value !== null && value !== "";
+
+const numericInputValue = (value: number | undefined): string =>
+  value === undefined || value === null || Number.isNaN(value)
+    ? ""
+    : String(value);
+
+const selectInputValue = (value: string | undefined): string | undefined =>
+  hasFormValue(value) ? String(value) : undefined;
+
+const parseOptionalFloat = (raw: string): number | undefined => {
+  const text = raw.trim();
+  if (text === "") return undefined;
+  const parsed = Number.parseFloat(text);
+  return Number.isFinite(parsed) ? parsed : undefined;
+};
+
+const parseOptionalInt = (raw: string): number | undefined => {
+  const parsed = parseOptionalFloat(raw);
+  return parsed === undefined ? undefined : Math.trunc(parsed);
+};
+
+const buildValueHint = (
+  value: number | undefined,
+  suffix: string,
+): string | undefined => {
+  if (value === undefined || value === null || Number.isNaN(value)) {
+    return undefined;
+  }
+  return `FX: ${value} ${suffix}`;
+};
 
 // EXACT SAME UI FOR COUNTER TREND AND REVERSE - only difference is Reverse adds 1 field
 const CounterTrendAndReverseUI = ({
@@ -288,6 +322,8 @@ const CounterTrendAndReverseUI = ({
   onDuplicate,
   onReset,
   isReverse,
+  logicType,
+  group,
 }: {
   localConfig: LogicConfig;
   handleChange: (field: string, value: any) => void;
@@ -295,12 +331,24 @@ const CounterTrendAndReverseUI = ({
   onDuplicate?: () => void;
   onReset?: () => void;
   isReverse: boolean;
+  logicType?: string;
+  group?: number;
 }) => {
   const [trailLevelsVisible, setTrailLevelsVisible] = useState(
     localConfig.trail_levels || 1,
   );
   const [partialLevelsVisible, setPartialLevelsVisible] = useState(1);
   const [showAdvancedFields, setShowAdvancedFields] = useState(false);
+  const triggerTypeCode = (() => {
+    if (!hasFormValue(localConfig.trigger_type)) return null;
+    const text = String(localConfig.trigger_type).trim();
+    const m = text.match(/^(\d+)/);
+    return m ? parseInt(m[1], 10) : 0;
+  })();
+  const isGroup1 = (group ?? 1) === 1;
+  const trailMethod = String(localConfig.trail_method ?? "");
+  const showCloseTargets = trailMethod === "AVG_Percent";
+  const showGroupOrderCountRef = false;
 
   return (
     <div className="space-y-4">
@@ -397,9 +445,9 @@ const CounterTrendAndReverseUI = ({
           <LabeledField label="Initial Lot" hint="lots">
             <Input
               type="number"
-              value={localConfig.initial_lot || 0.01}
+              value={numericInputValue(localConfig.initial_lot)}
               onChange={(e) =>
-                handleChange("initial_lot", parseFloat(e.target.value))
+                handleChange("initial_lot", parseOptionalFloat(e.target.value))
               }
               step={0.01}
               min={0.01}
@@ -409,21 +457,51 @@ const CounterTrendAndReverseUI = ({
           <LabeledField label="Last Lot" hint="lots">
             <Input
               type="number"
-              value={localConfig.last_lot || 0.12}
+              value={numericInputValue(localConfig.last_lot)}
               onChange={(e) =>
-                handleChange("last_lot", parseFloat(e.target.value))
+                handleChange("last_lot", parseOptionalFloat(e.target.value))
               }
               step={0.01}
               min={0.01}
               className="bg-background/50"
             />
           </LabeledField>
+          {localConfig.logic_name && !localConfig.logic_name.toUpperCase().includes("POWER") && (
+            <LabeledField label="Start Level" hint="Order count to start">
+              <Input
+                type="number"
+                value={numericInputValue(localConfig.start_level)}
+                onChange={(e) =>
+                  handleChange("start_level", parseOptionalInt(e.target.value))
+                }
+                step={1}
+                min={0}
+                max={20}
+                className="bg-background/50"
+              />
+            </LabeledField>
+          )}
+          {(localConfig.logic_name && localConfig.logic_name.toUpperCase().includes("POWER") && localConfig.engine && localConfig.engine.toUpperCase() !== "A") && (
+            <LabeledField label="Start Level" hint="Order count to start">
+              <Input
+                type="number"
+                value={numericInputValue(localConfig.start_level)}
+                onChange={(e) =>
+                  handleChange("start_level", parseOptionalInt(e.target.value))
+                }
+                step={1}
+                min={0}
+                max={20}
+                className="bg-background/50"
+              />
+            </LabeledField>
+          )}
           <LabeledField label="Multiplier">
             <Input
               type="number"
-              value={localConfig.multiplier || 1.5}
+              value={numericInputValue(localConfig.multiplier)}
               onChange={(e) =>
-                handleChange("multiplier", parseFloat(e.target.value))
+                handleChange("multiplier", parseOptionalFloat(e.target.value))
               }
               step={0.1}
               min={1.0}
@@ -435,7 +513,7 @@ const CounterTrendAndReverseUI = ({
               Reset Lot
             </Label>
             <Switch
-              checked={localConfig.reset_lot_on_restart ?? true}
+              checked={Boolean(localConfig.reset_lot_on_restart)}
               onCheckedChange={(checked) =>
                 handleChange("reset_lot_on_restart", checked)
               }
@@ -449,11 +527,11 @@ const CounterTrendAndReverseUI = ({
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <LabeledField label="Trigger Type">
             <Select
-              value={localConfig.trigger_type || "0 Trigger_Immediate"}
+              value={selectInputValue(localConfig.trigger_type)}
               onValueChange={(val) => handleChange("trigger_type", val)}
             >
               <SelectTrigger className="bg-background/50">
-                <SelectValue />
+                <SelectValue placeholder="Unconfigured" />
               </SelectTrigger>
               <SelectContent>
                 {TRIGGER_TYPES.map((opt) => (
@@ -464,81 +542,112 @@ const CounterTrendAndReverseUI = ({
               </SelectContent>
             </Select>
           </LabeledField>
-          <LabeledField label="Trigger Bars">
-            <Input
-              type="number"
-              value={localConfig.trigger_bars || 0}
-              onChange={(e) =>
-                handleChange("trigger_bars", parseInt(e.target.value))
-              }
-              className="bg-background/50"
-            />
-          </LabeledField>
-          <LabeledField label="Trigger Seconds" hint="sec">
-            <Input
-              type="number"
-              value={localConfig.trigger_seconds || 0}
-              onChange={(e) =>
-                handleChange("trigger_seconds", parseInt(e.target.value))
-              }
-              className="bg-background/50"
-            />
-          </LabeledField>
-          <LabeledField label="Trigger Pips" hint="pips">
-            <Input
-              type="number"
-              value={localConfig.trigger_pips || 0}
-              onChange={(e) =>
-                handleChange("trigger_pips", parseFloat(e.target.value))
-              }
-              className="bg-background/50"
-            />
-          </LabeledField>
+          {triggerTypeCode === 0 && (
+            <LabeledField label="Immediate Mode">
+              <Select
+                value={selectInputValue(localConfig.trigger_mode)}
+                onValueChange={(val) => handleChange("trigger_mode", val)}
+              >
+                <SelectTrigger className="bg-background/50">
+                  <SelectValue placeholder="Unconfigured" />
+                </SelectTrigger>
+                <SelectContent>
+                  {TRIGGER_MODES.map((opt) => (
+                    <SelectItem key={opt} value={opt}>
+                      {opt}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </LabeledField>
+          )}
+          {triggerTypeCode === 1 && (
+            <LabeledField label="Trigger Bars">
+              <Input
+                type="number"
+                value={numericInputValue(localConfig.trigger_bars)}
+                onChange={(e) =>
+                  handleChange("trigger_bars", parseOptionalInt(e.target.value))
+                }
+                className="bg-background/50"
+              />
+            </LabeledField>
+          )}
+          {triggerTypeCode === 2 && (
+            <LabeledField label="Trigger Seconds" hint="sec">
+              <Input
+                type="number"
+                value={numericInputValue(localConfig.trigger_seconds)}
+                onChange={(e) =>
+                  handleChange("trigger_seconds", parseOptionalInt(e.target.value))
+                }
+                className="bg-background/50"
+              />
+            </LabeledField>
+          )}
+          {triggerTypeCode === 3 && (
+            <LabeledField label="Trigger Pips" hint="points">
+              <Input
+                type="number"
+                value={numericInputValue(localConfig.trigger_pips)}
+                onChange={(e) =>
+                  handleChange("trigger_pips", parseOptionalFloat(e.target.value))
+                }
+                className="bg-background/50"
+              />
+            </LabeledField>
+          )}
         </div>
       </CategoryCard>
 
       {/* Logic Category */}
       <CategoryCard title="Logic" icon={Zap} color="emerald">
         <div className="grid grid-cols-2 gap-4">
-          <LabeledField label="Order Count Ref" hint="Reference logic used by Start Level">
-            <Select
-              value={localConfig.order_count_reference || "Logic_Self"}
-              onValueChange={(val) =>
-                handleChange("order_count_reference", val)
-              }
+          {isGroup1 && String(logicType || "").toUpperCase() !== "POWER" && (
+            <LabeledField label="Start Level Order Count Ref" hint="Reference logic used by Start Level">
+              <Select
+                value={selectInputValue(localConfig.order_count_reference)}
+                onValueChange={(val) =>
+                  handleChange("order_count_reference", val)
+                }
+              >
+                <SelectTrigger className="bg-background/50">
+                  <SelectValue placeholder="Unconfigured" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ORDER_COUNT_REFS.map((opt) => (
+                    <SelectItem key={opt} value={opt}>
+                      {opt}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </LabeledField>
+          )}
+          {showGroupOrderCountRef && (
+            <LabeledField
+              label="Group Order Count Ref"
+              hint="Group 1 B/C Power progression reference"
             >
-              <SelectTrigger className="bg-background/50">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {ORDER_COUNT_REFS.map((opt) => (
-                  <SelectItem key={opt} value={opt}>
-                    {opt}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </LabeledField>
-          <LabeledField
-            label="Close Targets"
-            hint="A-Power, A-Repower, A-Scalp, A-Stopper"
-          >
-            <Select
-              value={localConfig.close_targets || "Logic_A_Power"}
-              onValueChange={(val) => handleChange("close_targets", val)}
-            >
-              <SelectTrigger className="bg-background/50">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {closeTargetOptions.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </LabeledField>
+              <Select
+                value={selectInputValue(localConfig.group_order_count_reference)}
+                onValueChange={(val) =>
+                  handleChange("group_order_count_reference", val)
+                }
+              >
+                <SelectTrigger className="bg-background/50">
+                  <SelectValue placeholder="Unconfigured" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ORDER_COUNT_REFS.map((opt) => (
+                    <SelectItem key={opt} value={opt}>
+                      {opt}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </LabeledField>
+          )}
         </div>
 
         {/* REVERSE REFERENCE - ONLY ADDED FIELD FOR REVERSE MODE */}
@@ -549,7 +658,7 @@ const CounterTrendAndReverseUI = ({
               hint="Watch this logic - reverse when it's losing"
             >
               <Select
-                value={localConfig.reverse_reference || "Logic_None"}
+                value={selectInputValue(localConfig.reverse_reference)}
                 onValueChange={(val) => handleChange("reverse_reference", val)}
               >
                 <SelectTrigger className="bg-background/50">
@@ -570,11 +679,14 @@ const CounterTrendAndReverseUI = ({
 
       {/* Grid Category */}
       <CategoryCard title="Grid" icon={ArrowLeftRight} color="indigo">
-        <LabeledField label="Grid Spacing" hint="FX: 320 pips">
+        <LabeledField
+          label="Grid Spacing"
+          hint={buildValueHint(localConfig.grid, "points")}
+        >
           <Input
             type="number"
-            value={localConfig.grid || 320}
-            onChange={(e) => handleChange("grid", parseInt(e.target.value))}
+            value={numericInputValue(localConfig.grid)}
+            onChange={(e) => handleChange("grid", parseOptionalInt(e.target.value))}
             step={10}
             min={10}
             className="bg-background/50"
@@ -585,43 +697,61 @@ const CounterTrendAndReverseUI = ({
       {/* Trail Category */}
       <CategoryCard title="Trail" icon={ChevronRight} color="purple">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <LabeledField label="Trail Value" hint="FX: 50 pips">
+          <LabeledField 
+            label="Trail Value" 
+            hint={buildValueHint(
+              localConfig.trail_value,
+              getTrailUnitSuffix(localConfig.trail_method),
+            )}
+          >
             <Input
               type="number"
-              value={localConfig.trail_value || 50}
+              value={numericInputValue(localConfig.trail_value)}
               onChange={(e) =>
-                handleChange("trail_value", parseInt(e.target.value))
+                handleChange("trail_value", parseOptionalInt(e.target.value))
               }
               className="bg-background/50"
             />
           </LabeledField>
-          <LabeledField label="Trail Start" hint="FX: 20 pips">
+          <LabeledField 
+            label="Trail Start" 
+            hint={buildValueHint(
+              localConfig.trail_start,
+              getTrailUnitSuffix(localConfig.trail_method),
+            )}
+          >
             <Input
               type="number"
-              value={localConfig.trail_start || 20}
+              value={numericInputValue(localConfig.trail_start)}
               onChange={(e) =>
-                handleChange("trail_start", parseInt(e.target.value))
+                handleChange("trail_start", parseOptionalInt(e.target.value))
               }
               className="bg-background/50"
             />
           </LabeledField>
-          <LabeledField label="Trail Step" hint="FX: 10 pips">
+          <LabeledField 
+            label="Trail Step" 
+            hint={buildValueHint(
+              localConfig.trail_step,
+              getTrailUnitSuffix(localConfig.trail_method),
+            )}
+          >
             <Input
               type="number"
-              value={localConfig.trail_step || 10}
+              value={numericInputValue(localConfig.trail_step)}
               onChange={(e) =>
-                handleChange("trail_step", parseInt(e.target.value))
+                handleChange("trail_step", parseOptionalInt(e.target.value))
               }
               className="bg-background/50"
             />
           </LabeledField>
           <LabeledField label="Trail Method">
             <Select
-              value={localConfig.trail_method || "Points"}
+              value={selectInputValue(localConfig.trail_method)}
               onValueChange={(val) => handleChange("trail_method", val)}
             >
               <SelectTrigger className="bg-background/50">
-                <SelectValue />
+                <SelectValue placeholder="Unconfigured" />
               </SelectTrigger>
               <SelectContent>
                 {TRAIL_METHODS.map((opt) => (
@@ -636,11 +766,11 @@ const CounterTrendAndReverseUI = ({
         <div className="grid grid-cols-1 gap-4 mt-4">
           <LabeledField label="Trail Step Method">
             <Select
-              value={localConfig.trail_step_method || "Step_Points"}
+              value={selectInputValue(localConfig.trail_step_method)}
               onValueChange={(val) => handleChange("trail_step_method", val)}
             >
               <SelectTrigger className="bg-background/50">
-                <SelectValue />
+                <SelectValue placeholder="Unconfigured" />
               </SelectTrigger>
               <SelectContent>
                 {TRAIL_STEP_METHODS.map((opt) => (
@@ -651,6 +781,28 @@ const CounterTrendAndReverseUI = ({
               </SelectContent>
             </Select>
           </LabeledField>
+          {showCloseTargets && (
+            <LabeledField
+              label="Close Targets"
+              hint="Used when Trail Method is AVG_Percent"
+            >
+              <Select
+                value={selectInputValue(localConfig.close_targets)}
+                onValueChange={(val) => handleChange("close_targets", val)}
+              >
+                <SelectTrigger className="bg-background/50">
+                  <SelectValue placeholder="Unconfigured" />
+                </SelectTrigger>
+                <SelectContent>
+                  {closeTargetOptions.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </LabeledField>
+          )}
         </div>
       </CategoryCard>
 
@@ -699,11 +851,11 @@ const CounterTrendAndReverseUI = ({
         <div className="grid grid-cols-2 gap-4">
           <LabeledField label="Trail Step Mode">
             <Select
-              value={localConfig.trail_step_mode || "TrailStepMode_Auto"}
+              value={selectInputValue(localConfig.trail_step_mode)}
               onValueChange={(val) => handleChange("trail_step_mode", val)}
             >
               <SelectTrigger className="bg-background/50">
-                <SelectValue />
+                <SelectValue placeholder="Unconfigured" />
               </SelectTrigger>
               <SelectContent>
                 {TRAIL_STEP_MODES.map((opt) => (
@@ -717,9 +869,9 @@ const CounterTrendAndReverseUI = ({
           <LabeledField label="Trail Step Cycle">
             <Input
               type="number"
-              value={localConfig.trail_step_cycle || 1}
+              value={numericInputValue(localConfig.trail_step_cycle)}
               onChange={(e) =>
-                handleChange("trail_step_cycle", parseInt(e.target.value))
+                handleChange("trail_step_cycle", parseOptionalInt(e.target.value))
               }
               className="bg-background/50"
             />
@@ -757,40 +909,19 @@ const CounterTrendAndReverseUI = ({
               Close Partial
             </Label>
             <Switch
-              checked={localConfig.partial_close || false}
+              checked={Boolean(localConfig.partial_close)}
               onCheckedChange={(checked) =>
                 handleChange("partial_close", checked)
               }
             />
           </div>
-          <LabeledField label="Partial Cycle">
-            <Select
-              value={String(localConfig.partial_cycle || 3)}
-              onValueChange={(val) =>
-                handleChange("partial_cycle", parseInt(val))
-              }
-            >
-              <SelectTrigger className="bg-background/50">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"].map(
-                  (opt) => (
-                    <SelectItem key={opt} value={opt}>
-                      {opt}
-                    </SelectItem>
-                  ),
-                )}
-              </SelectContent>
-            </Select>
-          </LabeledField>
           <LabeledField label="Partial Mode">
             <Select
-              value={localConfig.partial_mode || "PartialMode_Balanced"}
+              value={selectInputValue(localConfig.partial_mode)}
               onValueChange={(val) => handleChange("partial_mode", val)}
             >
               <SelectTrigger className="bg-background/50">
-                <SelectValue />
+                <SelectValue placeholder="Unconfigured" />
               </SelectTrigger>
               <SelectContent>
                 {PARTIAL_MODES.map((opt) => (
@@ -801,116 +932,22 @@ const CounterTrendAndReverseUI = ({
               </SelectContent>
             </Select>
           </LabeledField>
-          <LabeledField label="Partial Balance">
-            <Select
-              value={localConfig.partial_balance || "PartialBalance_Balanced"}
-              onValueChange={(val) => handleChange("partial_balance", val)}
-            >
-              <SelectTrigger className="bg-background/50">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PARTIAL_BALANCES.map((opt) => (
-                  <SelectItem key={opt} value={opt}>
-                    {opt}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </LabeledField>
-        </div>
-        <div className="grid grid-cols-1 gap-4 mt-4">
-          <LabeledField label="Partial Trail Mode">
-            <Select
-              value={localConfig.partial_trail_mode || "TrailStepMode_Auto"}
-              onValueChange={(val) => handleChange("partial_trail_mode", val)}
-            >
-              <SelectTrigger className="bg-background/50">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {TRAIL_STEP_MODES.map((opt) => (
-                  <SelectItem key={opt} value={opt}>
-                    {opt}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <LabeledField label="Partial Profit Threshold">
+            <Input
+              type="number"
+              value={numericInputValue(localConfig.partial_profit_threshold)}
+              onChange={(e) =>
+                handleChange(
+                  "partial_profit_threshold",
+                  parseOptionalFloat(e.target.value),
+                )
+              }
+              className="bg-background/50"
+            />
           </LabeledField>
         </div>
       </CategoryCard>
 
-      {/* TPSL Category */}
-      <CategoryCard title="TPSL" icon={Shield} color="amber">
-        <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
-          <div className="flex items-center justify-between pt-5">
-            <Label className="text-[11px] font-medium text-muted-foreground">
-              Use TP
-            </Label>
-            <Switch
-              checked={localConfig.use_tp ?? true}
-              onCheckedChange={(checked) => handleChange("use_tp", checked)}
-            />
-          </div>
-          <LabeledField label="TP Mode">
-            <Select
-              value={localConfig.tp_mode || "TPSL_Points"}
-              onValueChange={(val) => handleChange("tp_mode", val)}
-            >
-              <SelectTrigger className="bg-background/50">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="TPSL_Points">Points</SelectItem>
-                <SelectItem value="TPSL_Percent">Percent</SelectItem>
-              </SelectContent>
-            </Select>
-          </LabeledField>
-          <LabeledField label="TP Value">
-            <Input
-              type="number"
-              value={localConfig.tp_value || 0}
-              onChange={(e) =>
-                handleChange("tp_value", parseFloat(e.target.value))
-              }
-              className="bg-background/50"
-            />
-          </LabeledField>
-          <div className="flex items-center justify-between pt-5">
-            <Label className="text-[11px] font-medium text-muted-foreground">
-              Use SL
-            </Label>
-            <Switch
-              checked={localConfig.use_sl ?? true}
-              onCheckedChange={(checked) => handleChange("use_sl", checked)}
-            />
-          </div>
-          <LabeledField label="SL Mode">
-            <Select
-              value={localConfig.sl_mode || "TPSL_Points"}
-              onValueChange={(val) => handleChange("sl_mode", val)}
-            >
-              <SelectTrigger className="bg-background/50">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="TPSL_Points">Points</SelectItem>
-                <SelectItem value="TPSL_Percent">Percent</SelectItem>
-              </SelectContent>
-            </Select>
-          </LabeledField>
-          <LabeledField label="SL Value">
-            <Input
-              type="number"
-              value={localConfig.sl_value || 0}
-              onChange={(e) =>
-                handleChange("sl_value", parseFloat(e.target.value))
-              }
-              className="bg-background/50"
-            />
-          </LabeledField>
-        </div>
-      </CategoryCard>
     </div>
   );
 };
@@ -967,7 +1004,7 @@ export const LogicConfigPanel = ({
             hint="The logic to hedge against"
           >
             <Select
-              value={localConfig.hedge_reference || "Logic_None"}
+              value={selectInputValue(localConfig.hedge_reference)}
               onValueChange={(val) => handleChange("hedge_reference", val)}
             >
               <SelectTrigger className="bg-background/50">
@@ -987,9 +1024,9 @@ export const LogicConfigPanel = ({
             <div className="flex items-center gap-3">
               <Input
                 type="number"
-                value={localConfig.hedge_scale || 50}
+                value={numericInputValue(localConfig.hedge_scale)}
                 onChange={(e) =>
-                  handleChange("hedge_scale", parseFloat(e.target.value))
+                  handleChange("hedge_scale", parseOptionalFloat(e.target.value))
                 }
                 className="bg-background/50"
               />
@@ -1014,6 +1051,8 @@ export const LogicConfigPanel = ({
         onDuplicate={onDuplicate}
         onReset={onReset}
         isReverse={false}
+        logicType={logicType}
+        group={group}
       />
     );
   }
@@ -1028,11 +1067,13 @@ export const LogicConfigPanel = ({
         onDuplicate={onDuplicate}
         onReset={onReset}
         isReverse={true}
+        logicType={logicType}
+        group={group}
       />
     );
   }
 
-  // TREND FOLLOWING MODE - Same as Counter Trend
+  // Default fallback
   return (
     <CounterTrendAndReverseUI
       localConfig={localConfig}
@@ -1041,6 +1082,8 @@ export const LogicConfigPanel = ({
       onDuplicate={onDuplicate}
       onReset={onReset}
       isReverse={false}
+      logicType={logicType}
+      group={group}
     />
   );
 };

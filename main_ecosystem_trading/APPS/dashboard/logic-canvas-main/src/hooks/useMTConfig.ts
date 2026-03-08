@@ -19,9 +19,19 @@ export function useMTConfig(platform: Platform) {
       const raw = localStorage.getItem("daavfx-last-config");
       if (raw) {
         const parsed = JSON.parse(raw) as MTConfig;
-        setConfig(parsed);
+        console.log("[useMTConfig] LOAD_LOCAL_CONFIG", {
+          platform,
+          totalInputs: parsed?.total_inputs,
+          currentSetName: parsed?.current_set_name || null,
+          engines: parsed?.engines?.length || 0,
+        });
+        const cleanedConfig = {
+          ...parsed,
+          current_set_name: "",
+        };
+        setConfig(cleanedConfig);
         toast.success("Loaded local configuration");
-        return parsed;
+        return cleanedConfig;
       }
       setConfig(null);
       return null;
@@ -50,6 +60,12 @@ export function useMTConfig(platform: Platform) {
         last_saved_at: nowIso,
         last_saved_platform: platform,
       };
+      console.log("[useMTConfig] SAVE_LOCAL_CONFIG", {
+        platform,
+        totalInputs: enrichedConfig.total_inputs,
+        currentSetName: enrichedConfig.current_set_name || null,
+        engines: enrichedConfig.engines?.length || 0,
+      });
       try {
         localStorage.setItem("daavfx-last-config", JSON.stringify(enrichedConfig));
       } catch (e: any) {

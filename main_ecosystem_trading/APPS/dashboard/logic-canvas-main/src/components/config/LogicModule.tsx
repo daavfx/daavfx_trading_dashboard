@@ -29,8 +29,10 @@ import {
   ENGINE_LOGICS,
   LOGIC_DISPLAY_NAMES,
 } from "@/data/logic-inputs";
+import { logicMeta, categoryStyles } from "@/data/logic-ui-meta";
 import { useSettings } from "@/contexts/SettingsContext";
 import LogicConfigPanel from "@/components/LogicConfigPanel";
+import React from "react";
 
 interface LogicModuleProps {
   name: string;
@@ -51,119 +53,51 @@ interface LogicModuleProps {
   mode?: 1 | 2;
 }
 
-const logicMeta: Record<
-  string,
-  { color: string; description: string; cssClass: string }
-> = {
-  // Engine A logics
-  POWER: {
-    color: "bg-[hsl(43_80%_50%)]",
-    description:
-      "Main trading logic - core position management and entry signals",
-    cssClass: "logic-power",
-  },
-  REPOWER: {
-    color: "bg-[hsl(210_60%_52%)]",
-    description: "Grid recovery system with dynamic lot sizing",
-    cssClass: "logic-repower",
-  },
-  SCALPER: {
-    color: "bg-[hsl(152_55%_48%)]",
-    description: "Fast scalping entries with tight stops",
-    cssClass: "logic-scalper",
-  },
-  STOPPER: {
-    color: "bg-[hsl(0_55%_52%)]",
-    description: "Risk management and position limiting",
-    cssClass: "logic-stopper",
-  },
-  STO: {
-    color: "bg-[hsl(38_70%_52%)]",
-    description: "Stochastic oscillator signals",
-    cssClass: "logic-sto",
-  },
-  SCA: {
-    color: "bg-[hsl(270_50%_58%)]",
-    description: "Scale-in position management",
-    cssClass: "logic-sca",
-  },
-  RPO: {
-    color: "bg-[hsl(175_55%_48%)]",
-    description: "Recovery position optimization",
-    cssClass: "logic-rpo",
-  },
-  // Engine B logics (same colors, different prefix)
-  BPOWER: {
-    color: "bg-[hsl(43_80%_50%)]",
-    description: "Engine B - Main trading logic",
-    cssClass: "logic-power",
-  },
-  BREPOWER: {
-    color: "bg-[hsl(210_60%_52%)]",
-    description: "Engine B - Grid recovery",
-    cssClass: "logic-repower",
-  },
-  BSCALPER: {
-    color: "bg-[hsl(152_55%_48%)]",
-    description: "Engine B - Fast scalping",
-    cssClass: "logic-scalper",
-  },
-  BSTOPPER: {
-    color: "bg-[hsl(0_55%_52%)]",
-    description: "Engine B - Risk management",
-    cssClass: "logic-stopper",
-  },
-  BSTO: {
-    color: "bg-[hsl(38_70%_52%)]",
-    description: "Engine B - Stochastic",
-    cssClass: "logic-sto",
-  },
-  BSCA: {
-    color: "bg-[hsl(270_50%_58%)]",
-    description: "Engine B - Scale-in",
-    cssClass: "logic-sca",
-  },
-  BRPO: {
-    color: "bg-[hsl(175_55%_48%)]",
-    description: "Engine B - Recovery",
-    cssClass: "logic-rpo",
-  },
-  // Engine C logics
-  CPOWER: {
-    color: "bg-[hsl(43_80%_50%)]",
-    description: "Engine C - Main trading logic",
-    cssClass: "logic-power",
-  },
-  CREPOWER: {
-    color: "bg-[hsl(210_60%_52%)]",
-    description: "Engine C - Grid recovery",
-    cssClass: "logic-repower",
-  },
-  CSCALPER: {
-    color: "bg-[hsl(152_55%_48%)]",
-    description: "Engine C - Fast scalping",
-    cssClass: "logic-scalper",
-  },
-  CSTOPPER: {
-    color: "bg-[hsl(0_55%_52%)]",
-    description: "Engine C - Risk management",
-    cssClass: "logic-stopper",
-  },
-  CSTO: {
-    color: "bg-[hsl(38_70%_52%)]",
-    description: "Engine C - Stochastic",
-    cssClass: "logic-sto",
-  },
-  CSCA: {
-    color: "bg-[hsl(270_50%_58%)]",
-    description: "Engine C - Scale-in",
-    cssClass: "logic-sca",
-  },
-  CRPO: {
-    color: "bg-[hsl(175_55%_48%)]",
-    description: "Engine C - Recovery",
-    cssClass: "logic-rpo",
-  },
+const normalizeTradingModeValue = (raw: unknown): "Counter Trend" | "Hedge" | "Reverse" => {
+  const mode = String(raw ?? "").trim().toLowerCase();
+  if (mode === "hedge") return "Hedge";
+  if (mode === "reverse") return "Reverse";
+  if (
+    mode === "counter trend" ||
+    mode === "countertrend" ||
+    mode === "counter_trend" ||
+    mode === "counter-trend" ||
+    mode === ""
+  ) {
+    return "Counter Trend";
+  }
+  return "Counter Trend";
+};
+
+const readNumberValue = (raw: unknown): number | undefined => {
+  if (raw === undefined || raw === null || raw === "") return undefined;
+  const parsed =
+    typeof raw === "number" ? raw : Number.parseFloat(String(raw));
+  return Number.isFinite(parsed) ? parsed : undefined;
+};
+
+const readIntegerValue = (raw: unknown): number | undefined => {
+  const parsed = readNumberValue(raw);
+  return parsed === undefined ? undefined : Math.trunc(parsed);
+};
+
+const readStringValue = (raw: unknown): string | undefined => {
+  if (raw === undefined || raw === null) return undefined;
+  const text = String(raw).trim();
+  return text === "" ? undefined : text;
+};
+
+const readToggleValue = (raw: unknown): boolean | undefined => {
+  if (raw === true || raw === "ON") return true;
+  if (raw === false || raw === "OFF") return false;
+  return undefined;
+};
+
+const getCategoryIcon = (category: string) => {
+  if (category === "Reverse/Hedge")
+    return <ArrowLeftRight className="w-3 h-3" />;
+  if (category === "Safety") return <Shield className="w-3 h-3" />;
+  return null;
 };
 
 // Category display order and icons
@@ -178,103 +112,11 @@ const CATEGORY_ORDER = [
   "Trail Advanced",
   "Close Partial",
   "Reverse/Hedge",
-  "TPSL",
   "Safety",
   "Restart",
 ];
 
-const categoryStyles: Record<
-  string,
-  { color: string; bg: string; border: string; icon: any }
-> = {
-  "Mode Selectors": {
-    color: "text-sky-500",
-    bg: "bg-sky-500/5",
-    border: "border-sky-500/10",
-    icon: Settings2,
-  },
-  Core: {
-    color: "text-blue-500",
-    bg: "bg-blue-500/5",
-    border: "border-blue-500/10",
-    icon: Layers,
-  },
-  Lots: {
-    color: "text-blue-400",
-    bg: "bg-blue-400/5",
-    border: "border-blue-400/10",
-    icon: Box,
-  },
-  Grid: {
-    color: "text-indigo-500",
-    bg: "bg-indigo-500/5",
-    border: "border-indigo-500/10",
-    icon: ArrowLeftRight,
-  },
-  Trail: {
-    color: "text-purple-500",
-    bg: "bg-purple-500/5",
-    border: "border-purple-500/10",
-    icon: ChevronRight,
-  },
-  "Trail Advanced": {
-    color: "text-fuchsia-500",
-    bg: "bg-fuchsia-500/5",
-    border: "border-fuchsia-500/10",
-    icon: Settings2,
-  },
-  Logic: {
-    color: "text-emerald-500",
-    bg: "bg-emerald-500/5",
-    border: "border-emerald-500/10",
-    icon: Zap,
-  },
-  TPSL: {
-    color: "text-amber-500",
-    bg: "bg-amber-500/5",
-    border: "border-amber-500/10",
-    icon: Shield,
-  },
-  "Reverse/Hedge": {
-    color: "text-orange-500",
-    bg: "bg-orange-500/5",
-    border: "border-orange-500/10",
-    icon: ArrowLeftRight,
-  },
-  "Close Partial": {
-    color: "text-cyan-500",
-    bg: "bg-cyan-500/5",
-    border: "border-cyan-500/10",
-    icon: RefreshCw,
-  },
-  Triggers: {
-    color: "text-rose-500",
-    bg: "bg-rose-500/5",
-    border: "border-rose-500/10",
-    icon: Shield,
-  },
-  Safety: {
-    color: "text-red-500",
-    bg: "bg-red-500/5",
-    border: "border-red-500/10",
-    icon: Shield,
-  },
-  Restart: {
-    color: "text-slate-500",
-    bg: "bg-slate-500/5",
-    border: "border-slate-500/10",
-    icon: RefreshCw,
-  },
-};
-
-const getCategoryIcon = (category: string) => {
-  if (category === "Reverse/Hedge")
-    return <ArrowLeftRight className="w-3 h-3" />;
-  if (category === "Safety") return <Shield className="w-3 h-3" />;
-  return null;
-};
-
-export function LogicModule({
+export const LogicModule = React.memo(function LogicModule({
   name,
   engine,
   expanded,
@@ -289,6 +131,8 @@ export function LogicModule({
 }: LogicModuleProps) {
   const engineSafe = engine || "";
   const nameSafe = name || "";
+  const isEngineAPower =
+    engineSafe.includes("Engine A") && nameSafe.toUpperCase() === "POWER";
 
   const [trailLevelsVisible, setTrailLevelsVisible] = useState(1);
   const [showAdvancedFields, setShowAdvancedFields] = useState(false);
@@ -320,37 +164,27 @@ export function LogicModule({
   const suffixMap: Record<string, string> = {
     POWER: "Power",
     REPOWER: "Repower",
-    SCALPER: "Scalp",
+    SCALP: "Scalper",
     STOPPER: "Stopper",
     STO: "STO",
     SCA: "SCA",
     RPO: "RPO",
   };
   const logicSuffix = suffixMap[baseName] || baseName || "";
-  const currentLogicId = `Logic_${engineLetter}_${logicSuffix}`;
 
   type SideValues = Record<string, any>;
   const [fieldValuesBySide, setFieldValuesBySide] = useState<{
     buy: SideValues;
     sell: SideValues;
   }>({ buy: {}, sell: {} });
-  
+
   // Active edit direction (single-side editing only)
   const [activeDirection, setActiveDirection] = useState<"buy" | "sell">("buy");
   const fieldValues = fieldValuesBySide[activeDirection] || {};
-  const directionalFields = new Set([
-    "initial_lot",
-    "multiplier",
-    "grid",
-    "trail_value",
-    "trail_start",
-    "trail_step",
-  ]);
-
   // Initialize field values only once using useRef to store initial values
   const initialFieldsRef = useRef<any[]>([]);
 
-const logicConfigKey = logicConfig?.logic_id || 'no-config';
+  const logicConfigKey = logicConfig?.logic_id || 'no-config';
   const initializedRef = useRef<string | null>(null);
 
   const updateSideValues = (
@@ -373,21 +207,106 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
     updateSideValues(activeDirection, updater);
   };
 
+  const hasConfigValue = (value: unknown) =>
+    value !== undefined && value !== null && value !== "";
+
+  const isDirectionalFallbackValue = (value: unknown) =>
+    typeof value === "number" && value === -1;
+
+  const readPersistedFieldValue = (
+    source: Record<string, any> | null | undefined,
+    fieldId: string,
+    side: "buy" | "sell",
+  ) => {
+    if (!source) return undefined;
+
+    if (/_(b|s)$/i.test(fieldId)) {
+      return source[fieldId];
+    }
+
+    const directionalKey = `${fieldId}_${side === "buy" ? "b" : "s"}`;
+    const directionalValue = source[directionalKey];
+    const baseValue = source[fieldId];
+    if (hasConfigValue(baseValue)) {
+      if (
+        hasConfigValue(directionalValue) &&
+        !isDirectionalFallbackValue(directionalValue) &&
+        directionalValue !== baseValue
+      ) {
+        console.warn(
+          `[LogicModule] LEGACY_OVERRIDE_MISMATCH logic=${source.logic_id || logicConfigKey} side=${side} field=${fieldId} base=${JSON.stringify(baseValue)} overrideKey=${directionalKey} override=${JSON.stringify(directionalValue)}`,
+        );
+        console.warn("[LogicModule] LEGACY_OVERRIDE_MISMATCH", {
+          engine: engineSafe,
+          logic: nameSafe,
+          group: group || groups?.[0] || null,
+          side,
+          fieldId,
+          baseValue,
+          directionalKey,
+          directionalValue,
+          logicId: source.logic_id || null,
+        });
+      }
+      return baseValue;
+    }
+
+    if (
+      hasConfigValue(directionalValue) &&
+      !isDirectionalFallbackValue(directionalValue)
+    ) {
+      return directionalValue;
+    }
+
+    return undefined;
+  };
+
+  const parseTriggerTypeCode = (raw: unknown): number | null => {
+    if (typeof raw === "number" && Number.isFinite(raw)) return Math.trunc(raw);
+    const text = String(raw ?? "").trim();
+    if (text === "") return null;
+    const match = text.match(/^(\d+)/);
+    if (match) return parseInt(match[1], 10);
+    if (text.toLowerCase().includes("immediate")) return 0;
+    return null;
+  };
+
+  const buildInactiveTriggerResets = (
+    triggerTypeRaw: unknown,
+    source: SideValues,
+  ): SideValues => {
+    const code = parseTriggerTypeCode(triggerTypeRaw);
+    const updates: SideValues = {};
+
+    if (code !== 1) updates["trigger_bars"] = undefined;
+    if (code !== 2) updates["trigger_seconds"] = undefined;
+    if (code !== 3) updates["trigger_pips"] = undefined;
+
+    if (code !== 0) {
+      updates["trigger_mode"] = undefined;
+    }
+    return updates;
+  };
+
   const resolveLogicDirection = (logic: any): "buy" | "sell" | null => {
     const dir = String(logic?.direction || "").toUpperCase();
     if (dir === "B" || dir === "BUY") return "buy";
     if (dir === "S" || dir === "SELL") return "sell";
 
     const logicId = String(logic?.logic_id || "").toUpperCase();
+    if (logicId.includes("_BUY_") || logicId.endsWith("_BUY")) return "buy";
+    if (logicId.includes("_SELL_") || logicId.endsWith("_SELL")) return "sell";
     if (logicId.includes("_B_") || logicId.endsWith("_B")) return "buy";
     if (logicId.includes("_S_") || logicId.endsWith("_S")) return "sell";
 
-    if (logic?.allow_buy === true && logic?.allow_sell !== true) return "buy";
-    if (logic?.allow_sell === true && logic?.allow_buy !== true) return "sell";
+    const allowBuy = (logic?.allow_buy ?? logic?.allowBuy) === true;
+    const allowSell = (logic?.allow_sell ?? logic?.allowSell) === true;
+    if (allowBuy && !allowSell) return "buy";
+    if (allowSell && !allowBuy) return "sell";
     return null;
   };
 
-  const findDirectionalLogic = (targetDirection: "buy" | "sell") => {
+  const getCurrentGroupData = () => {
     const groupNum = group
       ? parseInt(String(group).replace("Group ", ""), 10)
       : groups && groups.length > 0
@@ -395,16 +314,40 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
         : NaN;
     if (!Number.isFinite(groupNum)) return null;
 
-    const groupData = engineData?.groups?.find(
-      (g: any) => g.group_number === groupNum,
+    return (
+      engineData?.groups?.find((g: any) => g.group_number === groupNum) || null
     );
+  };
+
+  const getGroupPowerStartValue = (
+    side: "buy" | "sell",
+    groupData: any,
+  ) => {
+    if (!groupData) return undefined;
+    return side === "buy"
+      ? (groupData as any)?.group_power_start_b ?? (groupData as any)?.group_power_start
+      : (groupData as any)?.group_power_start_s ?? (groupData as any)?.group_power_start;
+  };
+
+  const findDirectionalLogic = (targetDirection: "buy" | "sell") => {
+    const groupData = getCurrentGroupData();
     if (!groupData?.logics) return null;
 
-    const logicNameUpper = String(logicSuffix || baseName || nameSafe).toUpperCase();
-    const candidates = groupData.logics.filter((l: any) => {
+    const desiredNames = new Set<string>([
+      String(baseName || nameSafe).toUpperCase(),
+      String(logicSuffix || "").toUpperCase(),
+    ]);
+
+    const candidatesAll = groupData.logics.filter((l: any) => {
       const candidateName = String(l?.logic_name || "").toUpperCase();
-      return candidateName === logicNameUpper;
+      return desiredNames.has(candidateName);
     });
+    const primaryName = String(baseName || nameSafe).toUpperCase();
+    const candidatesPrimary = candidatesAll.filter(
+      (l: any) => String(l?.logic_name || "").toUpperCase() === primaryName,
+    );
+    const candidates =
+      candidatesPrimary.length > 0 ? candidatesPrimary : candidatesAll;
 
     return (
       candidates.find((l: any) => resolveLogicDirection(l) === targetDirection) ||
@@ -412,50 +355,64 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
     );
   };
 
-  const getTargetLogicId = (side: "buy" | "sell") => {
+  const getTargetLogicId = (side: "buy" | "sell"): string => {
     const row = findDirectionalLogic(side);
-    const logicId =
-      String((row as any)?.logic_id || "") ||
-      String((logicConfig as any)?.logic_id || "");
+    const logicId = String((row as any)?.logic_id || "").trim();
     if (logicId) return logicId;
-    return `${engineLetter}_${logicSuffix}_${side}`.toUpperCase();
+    const sideToken = side === "buy" ? "B" : "S";
+    const groupNum = group
+      ? parseInt(String(group).replace("Group ", ""), 10)
+      : groups && groups.length > 0
+        ? parseInt(String(groups[0]).replace("Group ", ""), 10)
+        : 1;
+    const normalizedGroup = Number.isFinite(groupNum) && groupNum > 0 ? groupNum : 1;
+    const normalizedLogicName = String(baseName || nameSafe || logicSuffix || "POWER").toUpperCase();
+    return `${engineLetter}_${normalizedLogicName}_${sideToken}_G${normalizedGroup}`;
   };
-  
+
   useEffect(() => {
-    // Skip if already initialized with same config (prevents reset on field changes)
-    if (
-      initializedRef.current === logicConfigKey &&
-      (Object.keys(fieldValuesBySide.buy || {}).length > 0 ||
-        Object.keys(fieldValuesBySide.sell || {}).length > 0)
-    ) {
+    if (initializedRef.current === logicConfigKey) {
+      console.log("[LogicModule] INIT_SKIP", {
+        engine: engineSafe,
+        logic: nameSafe,
+        group: group || groups?.[0] || null,
+        logicConfigKey,
+      });
       return;
     }
 
-    // Re-initialize when logicConfig changes (e.g., when loading a new setfile)
+    console.log(
+      `[LogicModule] INIT_START logic=${logicConfigKey} engine=${engineSafe} group=${group || groups?.[0] || "none"} name=${nameSafe} incoming=${logicConfig?.logic_id || "none"}`,
+    );
+    console.log("[LogicModule] INIT_START", {
+      engine: engineSafe,
+      logic: nameSafe,
+      group: group || groups?.[0] || null,
+      logicConfigKey,
+      incomingLogicId: logicConfig?.logic_id || null,
+    });
+
     initializedRef.current = logicConfigKey;
 
+    const logicIdGroupMatch = logicConfig?.logic_id?.match(/_G(\d+)(?:$|_)/);
+    const logicIdGroup = logicIdGroupMatch ? Number(logicIdGroupMatch[1]) : NaN;
     const isGroup1 =
       group === "Group 1" ||
       (groups && groups.length > 0 && groups.some((g) => g === "Group 1")) ||
-      logicConfig?.logic_id?.includes("_G1");
-    const config = logicConfig || ({} as Partial<LogicConfig>);
+      logicIdGroup === 1;
     const logicInputConfig = logicInputs[nameSafe];
     if (!logicInputConfig) return;
+    const currentGroupData = getCurrentGroupData();
 
     const templateFields = isGroup1
       ? logicInputConfig.group_1
       : logicInputConfig.standard;
 
     const newInitialFields = templateFields.map((field) => {
-      const configKey = field.id as keyof LogicConfig;
-      let val = config[configKey];
+      let val: unknown;
 
-      if (field.type === "toggle" && typeof val === "boolean")
-        val = val ? "ON" : "OFF";
-      if (val === undefined) {
-        val = field.default;
-        if (field.type === "toggle" && typeof val === "boolean")
-          val = val ? "ON" : "OFF";
+      if (field.id === "group_power_start") {
+        val = getGroupPowerStartValue(activeDirection, currentGroupData);
       }
 
       return { ...field, value: val };
@@ -465,50 +422,37 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
 
     const hasBuyRow = Boolean(findDirectionalLogic("buy"));
     const hasSellRow = Boolean(findDirectionalLogic("sell"));
-    const singleRowBuyOn = config["allow_buy" as keyof LogicConfig] === true;
-    const singleRowSellOn = config["allow_sell" as keyof LogicConfig] === true;
-    const defaultDirection: "buy" | "sell" =
-      hasBuyRow
-        ? "buy"
-        : hasSellRow
-          ? "sell"
-          : singleRowSellOn && !singleRowBuyOn
-            ? "sell"
-            : "buy";
+    const initialDirection: "buy" | "sell" = hasBuyRow
+      ? "buy"
+      : hasSellRow
+        ? "sell"
+        : "buy";
+
     const buildSideValues = (side: "buy" | "sell") => {
-      const directionalRow = findDirectionalLogic(side);
-      const sourceLogic = directionalRow || logicConfig || null;
+      const sideRow = findDirectionalLogic(side) as Record<string, any> | null;
       const values: Record<string, any> = {};
 
       newInitialFields.forEach((f) => {
-        values[f.id] = f.value;
+        let nextValue: any;
+
+        if (f.id === "group_power_start") {
+          nextValue = getGroupPowerStartValue(side, currentGroupData);
+        }
+
+        if (nextValue === undefined) {
+          nextValue = readPersistedFieldValue(sideRow, f.id, side);
+        }
+
+        values[f.id] =
+          f.type === "toggle" && typeof nextValue === "boolean"
+            ? nextValue
+              ? "ON"
+              : "OFF"
+            : nextValue;
       });
 
       values["allow_buy"] = side === "buy" ? "ON" : "OFF";
       values["allow_sell"] = side === "sell" ? "ON" : "OFF";
-
-      if (!sourceLogic) return values;
-
-      newInitialFields.forEach((field) => {
-        const source = sourceLogic as Record<string, any>;
-        let rawValue: any;
-        if (directionalRow) {
-          rawValue = source[field.id];
-        } else if (directionalFields.has(String(field.id))) {
-          const suffix = side === "buy" ? "_b" : "_s";
-          rawValue = source[`${field.id}${suffix}`];
-          if (rawValue === undefined) rawValue = source[field.id];
-        } else {
-          rawValue = source[field.id];
-        }
-        if (rawValue === undefined) return;
-        values[field.id] =
-          field.type === "toggle" && typeof rawValue === "boolean"
-            ? rawValue
-              ? "ON"
-              : "OFF"
-            : rawValue;
-      });
 
       return values;
     };
@@ -516,48 +460,109 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
     const buyValues = buildSideValues("buy");
     const sellValues = buildSideValues("sell");
 
-    setActiveDirection(defaultDirection);
+    console.log(
+      `[LogicModule] INIT_VALUES logic=${logicConfigKey} buyLogic=${findDirectionalLogic("buy")?.logic_id || "none"} sellLogic=${findDirectionalLogic("sell")?.logic_id || "none"}`,
+    );
+    console.log("[LogicModule] INIT_VALUES", {
+      engine: engineSafe,
+      logic: nameSafe,
+      group: group || groups?.[0] || null,
+      logicConfigKey,
+      activeDirection: initialDirection,
+      buyLogicId: findDirectionalLogic("buy")?.logic_id || null,
+      sellLogicId: findDirectionalLogic("sell")?.logic_id || null,
+      buyValues,
+      sellValues,
+    });
+
+    setActiveDirection(initialDirection);
     setFieldValuesBySide({ buy: buyValues, sell: sellValues });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [logicConfig, logicConfigKey, groups, nameSafe]);
+  }, [logicConfig, logicConfigKey]);
 
   if (!engineSafe || !nameSafe) {
     return null;
   }
 
   const handleFieldChange = (id: string, value: any) => {
+    console.log(
+      `[LogicModule] FIELD_EDIT logic=${logicConfigKey} side=${activeDirection} field=${id} prev=${JSON.stringify(fieldValues[id])} next=${JSON.stringify(value)}`,
+    );
+    console.log("[LogicModule] FIELD_EDIT", {
+      engine: engineSafe,
+      logic: nameSafe,
+      group: group || groups?.[0] || null,
+      logicConfigKey,
+      activeDirection,
+      fieldId: id,
+      incomingValue: value,
+      currentValue: fieldValues[id],
+    });
+
     const updates: Record<string, any> = { [id]: value };
+
+    if (id === "trigger_type") {
+      Object.assign(
+        updates,
+        buildInactiveTriggerResets(value, fieldValues),
+      );
+    }
 
     // Side effects for Trading Mode
     if (id === "trading_mode") {
-      if (value === "Counter Trend") {
+      const mode = isEngineAPower
+        ? "Counter Trend"
+        : normalizeTradingModeValue(value);
+      updates["trading_mode"] = mode;
+      if (mode === "Counter Trend") {
         updates["reverse_enabled"] = "OFF";
         updates["hedge_enabled"] = "OFF";
-      } else if (value === "Hedge") {
+      } else if (mode === "Hedge") {
         updates["hedge_enabled"] = "ON";
         updates["reverse_enabled"] = "OFF";
-      } else if (value === "Reverse") {
+      } else if (mode === "Reverse") {
         updates["reverse_enabled"] = "ON";
         updates["hedge_enabled"] = "OFF";
       }
     }
 
-    // Always update local UI state for the visible field
+    // Always update local UI state for the visible side only.
     updateActiveSideValues((prev) => ({ ...prev, ...updates }));
 
     // Apply edit only to currently selected side.
     const editDirection: "buy" | "sell" = activeDirection;
     const targetLogicId = getTargetLogicId(editDirection);
 
+    console.log(
+      `[LogicModule] FIELD_COMMIT logic=${logicConfigKey} side=${editDirection} target=${targetLogicId} updates=${JSON.stringify(updates)}`,
+    );
+    console.log("[LogicModule] FIELD_COMMIT", {
+      engine: engineSafe,
+      logic: nameSafe,
+      group: group || groups?.[0] || null,
+      logicConfigKey,
+      activeDirection: editDirection,
+      targetLogicId,
+      updates,
+    });
+
     // Propagate only the base field ID upward and let parent
     // handle mapping to buy/sell specific storage using direction hint
     Object.entries(updates).forEach(([fieldId, fieldValue]) => {
-      onUpdate?.(fieldId, fieldValue, editDirection, targetLogicId);
+      const persistedFieldId =
+        fieldId === "group_power_start"
+          ? editDirection === "buy"
+            ? "group_power_start_b"
+            : "group_power_start_s"
+          : fieldId;
+      onUpdate?.(persistedFieldId, fieldValue, editDirection, targetLogicId);
     });
   };
 
   // Current Mode - Trail Only
-  const tradingMode = fieldValues["trading_mode"] || "Counter Trend";
+  const tradingMode = isEngineAPower
+    ? "Counter Trend"
+    : normalizeTradingModeValue(fieldValues["trading_mode"]);
 
   // Filter and Construct Fields
   let displayFields = initialFieldsRef.current.map((f) => ({
@@ -566,6 +571,12 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
   }));
 
   displayFields = displayFields.filter((f) => {
+    if (/_(b|s)$/i.test(f.id)) return false;
+
+    if (f.id === "close_targets") {
+      return String(fieldValues["trail_method"] || "Points") === "AVG_Percent";
+    }
+
     // Always hide the legacy toggle fields (controlled by Trading Mode selector)
     if (f.id === "reverse_enabled" || f.id === "hedge_enabled") return false;
 
@@ -578,7 +589,7 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
       if (tradingMode === "Reverse" && f.id.includes("hedge")) return false;
     }
 
-    // Show all fields including TPSL (dummy/backup)
+    // Show all fields
     return true;
   });
 
@@ -588,19 +599,39 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
     fieldId: string,
     fieldValue: any,
   ): string | undefined => {
-    const ids = ["grid", "trail_value", "trail_start", "trail_step"];
-    if (!ids.includes(fieldId)) return;
+    const trailIds = ["trail_value", "trail_start", "trail_step"];
+    const gridIds = ["grid"];
+    if (!trailIds.includes(fieldId) && !gridIds.includes(fieldId)) return;
+    
     const n =
       typeof fieldValue === "number"
         ? fieldValue
         : parseFloat(String(fieldValue));
     if (!Number.isFinite(n)) return;
 
+    // Check if this is a percent-based trail mode
+    const trailMethod = fieldValues["trail_method"];
+    const isPercentTrail = trailMethod && (
+      trailMethod === "AVG_Percent" || 
+      trailMethod === "Percent" || 
+      String(trailMethod).includes("Percent")
+    );
+
     if (unitMode === "direct_price") {
       const move = n * 0.01;
       return `${unitSymbol || "Direct"}: ${n} → ${move.toFixed(2)} price`;
     }
 
+    // For trail fields: Points mode = "pts", Percent mode = "%"
+    if (trailIds.includes(fieldId)) {
+      if (isPercentTrail) {
+        return `${unitSymbol || "FX"}: ${n}%`;
+      }
+      // Points mode - show "pts" not "pips"
+      return `${unitSymbol || "FX"}: ${n} pts`;
+    }
+
+    // Grid always shows "pips"
     return `${unitSymbol || "FX"}: ${n} pips`;
   };
 
@@ -608,8 +639,8 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
   const filteredFields =
     localSelectedFields.length > 0
       ? finalFields.filter(
-          (f) => localSelectedFields.includes(f.id) || (f as any).isVirtual,
-        )
+        (f) => localSelectedFields.includes(f.id) || (f as any).isVirtual,
+      )
       : finalFields;
 
   const meta = logicMeta[name] || {
@@ -719,68 +750,81 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
                   mode="hedge"
                   engine={engine}
                   config={{
-                    enabled:
-                      fieldValues["enabled"] === "ON" ||
-                      fieldValues["enabled"] === true,
+                    enabled: readToggleValue(fieldValues["enabled"]) ?? false,
                     logic_name: name,
-                    initial_lot: parseFloat(fieldValues["initial_lot"]) || 0.01,
-                    multiplier: parseFloat(fieldValues["multiplier"]) || 2.0,
-                    grid: parseFloat(fieldValues["grid"]) || 10.0,
-                    trail_method: fieldValues["trail_method"] || "Points",
-                    trail_value: parseFloat(fieldValues["trail_value"]) || 15.0,
-                    trail_step: parseFloat(fieldValues["trail_step"]) || 10.0,
-                    use_tp:
-                      fieldValues["use_tp"] === "ON" ||
-                      fieldValues["use_tp"] === true,
-                    tp_value: parseFloat(fieldValues["tp_value"]) || 0.0,
-                    use_sl:
-                      fieldValues["use_sl"] === "ON" ||
-                      fieldValues["use_sl"] === true,
-                    sl_value: parseFloat(fieldValues["sl_value"]) || 0.0,
-                    trigger_type: fieldValues["trigger_type"] || "Immediate",
-                    trigger_bars: parseInt(fieldValues["trigger_bars"]) || 0,
-                    trigger_pips:
-                      parseFloat(fieldValues["trigger_pips"]) || 0.0,
-                    grid_behavior:
-                      fieldValues["grid_behavior"] || "Counter Trend",
+                    initial_lot: readNumberValue(fieldValues["initial_lot"]),
+                    multiplier: readNumberValue(fieldValues["multiplier"]),
+                    grid: readNumberValue(fieldValues["grid"]),
+                    trail_method: readStringValue(fieldValues["trail_method"]),
+                    trail_value: readNumberValue(fieldValues["trail_value"]),
+                    trail_start: readNumberValue(fieldValues["trail_start"]),
+                    trail_step: readNumberValue(fieldValues["trail_step"]),
+                    close_targets: readStringValue(fieldValues["close_targets"]),
+                    order_count_reference: readStringValue(
+                      fieldValues["order_count_reference"],
+                    ),
+                    group_order_count_reference: readStringValue(
+                      fieldValues["group_order_count_reference"],
+                    ),
+                    grid_behavior: readStringValue(fieldValues["grid_behavior"]),
                     trading_mode: tradingMode,
+                    trigger_type: readStringValue(fieldValues["trigger_type"]),
+                    trigger_mode: readStringValue(fieldValues["trigger_mode"]),
+                    trigger_bars: readIntegerValue(fieldValues["trigger_bars"]),
+                    trigger_seconds: readIntegerValue(
+                      fieldValues["trigger_seconds"],
+                    ),
+                    trigger_pips: readNumberValue(fieldValues["trigger_pips"]),
                     hedge_enabled: tradingMode === "Hedge",
-                    hedge_reference:
-                      fieldValues["hedge_reference"] || "Logic_None",
-                    hedge_scale: parseFloat(fieldValues["hedge_scale"]) || 50.0,
+                    hedge_reference: readStringValue(
+                      fieldValues["hedge_reference"],
+                    ),
+                    hedge_scale: readNumberValue(fieldValues["hedge_scale"]),
                     reverse_enabled:
-                      fieldValues["reverse_enabled"] === "ON" ||
-                      fieldValues["reverse_enabled"] === true,
-                    reverse_reference:
-                      fieldValues["reverse_reference"] || "Logic_None",
+                      readToggleValue(fieldValues["reverse_enabled"]) ?? false,
+                    reverse_reference: readStringValue(
+                      fieldValues["reverse_reference"],
+                    ),
                     partial_close:
-                      fieldValues["partial_close"] === "ON" ||
-                      fieldValues["partial_close"] === true,
-                    start_level: parseInt(fieldValues["start_level"]) || 0,
+                      readToggleValue(fieldValues["close_partial"]) ??
+                      readToggleValue(fieldValues["partial_close"]) ??
+                      false,
+                    partial_mode:
+                      readStringValue(fieldValues["close_partial_mode"]) ??
+                      readStringValue(fieldValues["partial_mode"]),
+                    partial_profit_threshold:
+                      readNumberValue(
+                        fieldValues["close_partial_profit_threshold"] ??
+                        fieldValues["partial_profit_threshold"],
+                      ),
+                    start_level: readIntegerValue(fieldValues["start_level"]),
                   }}
                   onChange={(field, value) => {
-                    // Map LogicConfigPanel field names to LogicModule field names (snake_case to camelCase)
+                    // Map LogicConfigPanel fields to canonical MT config keys.
                     const fieldMapping: Record<string, string> = {
-                      hedge_reference: "hedgeReference",
-                      hedge_scale: "hedgeScale",
-                      reverse_reference: "reverseReference",
-                      initial_lot: "initialLot",
+                      hedge_reference: "hedge_reference",
+                      hedge_scale: "hedge_scale",
+                      reverse_reference: "reverse_reference",
+                      initial_lot: "initial_lot",
                       enabled: "enabled",
                       multiplier: "multiplier",
                       grid: "grid",
-                      trail_method: "trailMethod",
-                      trail_value: "trailValue",
-                      trail_step: "trailStep",
-                      use_tp: "useTP",
-                      tp_value: "takeProfit",
-                      use_sl: "useSL",
-                      sl_value: "stopLoss",
-                      trigger_type: "triggerType",
-                      trigger_bars: "triggerBars",
-                      trigger_pips: "triggerPips",
-                      grid_behavior: "gridBehavior",
-                      partial_close: "partialClose",
-                      start_level: "startLevel",
+                      trail_method: "trail_method",
+                      trail_value: "trail_value",
+                      trail_step: "trail_step",
+                      trigger_type: "trigger_type",
+                      trigger_mode: "trigger_mode",
+                      trigger_bars: "trigger_bars",
+                      trigger_seconds: "trigger_seconds",
+                      trigger_pips: "trigger_pips",
+                      grid_behavior: "grid_behavior",
+                      partial_close: "close_partial",
+                      partial_mode: "close_partial_mode",
+                      partial_profit_threshold: "close_partial_profit_threshold",
+                      start_level: "start_level",
+                      order_count_reference: "order_count_reference",
+                      group_order_count_reference: "group_order_count_reference",
+                      close_targets: "close_targets",
                     };
 
                     const mappedField = fieldMapping[field] || field;
@@ -789,24 +833,34 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
                     let processedValue = value;
                     if (
                       field === "enabled" ||
-                      field === "use_tp" ||
-                      field === "use_sl" ||
                       field === "partial_close"
                     ) {
                       processedValue = value ? "ON" : "OFF";
                     }
 
+                    const updates: Record<string, any> = {
+                      [mappedField]: processedValue,
+                    };
+                    if (mappedField === "trigger_type") {
+                      Object.assign(
+                        updates,
+                        buildInactiveTriggerResets(processedValue, fieldValues),
+                      );
+                    }
+
                     updateActiveSideValues((prev) => ({
                       ...prev,
-                      [mappedField]: processedValue,
+                      ...updates,
                     }));
                     if (onUpdate) {
-                      onUpdate(
-                        mappedField,
-                        processedValue,
-                        activeDirection,
-                        getTargetLogicId(activeDirection),
-                      );
+                      Object.entries(updates).forEach(([fieldId, fieldValue]) => {
+                        onUpdate(
+                          fieldId,
+                          fieldValue,
+                          activeDirection,
+                          getTargetLogicId(activeDirection),
+                        );
+                      });
                     }
                   }}
                   onChangeMode={(newMode) => {
@@ -816,21 +870,8 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
                         ? "Hedge"
                         : newMode === "reverse"
                           ? "Reverse"
-                          : newMode === "trend_following"
-                            ? "Trend Following"
-                            : "Counter Trend";
-                    updateActiveSideValues((prev) => ({
-                      ...prev,
-                      trading_mode: modeValue,
-                    }));
-                    if (onUpdate) {
-                      onUpdate(
-                        "trading_mode",
-                        modeValue,
-                        activeDirection,
-                        getTargetLogicId(activeDirection),
-                      );
-                    }
+                          : "Counter Trend";
+                    handleFieldChange("trading_mode", modeValue);
                   }}
                   onDuplicate={() => {
                     // Duplicate current logic config to clipboard or create copy
@@ -841,31 +882,33 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
                     alert("Logic configuration copied to clipboard!");
                   }}
                   onReset={() => {
-                    // Reset to defaults
-                    if (confirm("Reset all fields to defaults?")) {
-                      const defaults: Record<string, any> = {
-                        initial_lot: "0.01",
-                        multiplier: "2.0",
-                        grid: "600",
-                        trail_method: "Points",
-                        trail_value: "300",
-                        trail_step: "150",
-                        use_tp: "OFF",
-                        tp_value: "500",
-                        use_sl: "OFF",
-                        sl_value: "200",
-                        trigger_type: "Immediate",
-                        trigger_bars: "0",
-                        trigger_pips: "0",
-                        grid_behavior: "CounterTrend",
-                        hedge_reference: "Logic_None",
-                        hedge_scale: "50",
-                        reverse_reference: "Logic_None",
-                        partial_close: "OFF",
-                        enabled: "ON",
+                    if (confirm("Clear all editable values for this logic side?")) {
+                      const clearedValues: Record<string, any> = {
+                        initial_lot: undefined,
+                        multiplier: undefined,
+                        grid: undefined,
+                        trail_method: undefined,
+                        trail_value: undefined,
+                        trail_step: undefined,
+                        trigger_type: undefined,
+                        trigger_mode: undefined,
+                        trigger_bars: undefined,
+                        trigger_seconds: undefined,
+                        trigger_pips: undefined,
+                        grid_behavior: undefined,
+                        hedge_reference: undefined,
+                        hedge_scale: undefined,
+                        reverse_reference: undefined,
+                        partial_close: undefined,
+                        close_partial_mode: undefined,
+                        close_partial_profit_threshold: undefined,
+                        enabled: undefined,
                       };
-                      updateActiveSideValues((prev) => ({ ...prev, ...defaults }));
-                      Object.entries(defaults).forEach(([key, value]) => {
+                      updateActiveSideValues((prev) => ({
+                        ...prev,
+                        ...clearedValues,
+                      }));
+                      Object.entries(clearedValues).forEach(([key, value]) => {
                         if (onUpdate) {
                           onUpdate(
                             key,
@@ -886,7 +929,7 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
                 />
               )}
 
-              {/* Show standard category-based UI for Counter Trend, Trend Following, and Reverse */}
+              {/* Show standard category-based UI for Counter Trend and Reverse */}
               {tradingMode !== "Hedge" &&
                 categories.map((category) => {
                   const categoryFields = filteredFields.filter(
@@ -906,26 +949,38 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
 
                   // Trail Advanced: Filter by level and advancedOnly
                   const isTrailAdvanced = category === "Trail Advanced";
+                  const triggerTypeCode = parseTriggerTypeCode(
+                    fieldValues["trigger_type"],
+                  );
                   const displayFields = isTrailAdvanced
                     ? categoryFields.filter((f) => {
-                        const fieldLevel = (f as any).level || 1;
-                        const isAdvanced = (f as any).advancedOnly || false;
-                        // Show field if: within visible levels AND (not advancedOnly OR advancedOnly is shown)
-                        return (
-                          fieldLevel <= trailLevelsVisible &&
-                          (!isAdvanced || showAdvancedFields)
-                        );
-                      })
+                      const fieldLevel = (f as any).level || 1;
+                      const isAdvanced = (f as any).advancedOnly || false;
+                      // Show field if: within visible levels AND (not advancedOnly OR advancedOnly is shown)
+                      return (
+                        fieldLevel <= trailLevelsVisible &&
+                        (!isAdvanced || showAdvancedFields)
+                      );
+                    })
                     : isClosePartial
                       ? categoryFields.filter((f) => {
-                          const m = String(f.id).match(/_(\d+)$/);
-                          const level = m ? parseInt(m[1], 10) : 1;
-                          if (partialLevelsVisible <= 0) {
-                            return level === 1;
-                          }
-                          return level <= partialLevelsVisible;
+                        const m = String(f.id).match(/_(\d+)$/);
+                        const level = m ? parseInt(m[1], 10) : 1;
+                        if (partialLevelsVisible <= 0) {
+                          return level === 1;
+                        }
+                        return level <= partialLevelsVisible;
+                      })
+                      : isTriggers
+                        ? categoryFields.filter((f) => {
+                          if (f.id === "trigger_type") return true;
+                          if (f.id === "trigger_mode") return triggerTypeCode === 0;
+                          if (f.id === "trigger_bars") return triggerTypeCode === 1;
+                          if (f.id === "trigger_seconds") return triggerTypeCode === 2;
+                          if (f.id === "trigger_pips") return triggerTypeCode === 3;
+                          return false;
                         })
-                      : categoryFields;
+                        : categoryFields;
 
                   // Skip if no fields to display
                   if (displayFields.length === 0) return null;
@@ -1043,7 +1098,7 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
 
                       <div className="grid grid-cols-3 gap-x-4 gap-y-3 relative z-10">
                         {/* Custom Trading Direction Control for Mode Selectors */}
-{category === "Mode Selectors" && (
+                        {category === "Mode Selectors" && (
                           <div className="col-span-3 mb-2 p-3 bg-muted/30 rounded-lg border border-border/50">
                             <div className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-2">
                               <ArrowLeftRight className="w-3 h-3" />
@@ -1094,21 +1149,38 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
 
                         {displayFields
                           .filter(
-                            (f) =>
-                              f.id !== "allow_buy" && f.id !== "allow_sell",
+                            (f) => {
+                              if (f.id === "allow_buy" || f.id === "allow_sell") return false;
+                              if (isEngineAPower && f.id === "trading_mode") return false;
+                              return true;
+                            },
                           )
-                          .map((field) => (
+                          .map((field) => {
+                            // Calculate dynamic unit for trail fields based on trail method
+                            let dynamicUnit = field.unit;
+                            const trailMethod = fieldValues["trail_method"];
+                            const isPercentTrail = trailMethod && (
+                              trailMethod === "AVG_Percent" || 
+                              trailMethod === "Percent" || 
+                              String(trailMethod).includes("Percent")
+                            );
+                            const isTrailField = ["trail_value", "trail_start", "trail_step"].includes(field.id);
+                            if (isTrailField) {
+                              dynamicUnit = isPercentTrail ? "%" : (field.unit || "pts");
+                            }
+                            
+                            return (
                             <ConfigField
                               key={field.id}
                               label={field.label}
                               value={field.value}
                               type={field.type}
-                              unit={field.unit}
+                              unit={dynamicUnit}
                               description={field.description}
                               fieldId={field.id}
                               hint={getUnitHint(field.id, field.value)}
                               options={(field as any).options}
-                              currentLogicId={currentLogicId}
+                              currentLogicId={`${logicConfigKey}:${activeDirection}`}
                               onChange={(val) => {
                                 if ((field as any).onChange) {
                                   (field as any).onChange(val);
@@ -1117,7 +1189,7 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
                                 }
                               }}
                             />
-                          ))}
+                          )})}
                       </div>
                     </div>
                   );
@@ -1128,4 +1200,4 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
       </AnimatePresence>
     </div>
   );
-}
+});

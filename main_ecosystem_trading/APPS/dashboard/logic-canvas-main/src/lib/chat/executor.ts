@@ -9,15 +9,14 @@ import type {
   ProgressionType,
   TransactionPlan
 } from "./types";
-import type { MTConfig, MTConfigComplete, EngineConfig, GroupConfig, LogicConfig, TrailMethod, TrailStepMethod, TrailStepMode, TPSLMode, PartialMode, PartialBalance, LogicReference, GeneralConfig } from "@/types/mt-config";
+import type { MTConfig, EngineConfig, GroupConfig, LogicConfig } from "@/types/mt-config";
 import {
   createProgressionPlan,
   createSetPlan,
   applyTransactionPlan,
   formatPlanForChat,
 } from "./planner";
-import { computeSetChanges, applySetContent, diffSetContents } from "@/lib/setfile/loader";
-import { exportToSetFileWithDirections } from "@/lib/setfile/exporter";
+// NOTE: setfile loader/exporter removed - Rust bridge is the single source of truth
 import { calculateProgression, validateForMT4 } from "./math";
 import { applyOperation, clampToBounds, type SemanticCommand } from "./semanticEngine";
 import { resolveValue, getValidSemanticValues, fieldAcceptsSemantic } from "./semantic-resolver";
@@ -92,61 +91,11 @@ export class CommandExecutor {
       return { success: false, message: "Missing .set content. Include it between triple backticks (``` ... ```)." };
     }
 
-    const previews = computeSetChanges(this.config as unknown as MTConfigComplete, content);
-    if (previews.length === 0) {
-      return { success: false, message: "No differences detected between current config and provided .set content" };
-    }
-
-    const plan: TransactionPlan = {
-      id: crypto.randomUUID(),
-      type: "import",
-      description: `Import .set changes (${previews.length} updates)`,
-      preview: previews.map(p => ({
-        engine: p.engine,
-        group: p.group,
-        logic: p.logic,
-        field: p.field,
-        currentValue: p.currentValue,
-        newValue: p.newValue,
-        delta: typeof p.currentValue === "number" && typeof p.newValue === "number" ? (p.newValue as number) - (p.currentValue as number) : undefined,
-        deltaPercent: typeof p.currentValue === "number" && p.currentValue !== 0 && typeof p.newValue === "number"
-          ? (((p.newValue as number) - (p.currentValue as number)) / (p.currentValue as number)) * 100
-          : undefined,
-      })),
-      validation: { isValid: true, errors: [], warnings: [], mtCompatibility: { mt4: true, mt5: true, issues: [] } },
-      risk: { level: "low", score: 0, reasons: [] },
-      createdAt: Date.now(),
-      status: "pending",
-    };
-
-    // Round-trip verification
-    const simulated = applySetContent(this.config as unknown as MTConfigComplete, content);
-    const regenerated = exportToSetFileWithDirections(simulated);
-    const roundTrip = diffSetContents(content, regenerated);
-
-    const rtSummary = [
-      `Round-trip verification:`,
-      `• Keys left: ${roundTrip.totalKeysLeft.toLocaleString()}`,
-      `• Keys right: ${roundTrip.totalKeysRight.toLocaleString()}`,
-      `• Matching: ${roundTrip.matchingKeys.toLocaleString()}`,
-      `• Value mismatches: ${roundTrip.valueMismatches.toLocaleString()}`,
-      `• Missing on right: ${roundTrip.missingOnRight.toLocaleString()}`,
-      `• Missing on left: ${roundTrip.missingOnLeft.toLocaleString()}`,
-    ].join("\n");
-
-    this.pendingPlan = plan;
-
-    if (this.autoApproveTransactions) {
-      const approvalResult = this.approvePendingPlan();
-      approvalResult.message = `✅ [Auto-Approved] ${plan.description}\n\n${approvalResult.message}`;
-      return approvalResult;
-    }
-
+    // NOTE: Legacy loader/exporter removed. Use Rust bridge for setfile operations.
+    // For now, return a message directing user to use the main export flow
     return {
-      success: true,
-      message: formatPlanForChat(plan) + "\n" + rtSummary + "\n\n**Reply 'apply' to confirm or 'cancel' to discard.**",
-      pendingPlan: plan,
-      queryResult: { matches: [], summary: "" }
+      success: false,
+      message: "Direct .set import via chat is temporarily disabled. Please use the main Export button which uses the Rust bridge for reliable setfile operations."
     };
   }
 
@@ -174,90 +123,26 @@ export class CommandExecutor {
     ].join("\n");
   }
 
-  // Full help message for panel display
+  // FACTUAL HELP MESSAGE - SHORT VERSION
   private getHelpMessage(): string {
     return [
-      "Command guide:",
+      "Commands:",
+      "• set grid to 500 for G1",
+      "• add 30% to lot for POWER", 
+      "• show grid for all",
+      "• enable reverse on G3",
       "",
-      "# Query & Analysis",
-      "• show ... — View settings: \"show grid for all groups\" or \"show engine A\"",
-      "• find ... — Search values: \"find high grid\" (shows groups with grid > 500)",
-      "• analyze ... — Deep dive: \"analyze power\" (detailed engine diagnostics)",
-      "",
-      "# Configuration Sets",
-      "• set ... — Direct update: \"set grid to 600 for groups 1-8\"",
-      "• bulk set ... — Conditional: \"set multiplier to 1.5 where grid > 500\"",
-      "• enable/disable — Toggle: \"enable reverse for power groups 1-5\"",
-      "",
-      "# Progression Logic",
-      "• fibonacci — Math sequence: \"create progression for grid from 600 to 3000 fibonacci groups 1-8\"",
-      "• linear — Even steps: \"create linear progression for lot from 0.01 to 0.08 groups 1-8\"",
-      "• exponential — Multiplier: \"create exponential progression for lot from 0.01 factor 1.5 groups 1-8\"",
-      "",
-      "# Risk & Safety Protocols",
-      "• equity stop — Hard limit: \"set equity_stop_value to 35%\"",
-      "• drawdown — Soft limit: \"set max_drawdown_percent to 25%\"",
-      "• news filter — Event safety: \"enable news_filter for all\"",
-      "",
-      "# Replication & Compare",
-      "• copy ... — Clone settings: \"copy power settings from group 1 to groups 2-8\"",
-      "• compare ... — Diff tool: \"compare grid between group 1 and group 5\"",
-      "",
-      "# Setfile Loader",
-      "• import set — Paste .set content to preview and apply: \"import set\" then triple-backticks block",
-      "• Round-trip verification included (exact key/value diff)",
-      "",
-      "# Meta Controls",
-      "• apply / cancel — Transaction Plan approval workflow",
-      "• apply 1-3 — Apply part of the pending plan",
-      "• apply 2,5,7 — Apply selected items from the pending plan",
-      "• apply remaining / apply all — Apply the rest of the pending plan",
-      "• undo / redo — Undo or re-apply the last plan (supports counts: undo 2, redo 3)",
-      "• history / plans — Show recently applied plans (history 5)",
-      "• /help — Show this comprehensive command reference",
+      "Format: set/add/show/enable/disable + parameter + value + target",
+      "Example: set grid to 600 for groups 1-8",
     ].join("\n");
   }
 
-  // Greeting detection and response for conversational chat
-  private readonly GREETING_PATTERNS = [
-    /^hi\s*$/i,
-    /^hey\s*$/i,
-    /^hello\s*$/i,
-    /^yo\s*$/i,
-    /^what's\s*up\s*$/i,
-    /^wassup\s*$/i,
-    /^bro\s*$/i,
-    /^sup\s*$/i,
-    /^hi\s+there/i,
-    /^hey\s+there/i,
-  ];
-
-  private readonly GREETING_RESPONSES = [
-    "Hey! 👋 What's good? Ready to configure some grids?",
-    "Yo! Let's get it — what do you need?",
-    "What's good! I'm here to help with your trading config.",
-    "Hey boss! What are we adjusting today?",
-    "Hey! Ready to make some moves? Just tell me what you need.",
-    "Yo! Let's build some grids. What do you want to do?",
-    "What's up! Need help with your config?",
-    "Hey there! I can help you set grids, lot sizes, multipliers and more.",
-  ];
+  // GREETINGS GO TO RUST - return unknown for command terminal
 
   private isGreeting(input: string): boolean {
     const trimmed = input.trim().toLowerCase();
-    // Also check for very short inputs that might be greetings
-    if (trimmed.length <= 5) {
-      return this.GREETING_PATTERNS.some(p => p.test(trimmed));
-    }
-    // Check first few words for greeting patterns
-    const firstFewWords = trimmed.split(/\s+/).slice(0, 2).join(" ");
-    return this.GREETING_PATTERNS.some(p => p.test(firstFewWords));
-  }
-
-  private getGreetingResponse(): string {
-    // Pick a random greeting response
-    const idx = Math.floor(Math.random() * this.GREETING_RESPONSES.length);
-    return this.GREETING_RESPONSES[idx];
+    const greetingPatterns = ['hi', 'hey', 'hello', 'yo', 'sup', 'wassup', 'what\'s up'];
+    return greetingPatterns.some(p => trimmed === p || trimmed.startsWith(p + ' '));
   }
 
   private createInversePlan(plan: TransactionPlan): TransactionPlan {
@@ -355,180 +240,6 @@ export class CommandExecutor {
     }
 
     return { newConfig, changes, appliedPlan };
-  }
-
-  private createDefaultConfig(): MTConfig {
-    const now = new Date();
-
-    const general: MTConfig["general"] = {
-      license_key: "",
-      license_server_url: "https://license.daavfx.com",
-      require_license: false,
-      license_check_interval: 3600,
-      config_file_name: "DAAVFX_Config.json",
-      config_file_is_common: false,
-      allow_buy: true,
-      allow_sell: true,
-      enable_logs: true,
-      use_direct_price_grid: false,
-      compounding_enabled: false,
-      compounding_type: "Compound_Balance",
-      compounding_target: 40,
-      compounding_increase: 2,
-      restart_policy_power: "Restart_Default",
-      restart_policy_non_power: "Restart_Default",
-      close_non_power_on_power_close: false,
-      hold_timeout_bars: 10,
-      magic_number: 777,
-      magic_number_buy: 777,
-      magic_number_sell: 8988,
-      max_slippage_points: 30,
-      reverse_magic_base: 1000,
-      hedge_magic_base: 2000,
-      hedge_magic_independent: false,
-      risk_management: {
-        spread_filter_enabled: false,
-        max_spread_points: 25,
-        equity_stop_enabled: false,
-        equity_stop_value: 35,
-        drawdown_stop_enabled: false,
-        max_drawdown_percent: 35,
-      },
-      time_filters: {
-        priority_settings: {
-          news_filter_overrides_session: false,
-          session_filter_overrides_news: true,
-        },
-        sessions: Array.from({ length: 7 }, (_, i) => ({
-          session_number: i + 1,
-          enabled: false,
-          day: i % 7,
-          start_hour: 9,
-          start_minute: 30,
-          end_hour: 17,
-          end_minute: 0,
-          action: "TriggerAction_StopEA_KeepTrades",
-          auto_restart: true,
-          restart_mode: "Restart_Immediate",
-          restart_bars: 0,
-          restart_minutes: 0,
-          restart_pips: 0,
-        })),
-      },
-      news_filter: {
-        enabled: false,
-        api_key: "",
-        api_url: "https://www.jblanked.com/news/api/calendar/",
-        countries: "US,GB,EU",
-        impact_level: 3,
-        minutes_before: 30,
-        minutes_after: 30,
-        action: "TriggerAction_StopEA_KeepTrades",
-      },
-    };
-
-    const logicNames = ["Power", "Repower", "Scalper", "Stopper", "STO", "SCA", "RPO"] as const;
-
-    const engines: EngineConfig[] = (["A", "B", "C"] as const).map((engineId) => {
-      const groups: GroupConfig[] = [];
-
-      for (let g = 1; g <= 20; g++) {
-        const logics: LogicConfig[] = logicNames.map((name) => {
-          const isPower = name.toLowerCase() === "power";
-          const logic_id = `${engineId}_${name}_G${g}`;
-          const trail_method: TrailMethod = "Points";
-          const trail_step_method: TrailStepMethod = "Step_Points";
-          const trail_step_mode: TrailStepMode = "TrailStepMode_Auto";
-          const tp_mode: TPSLMode = "TPSL_Points";
-          const sl_mode: TPSLMode = "TPSL_Points";
-          const order_count_reference: LogicReference = "Logic_Self";
-
-          const base: LogicConfig = {
-            logic_name: name,
-            logic_id,
-            enabled: true,
-            initial_lot: 0.02,
-            multiplier: 1.2,
-            grid: 300,
-            trail_method,
-            trail_value: 3000,
-            trail_start: 1,
-            trail_step: 1500,
-            trail_step_method,
-            close_targets: "Logic_A_Power,Logic_A_Repower,Logic_A_Scalp,Logic_A_Stopper",
-            order_count_reference,
-            reset_lot_on_restart: false,
-            use_tp: false,
-            tp_mode,
-            tp_value: 0,
-            use_sl: false,
-            sl_mode,
-            sl_value: 0,
-            reverse_enabled: false,
-            hedge_enabled: false,
-            reverse_scale: 100.0,
-            hedge_scale: 50.0,
-            reverse_reference: "Logic_None" as LogicReference,
-            hedge_reference: "Logic_None" as LogicReference,
-            trail_step_mode,
-            trail_step_cycle: 1,
-            trail_step_balance: 0,
-            close_partial: false,
-            close_partial_cycle: 3,
-            close_partial_mode: "PartialMode_Low",
-            close_partial_balance: "PartialBalance_Balanced",
-            close_partial_trail_step_mode: trail_step_mode,
-          };
-
-          const withLogicSpecific: LogicConfig = {
-            ...base,
-            ...(isPower && engineId === "A"
-              ? {}
-              : {
-                startLevel: isPower ? 5 : 4,
-                lastLot: 0.12,
-              }),
-            ...(g === 1
-              ? {
-                trigger_type: "Default",
-                trigger_bars: 3,
-                trigger_minutes: 15,
-              }
-              : {}),
-          };
-
-          return withLogicSpecific;
-        });
-
-        groups.push({
-          group_number: g,
-          enabled: true,
-          reverse_mode: false,
-          hedge_mode: false,
-          hedge_reference: "Logic_None" as LogicReference,
-          entry_delay_bars: 0,
-          logics,
-        });
-      }
-
-      return {
-        engine_id: engineId,
-        engine_name: `Engine ${engineId}`,
-        max_power_orders: 10,
-        groups,
-      };
-    });
-
-    const config: MTConfig = {
-      version: "17.04",
-      platform: "MT4",
-      timestamp: now.toISOString(),
-      total_inputs: 11081,
-      general,
-      engines,
-    };
-
-    return config;
   }
 
   setConfig(config: MTConfig | null) {
@@ -796,13 +507,6 @@ export class CommandExecutor {
       }
     }
 
-    if (!this.config) {
-      this.config = this.createDefaultConfig();
-      if (this.onConfigChange) {
-        this.onConfigChange(this.config);
-      }
-    }
-
     const rawLower = command.raw.toLowerCase().trim();
 
     if (
@@ -819,12 +523,12 @@ export class CommandExecutor {
       };
     }
 
-    // Check for greetings FIRST before unknown command
+    // GREETINGS ARE UNKNOWN - strict command terminal
+    // Rust backend handles this, local parser returns unknown
     if (this.isGreeting(command.raw)) {
       return {
-        success: true,
-        message: this.getGreetingResponse(),
-        isGreeting: true,
+        success: false,
+        message: "Unknown command. Try: 'set grid to 500 for G1'",
       };
     }
 
@@ -867,13 +571,21 @@ export class CommandExecutor {
       this.pendingPlan = null;
     }
 
+    if (!this.config) {
+      return {
+        success: false,
+        message: "No config loaded. Load or import an explicit configuration before using chat commands.",
+      };
+    }
+
     switch (command.type) {
       case "query":
         return this.executeQuery(command);
       case "set":
         return this.executeSet(command);
-      case "semantic":
-        return this.executeSemantic(command);
+      // NOTE: "semantic" command type not in CommandType enum - disabled
+      // case "semantic":
+      //   return this.executeSemantic(command);
       case "progression":
         return this.executeProgression(command);
       case "copy":
@@ -887,17 +599,16 @@ export class CommandExecutor {
       case "import":
         return this.executeImport(command);
       case "unknown":
-        // Check for greetings first - return conversational response instead of help
+        // GREETINGS ARE UNKNOWN - strict command terminal
         if (this.isGreeting(command.raw)) {
           return {
-            success: true,
-            message: this.getGreetingResponse(),
-            isGreeting: true,
+            success: false,
+            message: "Unknown command. Try: 'set grid to 500 for G1'",
           };
         }
         return {
           success: false,
-          message: `I didn't understand: "${command.raw}".\n\n${this.getHelpMessage()}`,
+          message: `Unknown command. Try: 'set grid to 500 for G1'`,
         };
       default:
         return { success: false, message: `Unknown command: ${command.raw}` };
@@ -917,8 +628,6 @@ export class CommandExecutor {
         "trail_value",
         "trail_start",
         "trail_step",
-        "tp_value",
-        "sl_value",
         "reverse_enabled",
         "hedge_enabled",
         "close_partial",
@@ -1354,23 +1063,11 @@ export class CommandExecutor {
     };
   }
 
-  private executeReset(command: ParsedCommand): CommandResult {
-    const { engines, groups, logics } = command.target;
-    const defaultConfig = this.createDefaultConfig();
-    const newConfig = structuredClone(this.config!);
-
-    this.iterateConfigMutable(newConfig, engines, groups, logics, (engine, group, logic) => {
-      const defEngine = defaultConfig.engines.find(e => e.engine_id === engine.engine_id);
-      const defGroup = defEngine?.groups.find(g => g.group_number === group.group_number);
-      const defLogic = defGroup?.logics.find(l => l.logic_name === logic.logic_name);
-
-      if (defLogic) {
-        Object.assign(logic, defLogic);
-      }
-    });
-
-    this.applyConfig(newConfig);
-    return { success: true, message: "Reset selected targets to default values" };
+  private executeReset(_command: ParsedCommand): CommandResult {
+    return {
+      success: false,
+      message: "Reset to baked defaults is disabled. Load or import the exact values you want instead.",
+    };
   }
 
   private executeFormula(command: ParsedCommand): CommandResult {

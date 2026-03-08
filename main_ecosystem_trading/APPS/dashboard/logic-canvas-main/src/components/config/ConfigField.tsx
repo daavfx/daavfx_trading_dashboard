@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
+import { useEffect, useRef } from "react";
 import { Switch } from "@/components/ui/switch";
 import {
   Select,
@@ -15,7 +15,7 @@ import { EnhancedTooltip } from "@/components/tooltips/EnhancedTooltip";
 
 interface ConfigFieldProps {
   label: string;
-  value: string | number;
+  value: string | number | undefined | null;
   type: "number" | "toggle" | "text" | "select" | "segmented" | "multiselect";
   unit?: string;
   description?: string;
@@ -38,11 +38,18 @@ export function ConfigField({
   currentLogicId,
   fieldId,
 }: ConfigFieldProps) {
-  const [localValue, setLocalValue] = useState(value);
-  useEffect(() => {
-    setLocalValue(value);
-  }, [value]);
-
+  const formatDebugValue = (raw: unknown) => {
+    if (raw === undefined) return "undefined";
+    if (raw === null) return "null";
+    try {
+      return JSON.stringify(raw);
+    } catch {
+      return String(raw);
+    }
+  };
+  const previousDisplayValueRef = useRef<string | number | undefined | null>(
+    value,
+  );
   const isNumericSelect =
     type === "select" &&
     Array.isArray(options) &&
@@ -50,9 +57,42 @@ export function ConfigField({
     options.every((o) => /^\d+$/.test(o));
 
   const handleChange = (newValue: string | number | boolean) => {
-    setLocalValue(newValue as string | number);
+    console.log(
+      `[ConfigField] CHANGE field=${fieldId || label} logic=${currentLogicId || "none"} prev=${formatDebugValue(displayValue)} next=${formatDebugValue(newValue)} type=${type}`,
+    );
+    console.log("[ConfigField] CHANGE", {
+      fieldId: fieldId || label,
+      label,
+      currentLogicId: currentLogicId || null,
+      previousValue: displayValue,
+      nextValue: newValue,
+      type,
+    });
     onChange?.(newValue);
   };
+
+  const displayValue =
+    value === undefined || value === null ? "" : value;
+  const selectValue =
+    displayValue === "" ? undefined : String(displayValue);
+
+  useEffect(() => {
+    const previousValue = previousDisplayValueRef.current;
+    if (previousValue !== value) {
+      console.log(
+        `[ConfigField] PROP_SYNC field=${fieldId || label} logic=${currentLogicId || "none"} prev=${formatDebugValue(previousValue)} next=${formatDebugValue(value)} type=${type}`,
+      );
+      console.log("[ConfigField] PROP_SYNC", {
+        fieldId: fieldId || label,
+        label,
+        currentLogicId: currentLogicId || null,
+        previousValue,
+        nextValue: value,
+        type,
+      });
+      previousDisplayValueRef.current = value;
+    }
+  }, [currentLogicId, fieldId, label, type, value]);
 
   return (
     <div className="group flex items-center justify-between py-2.5 px-3 rounded-lg bg-background/40 border border-white/5 shadow-sm hover:shadow-md hover:bg-background/60 hover:border-primary/20 hover:ring-1 hover:ring-primary/5 transition-all duration-300 backdrop-blur-sm">
@@ -82,7 +122,7 @@ export function ConfigField({
       {type === "segmented" && options ? (
         <div className="flex p-0.5 rounded-md bg-muted/40 border border-white/5">
           {options.map((option) => {
-            const isSelected = localValue === option;
+            const isSelected = displayValue === option;
             return (
               <button
                 key={option}
@@ -102,30 +142,30 @@ export function ConfigField({
       ) : type === "toggle" ? (
         <div className="flex items-center gap-2">
           <Switch
-            checked={localValue === "ON"}
+            checked={displayValue === "ON"}
             onCheckedChange={(checked) => handleChange(checked ? "ON" : "OFF")}
             className="h-4 w-8 data-[state=checked]:bg-primary data-[state=checked]:shadow-[0_0_12px_rgba(var(--primary),0.5)]"
           />
           <span
             className={cn(
               "text-[10px] font-mono w-7 text-right transition-colors",
-              localValue === "ON"
+              displayValue === "ON"
                 ? "text-primary font-bold shadow-primary/20"
                 : "text-muted-foreground",
             )}
           >
-            {localValue}
+            {displayValue}
           </span>
         </div>
       ) : type === "select" && options ? (
         <Select
-          value={String(localValue)}
+          value={selectValue}
           onValueChange={(val) =>
             handleChange(isNumericSelect ? parseInt(val, 10) : val)
           }
         >
           <SelectTrigger className="h-7 w-[130px] text-[10px] font-mono bg-black/5 dark:bg-white/5 border-transparent hover:border-primary/30 focus:ring-1 focus:ring-primary/20 transition-all shadow-inner">
-            <SelectValue placeholder={localValue} />
+            <SelectValue placeholder="Unconfigured" />
           </SelectTrigger>
           <SelectContent className="bg-popover/95 backdrop-blur-xl border-white/10">
             {options.map((option) => (
@@ -142,7 +182,7 @@ export function ConfigField({
       ) : type === "multiselect" ? (
         <div className="w-full max-w-[200px]">
           <MultiSelectLogicDropdown
-            value={localValue as string}
+            value={displayValue as string}
             onChange={(val) => handleChange(val)}
             currentLogicId={currentLogicId}
           />
@@ -151,7 +191,7 @@ export function ConfigField({
         <div className="flex items-center gap-1.5">
           <Input
             type="text"
-            value={localValue}
+            value={displayValue}
             onChange={(e) => handleChange(e.target.value)}
             className="w-20 h-7 text-right font-mono text-[11px] px-2 bg-black/5 dark:bg-white/5 border-transparent hover:border-primary/30 text-foreground focus:border-primary/50 focus:bg-background focus:ring-1 focus:ring-primary/20 transition-all rounded-md shadow-inner placeholder:text-muted-foreground/30"
           />
@@ -164,7 +204,7 @@ export function ConfigField({
       ) : type === "text" ? (
         <Input
           type="text"
-          value={localValue}
+          value={displayValue}
           onChange={(e) => handleChange(e.target.value)}
           className="w-full max-w-[180px] h-7 text-right font-mono text-[10px] px-2 bg-black/5 dark:bg-white/5 border-transparent hover:border-primary/30 text-foreground focus:border-primary/50 focus:bg-background focus:ring-1 focus:ring-primary/20 transition-all rounded-md shadow-inner placeholder:text-muted-foreground/30"
         />
@@ -172,12 +212,12 @@ export function ConfigField({
         <span
           className={cn(
             "text-[11px] font-mono px-2.5 py-1 rounded-md bg-black/5 dark:bg-white/5 border border-transparent",
-            value === "-"
+            displayValue === "-"
               ? "text-muted-foreground/40"
               : "text-foreground font-medium",
           )}
         >
-          {value}
+          {displayValue}
         </span>
       )}
     </div>

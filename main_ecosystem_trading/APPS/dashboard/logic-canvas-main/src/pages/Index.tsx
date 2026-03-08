@@ -10,7 +10,7 @@ import { BatchEditPanel } from "@/components/config/BatchEditPanel";
 import { EngineCard } from "@/components/config/EngineCard";
 import { GroupCard } from "@/components/config/GroupCard";
 import { GeneralCategories } from "@/components/config/GeneralCategories";
-import { GroupThresholdsCard } from "@/components/config/GroupThresholdsCard";
+
 import { MultiEditIndicator } from "@/components/config/MultiEditIndicator";
 import { CLITerminal } from "@/components/config/CLITerminal";
 import { EmptyState } from "@/components/config/EmptyState";
@@ -30,21 +30,12 @@ import { cn } from "@/lib/utils";
 import { useMTConfig } from "@/hooks/useMTConfig";
 import type {
   Platform as MTPlatform,
-  GeneralConfig,
   MTConfig,
-  GroupConfig,
-  LogicConfig,
 } from "@/types/mt-config";
-import { mockFullConfig } from "@/data/mock-config";
-import {
-  validateConfig,
-  getWarningSummary,
-  type ConfigWarning,
-} from "@/utils/config-validation";
-import { hydrateMTConfigDefaults } from "@/utils/hydrate-mt-config-defaults";
+import { validateConfig } from "@/utils/config-validation";
 import { useSettings } from "@/contexts/SettingsContext";
 import { ChatStateProvider, useChatState } from "@/contexts/ChatStateContext";
-import { withUseDirectPriceGrid, normalizeConfigForExport } from "@/utils/unit-mode";
+import { canonicalizeConfigForBackend, normalizeConfigForExport } from "@/utils/unit-mode";
 import type { TransactionPlan, ChangePreview } from "@/lib/chat/types";
 import { VersionControlPanel } from "@/components/version-control/VersionControlPanel";
 import { AnalyticsPanel } from "@/components/visual-enhancements/AnalyticsPanel";
@@ -62,79 +53,6 @@ import {
 
 import { getMatchingFieldIds } from "@/utils/input-search";
 
-// Mock data for when config is not loaded
-const mockGeneralConfig: GeneralConfig = {
-  license_key: "",
-  license_server_url: "https://license.daavfx.com",
-  require_license: true,
-  license_check_interval: 3600,
-  config_file_name: "DAAVFX_Config.json",
-  config_file_is_common: true,
-  allow_buy: true,
-  allow_sell: true,
-  enable_logs: true,
-  use_direct_price_grid: false,
-  group_mode: 1,
-  grid_unit: 0,
-  pip_factor: 0,
-  compounding_enabled: false,
-  compounding_type: "Compound_Balance",
-  compounding_target: 40.0,
-  compounding_increase: 2.0,
-  restart_policy_power: "Restart_Default",
-  restart_policy_non_power: "Restart_Default",
-  close_non_power_on_power_close: false,
-  hold_timeout_bars: 10,
-  magic_number: 777,
-  magic_number_buy: 777,
-  magic_number_sell: 8988,
-  max_slippage_points: 30.0,
-  risk_management: {
-    spread_filter_enabled: false,
-    max_spread_points: 25.0,
-    equity_stop_enabled: false,
-    equity_stop_value: 35.0,
-    drawdown_stop_enabled: false,
-    max_drawdown_percent: 35.0,
-    risk_action: "TriggerAction_StopEA_KeepTrades",
-  },
-  time_filters: {
-    priority_settings: {
-      news_filter_overrides_session: false,
-      session_filter_overrides_news: true,
-    },
-    sessions: Array.from({ length: 7 }, (_, i) => ({
-      session_number: i + 1,
-      enabled: false,
-      day: i % 7,
-      start_hour: 9,
-      start_minute: 30,
-      end_hour: 17,
-      end_minute: 0,
-      action: "TriggerAction_StopEA_KeepTrades",
-      auto_restart: true,
-      restart_mode: "Restart_Immediate",
-      restart_bars: 0,
-      restart_minutes: 0,
-      restart_pips: 0,
-    })),
-  },
-  news_filter: {
-    enabled: false,
-    api_key: "",
-    api_url: "https://www.jblanked.com/news/api/calendar/",
-    countries: "US,GB,EU",
-    impact_level: 3,
-    minutes_before: 30,
-    minutes_after: 30,
-    action: "TriggerAction_StopEA_KeepTrades",
-    calendar_file: "DAAVFX_NEWS.csv",
-  },
-  reverse_magic_base: 0,
-  hedge_magic_base: 0,
-  hedge_magic_independent: false,
-};
-
 const engineConfigs = [
   { engine: "Engine A", tradingType: "Reverse Trading" },
   { engine: "Engine B", tradingType: "Hedge Trading" },
@@ -149,6 +67,15 @@ const canvasClasses: Record<Platform, string> = {
   cpp: "canvas-cpp",
   rust: "canvas-rust",
 };
+
+const SIDE_SCOPED_BASE_FIELDS = new Set([
+  "initial_lot",
+  "multiplier",
+  "grid",
+  "trail_value",
+  "trail_start",
+  "trail_step",
+]);
 
 // Map UI platform to MT platform type
 const platformToMT = (p: Platform): MTPlatform => {
@@ -238,7 +165,7 @@ function Index() {
 
   const filteredFields = useMemo(() => {
     let fields = selectedFields;
-    
+
     // Apply search filter
     if (searchQuery.trim()) {
       const matchingIds = getMatchingFieldIds(searchQuery);
@@ -248,7 +175,7 @@ function Index() {
         fields = matchingIds;
       }
     }
-    
+
     // Apply favorites filter - use checked favorites
     if (favoritesOnly && checkedFavorites.length > 0) {
       fields = fields.filter(f => checkedFavorites.includes(f));
@@ -256,7 +183,7 @@ function Index() {
       // If favoritesOnly is true but no checked favorites, show nothing
       fields = [];
     }
-    
+
     return fields;
   }, [searchQuery, selectedFields, favoritesOnly, checkedFavorites, settings.favoriteFields]);
 
@@ -318,11 +245,13 @@ function Index() {
     saveConfig: realSaveConfig,
     setConfigOnly,
   } = useMTConfig(mtPlatform);
-  const [configWarnings, setConfigWarnings] = useState<ConfigWarning[]>([]);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const config = realConfig;
+  // Always-current config ref so onUpdateLogic closures never use stale state.
+  // Without this, rapid edits across different groups overwrite each other.
+  const configRef = useRef(config);
+  configRef.current = config;
   const undoRedoManagerRef = useRef(getUndoRedoManager());
-  const skipUndoRecordRef = useRef(false);
 
   const deepEqual = (a: unknown, b: unknown) => {
     if (Object.is(a, b)) return true;
@@ -336,67 +265,87 @@ function Index() {
     }
   };
 
-  const countConfigChanges = (prev: MTConfig, next: MTConfig) => {
-    let changes = 0;
+  const cloneHistoryValue = <T,>(value: T): T => {
+    if (value === undefined || value === null) return value;
+    if (typeof value !== "object") return value;
+    try {
+      return JSON.parse(JSON.stringify(value)) as T;
+    } catch {
+      return value;
+    }
+  };
 
-    const prevGeneral = prev.general || ({} as any);
-    const nextGeneral = next.general || ({} as any);
-    const generalKeys = new Set([...Object.keys(prevGeneral), ...Object.keys(nextGeneral)]);
-    for (const key of generalKeys) {
-      if (!deepEqual((prevGeneral as any)[key], (nextGeneral as any)[key])) {
-        changes++;
+  const formatHistoryValue = (value: unknown) => {
+    if (value === undefined) return "unset";
+    if (value === null) return "null";
+    if (typeof value === "object") {
+      try {
+        return JSON.stringify(value);
+      } catch {
+        return "[object]";
+      }
+    }
+    return String(value);
+  };
+
+  const resolveLogicRowDirection = (row: Record<string, any>): "buy" | "sell" | null => {
+    const dirRaw = String(row.direction || "").toUpperCase();
+    if (dirRaw === "B" || dirRaw === "BUY") return "buy";
+    if (dirRaw === "S" || dirRaw === "SELL") return "sell";
+
+    const rowLogicId = String(row.logic_id || "").toUpperCase();
+    if (rowLogicId.includes("_B_") || rowLogicId.endsWith("_B")) return "buy";
+    if (rowLogicId.includes("_S_") || rowLogicId.endsWith("_S")) return "sell";
+    if (row.allow_buy === true && row.allow_sell !== true) return "buy";
+    if (row.allow_sell === true && row.allow_buy !== true) return "sell";
+    return null;
+  };
+
+  const buildPatchedLogicRow = (
+    row: Record<string, any>,
+    field: string,
+    value: any,
+  ) => {
+    const nextRow: Record<string, any> = {
+      ...row,
+      [field]: value,
+    };
+
+    if (SIDE_SCOPED_BASE_FIELDS.has(field)) {
+      const rowDirection = resolveLogicRowDirection(row);
+      if (rowDirection) {
+        nextRow[`${field}_${rowDirection === "buy" ? "b" : "s"}`] = value;
       }
     }
 
-    const prevEngines = prev.engines ? new Map(prev.engines.map((e) => [e.engine_id, e] as const)) : new Map();
-    const nextEngines = next.engines ? new Map(next.engines.map((e) => [e.engine_id, e] as const)) : new Map();
-    const engineIds = new Set([...prevEngines.keys(), ...nextEngines.keys()]);
+    return nextRow;
+  };
 
-    for (const engineId of engineIds) {
-      const prevEngine = prevEngines.get(engineId);
-      const nextEngine = nextEngines.get(engineId);
-      if (!prevEngine || !nextEngine) {
-        changes++;
-        continue;
+  const recordGeneralHistory = (
+    previousGeneral: MTConfig["general"],
+    nextGeneral: MTConfig["general"],
+  ) => {
+    const generalKeys = new Set([
+      ...Object.keys(previousGeneral || {}),
+      ...Object.keys(nextGeneral || {}),
+    ]);
+
+    generalKeys.forEach((key) => {
+      const before = (previousGeneral as any)?.[key];
+      const after = (nextGeneral as any)?.[key];
+
+      if (deepEqual(before, after)) {
+        return;
       }
 
-      const prevGroups = new Map(prevEngine.groups.map((g: GroupConfig) => [g.group_number, g] as const));
-      const nextGroups = new Map(nextEngine.groups.map((g: GroupConfig) => [g.group_number, g] as const));
-      const groupIds = new Set([...prevGroups.keys(), ...nextGroups.keys()]);
-
-      for (const groupId of groupIds) {
-        const prevGroup = prevGroups.get(groupId) as GroupConfig | undefined;
-        const nextGroup = nextGroups.get(groupId) as GroupConfig | undefined;
-        if (!prevGroup || !nextGroup) {
-          changes++;
-          continue;
-        }
-
-        const prevLogics = new Map(prevGroup.logics.map((l: LogicConfig) => [l.logic_name, l] as const));
-        const nextLogics = new Map(nextGroup.logics.map((l: LogicConfig) => [l.logic_name, l] as const));
-        const logicNames = new Set([...prevLogics.keys(), ...nextLogics.keys()]);
-
-        for (const logicName of logicNames) {
-          const prevLogic = prevLogics.get(logicName);
-          const nextLogic = nextLogics.get(logicName);
-          if (!prevLogic || !nextLogic) {
-            changes++;
-            continue;
-          }
-
-          const keys = new Set([...Object.keys(prevLogic), ...Object.keys(nextLogic)]);
-          keys.delete("logic_name");
-
-          for (const key of keys) {
-            if (!deepEqual((prevLogic as any)[key], (nextLogic as any)[key])) {
-              changes++;
-            }
-          }
-        }
-      }
-    }
-
-    return changes;
+      undoRedoManagerRef.current.addOperation({
+        type: "UPDATE",
+        target: { engineId: "GENERAL", parameter: key },
+        before: cloneHistoryValue(before),
+        after: cloneHistoryValue(after),
+        description: `General ${key}: ${formatHistoryValue(before)} -> ${formatHistoryValue(after)}`,
+      });
+    });
   };
 
   const handleToggleFavorite = (fieldId: string) => {
@@ -405,44 +354,36 @@ function Index() {
       ? currentFavorites.filter(f => f !== fieldId)
       : [...currentFavorites, fieldId];
     updateSetting("favoriteFields", newFavorites);
-    
+
     // Also remove from checkedFavorites if un-favorited
     if (currentFavorites.includes(fieldId)) {
       setCheckedFavorites(prev => prev.filter(f => f !== fieldId));
     }
-    
+
     saveSettings();
   };
 
-  const handleGeneralUpdate = async (updates: Partial<GeneralConfig>) => {
-    if (!config) return;
-    await handleSaveConfig({ ...config, general: { ...config.general, ...updates } });
+  const handleGeneralUpdate = async (updates: Partial<MTConfig["general"]>) => {
+    const latestConfig = configRef.current;
+    if (!latestConfig) return;
+
+    const nextGeneral = { ...latestConfig.general, ...updates };
+    recordGeneralHistory(latestConfig.general, nextGeneral);
+    await handleSaveConfig({ ...latestConfig, general: nextGeneral });
   };
 
   const handleSaveConfig = async (newConfig: MTConfig) => {
-    const prev = config;
-    if (prev && !skipUndoRecordRef.current) {
-      const changeCount = countConfigChanges(prev, newConfig);
-      if (changeCount > 0) {
-        undoRedoManagerRef.current.addOperation({
-          type: "GROUP_UPDATE",
-          target: { engineId: "CONFIG", parameter: "__CONFIG__" },
-          before: JSON.parse(JSON.stringify(prev)),
-          after: JSON.parse(JSON.stringify(newConfig)),
-          description: `Config update (${changeCount} changes)`,
-        });
-      }
-    }
-    await realSaveConfig(newConfig);
-  };
+    console.log("[Index] SAVE_CONFIG", {
+      totalInputs: newConfig.total_inputs,
+      currentSetName: newConfig.current_set_name || null,
+      engines: newConfig.engines?.length || 0,
+    });
 
-  const handleSaveConfigNoUndoRecord = async (newConfig: MTConfig) => {
-    skipUndoRecordRef.current = true;
-    try {
-      await handleSaveConfig(newConfig);
-    } finally {
-      skipUndoRecordRef.current = false;
-    }
+    // Promote the latest config immediately so back-to-back edits across groups
+    // cannot rebuild from the previous render's state.
+    configRef.current = newConfig;
+    setConfigOnly(newConfig);
+    await realSaveConfig(newConfig);
   };
 
   const lastSavedLabel = config?.last_saved_at
@@ -452,26 +393,20 @@ function Index() {
   // Load config on mount or platform change
   useEffect(() => {
     loadConfig()
-      .then((loaded) => {
-        if (!loaded) {
-          setConfigOnly(hydrateMTConfigDefaults(mockFullConfig));
-        }
-      })
       .catch(() => {
-        setConfigOnly(hydrateMTConfigDefaults(mockFullConfig));
+        // Leave the editor empty if nothing valid is available locally.
       });
-  }, [loadConfig, setConfigOnly]);
+  }, [loadConfig]);
 
   // Validate config on changes (debounced) - only update warnings state, no toasts
   useEffect(() => {
     if (!config) return;
-    
+
     // Use a timeout to debounce validation
     const timeout = setTimeout(() => {
-      const warnings = validateConfig(config);
-      setConfigWarnings(warnings);
+      validateConfig(config);
     }, 500);
-    
+
     return () => clearTimeout(timeout);
   }, [config]);
 
@@ -485,6 +420,11 @@ function Index() {
         last_saved_at: nowIso,
         last_saved_platform: mtPlatform,
       };
+      console.log("[Index] AUTOSAVE_LOCAL", {
+        totalInputs: enrichedConfig.total_inputs,
+        currentSetName: enrichedConfig.current_set_name || null,
+        engines: enrichedConfig.engines?.length || 0,
+      });
       try {
         localStorage.setItem("daavfx-last-config", JSON.stringify(enrichedConfig));
         localStorage.setItem(
@@ -501,7 +441,7 @@ function Index() {
           localStorage.removeItem("daavfx_undo_redo");
           try {
             localStorage.setItem("daavfx-last-config", JSON.stringify(enrichedConfig));
-          } catch {}
+          } catch { }
         }
       }
     }, 750);
@@ -518,6 +458,11 @@ function Index() {
         last_saved_at: nowIso,
         last_saved_platform: mtPlatform,
       };
+      console.log("[Index] FLUSH_LOCAL", {
+        totalInputs: enrichedConfig.total_inputs,
+        currentSetName: enrichedConfig.current_set_name || null,
+        engines: enrichedConfig.engines?.length || 0,
+      });
       try {
         localStorage.setItem("daavfx-last-config", JSON.stringify(enrichedConfig));
         localStorage.setItem(
@@ -534,7 +479,7 @@ function Index() {
           localStorage.removeItem("daavfx_undo_redo");
           try {
             localStorage.setItem("daavfx-last-config", JSON.stringify(enrichedConfig));
-          } catch {}
+          } catch { }
         }
       }
     };
@@ -572,6 +517,23 @@ function Index() {
     type: "engines" | "groups" | "logics",
     items: string[],
   ) => {
+    console.log(
+      `[Index] SELECTION_CHANGE type=${type} next=${JSON.stringify(items)} current=${JSON.stringify({
+        engines: selectedEngines,
+        groups: selectedGroups,
+        logics: selectedLogics,
+      })}`,
+    );
+    console.log("[Index] SELECTION_CHANGE", {
+      type,
+      items,
+      current: {
+        engines: selectedEngines,
+        groups: selectedGroups,
+        logics: selectedLogics,
+      },
+    });
+
     // HYBRID MODE: If user manually changes selection while in chat mode, exit chat mode
     if (chatActive && items.length > 0) {
       setChatActive(false);
@@ -665,33 +627,7 @@ function Index() {
         configToSave.general.magic_number = data.magicNumber;
       }
 
-      // Apply strategy type logic
-      // Strategy type now controls which directions are enabled on export.
-      // We do NOT overwrite buy/sell values anymore so they can stay independent.
-      if (data.strategyType === "sell") {
-        configToSave.general.allow_buy = false;
-        configToSave.general.allow_sell = true;
-        configToSave.engines?.forEach((engine: any) => {
-          engine.groups?.forEach((group: any) => {
-            group.logics?.forEach((logic: any) => {
-              logic.allow_buy = false;
-              logic.allow_sell = true;
-            });
-          });
-        });
-      } else {
-        // Default/fallback to BUY-only scope for save/export intent.
-        configToSave.general.allow_buy = true;
-        configToSave.general.allow_sell = false;
-        configToSave.engines?.forEach((engine: any) => {
-          engine.groups?.forEach((group: any) => {
-            group.logics?.forEach((logic: any) => {
-              logic.allow_buy = true;
-              logic.allow_sell = false;
-            });
-          });
-        });
-      }
+      // Single source of truth: do not rewrite allow_buy / allow_sell on save/export.
 
       // 1. Export to file if path provided
       if (data.exportPath) {
@@ -705,18 +641,19 @@ function Index() {
           ? `${data.exportPath}${fileName}`
           : `${data.exportPath}${separator}${fileName}`;
 
-        const configToExport = withUseDirectPriceGrid(configToSave, settings);
+        const configToExport = configToSave;
+        const backendConfig = canonicalizeConfigForBackend(configToExport);
 
         if (data.format === "json") {
           await invoke("export_json_file", {
-            config: normalizeConfigForExport(configToExport),
+            config: normalizeConfigForExport(backendConfig),
             filePath: fullPath,
             tags: data.tags,
             comments: data.comments,
           });
         } else {
           await invoke("export_massive_v19_setfile", {
-            config: normalizeConfigForExport(configToExport),
+            config: normalizeConfigForExport(backendConfig),
             filePath: fullPath,
             platform: platform === "mt5" ? "MT5" : "MT4",
           });
@@ -726,9 +663,10 @@ function Index() {
 
       // 2. Save to Vault if requested
       if (data.saveToVault) {
-        const configToVault = withUseDirectPriceGrid(configToSave, settings);
+        const configToVault = configToSave;
+        const backendConfig = canonicalizeConfigForBackend(configToVault);
         await invoke("save_to_vault", {
-          config: normalizeConfigForExport(configToVault),
+          config: normalizeConfigForExport(backendConfig),
           name: data.name,
           category: data.category,
           tags: data.tags.length > 0 ? data.tags : null,
@@ -876,20 +814,27 @@ function Index() {
                       if (group) {
                         const logic = group.logics?.find(l => l.logic_name === change.logic);
                         if (logic && change.field in logic) {
-                          (logic as any)[change.field] = change.newValue;
+                          Object.assign(
+                            logic as any,
+                            buildPatchedLogicRow(
+                              logic as any,
+                              change.field,
+                              change.newValue,
+                            ),
+                          );
                         }
                       }
                     }
                   });
                   handleSaveConfig(newConfig);
                   setChatLastAppliedPreview(chatPendingPlan.preview);
-                  
+
                   // Update the pending command status to 'applied'
                   setCommandHistory(prev => {
-                    const lastPending = prev.findLast(c => c.status === 'pending');
+                    const lastPending = (prev as any[]).findLast(c => c.status === 'pending');
                     if (lastPending) {
-                      return prev.map(c => 
-                        c.id === lastPending.id 
+                      return prev.map(c =>
+                        c.id === lastPending.id
                           ? { ...c, status: 'applied' as const, changesCount: chatPendingPlan.preview.length }
                           : c
                       );
@@ -903,7 +848,7 @@ function Index() {
                       changesCount: chatPendingPlan.preview.length,
                     }].slice(-50);
                   });
-                  
+
                   // Update stats
                   setChatStats(prev => ({
                     totalChangesApplied: prev.totalChangesApplied + chatPendingPlan.preview.length,
@@ -911,7 +856,7 @@ function Index() {
                     snapshotsCount: prev.snapshotsCount,
                     lastCommandAt: new Date(),
                   }));
-                  
+
                   setChatPendingPlan(null);
                   toast.success(`Applied ${chatPendingPlan.preview.length} changes`);
                 }
@@ -920,10 +865,10 @@ function Index() {
                 if (chatPendingPlan) {
                   // Update the pending command status to 'cancelled'
                   setCommandHistory(prev => {
-                    const lastPending = prev.findLast(c => c.status === 'pending');
+                    const lastPending = (prev as any[]).findLast(c => c.status === 'pending');
                     if (lastPending) {
-                      return prev.map(c => 
-                        c.id === lastPending.id 
+                      return prev.map(c =>
+                        c.id === lastPending.id
                           ? { ...c, status: 'cancelled' as const }
                           : c
                       );
@@ -954,13 +899,13 @@ function Index() {
             order={2}
             defaultSize={
               viewMode === "vault" ||
-              viewMode === "save_config" ||
-              viewMode === "version-control" ||
-              viewMode === "analytics" ||
-              viewMode === "undo-redo" ||
-              viewMode === "memory" ||
-              viewMode === "grouping" ||
-              viewMode === "collaboration"
+                viewMode === "save_config" ||
+                viewMode === "version-control" ||
+                viewMode === "analytics" ||
+                viewMode === "undo-redo" ||
+                viewMode === "memory" ||
+                viewMode === "grouping" ||
+                viewMode === "collaboration"
                 ? 82
                 : viewMode === "chat"
                   ? 50
@@ -1045,13 +990,7 @@ function Index() {
 
                       {viewMode === "logics" && (
                         <div className="space-y-3 mt-4">
-                          {config && selectedGroups.length > 0 && (
-                            <GroupThresholdsCard
-                              config={config}
-                              selectedGroups={selectedGroups}
-                              onConfigChange={handleSaveConfig}
-                            />
-                          )}
+
                           {loading ? (
                             <div className="text-center py-8 text-muted-foreground">
                               Loading configuration...
@@ -1076,8 +1015,25 @@ function Index() {
                                       platform={platform}
                                       config={config}
                                       onUpdateLogic={(logic, field, value, groupNum, direction, targetLogicId) => {
-                                        if (!config) return;
+                                        const latestConfig = configRef.current;
+                                        if (!latestConfig) return;
+
+                                        console.log(
+                                          `[Index] LOGIC_UPDATE_REQUEST engine=${engineConfig.engine} group=${groupNum} logic=${logic} field=${field} value=${JSON.stringify(value)} direction=${direction || "none"} targetLogicId=${targetLogicId || "none"}`,
+                                        );
+                                        console.log("[Index] LOGIC_UPDATE_REQUEST", {
+                                          engine: engineConfig.engine,
+                                          groupNum,
+                                          logic,
+                                          field,
+                                          value,
+                                          direction: direction || null,
+                                          targetLogicId: targetLogicId || null,
+                                        });
+
                                         let processedValue = value;
+                                        const trimmedValue =
+                                          typeof value === "string" ? value.trim() : value;
                                         if (
                                           typeof value === "string" &&
                                           (field.includes("enabled") ||
@@ -1085,83 +1041,204 @@ function Index() {
                                             field === "close_partial")
                                         ) {
                                           processedValue =
-                                            value === "ON" || value === "true" || value === "1";
+                                            trimmedValue === "ON" ||
+                                            trimmedValue === "true" ||
+                                            trimmedValue === "1";
                                         } else if (
                                           typeof value === "string" &&
-                                          !isNaN(Number(value))
+                                          trimmedValue === ""
                                         ) {
-                                          processedValue = Number(value);
+                                          processedValue = undefined;
+                                        } else if (
+                                          typeof value === "string" &&
+                                          !isNaN(Number(trimmedValue))
+                                        ) {
+                                          processedValue = Number(trimmedValue);
                                         }
                                         const targetEngineId = engineConfig.engineData?.engine_id as
                                           | "A"
                                           | "B"
                                           | "C";
+                                        const isGroupField =
+                                          field === "group_power_start" ||
+                                          field === "group_power_start_b" ||
+                                          field === "group_power_start_s";
+                                        const targetEngine = latestConfig.engines.find(
+                                          (engine) => engine.engine_id === targetEngineId,
+                                        );
+                                        if (!targetEngine) return;
+
+                                        const targetGroup = targetEngine.groups.find(
+                                          (candidateGroup) => candidateGroup.group_number === groupNum,
+                                        );
+                                        if (!targetGroup) return;
+
+                                        const normalizedTargetLogicId = String(
+                                          targetLogicId || "",
+                                        )
+                                          .trim()
+                                          .toUpperCase();
+
+                                        const normalizeLogicName = (raw: string) => {
+                                          const upper = String(raw || "").toUpperCase();
+                                          return upper === "SCALP" ? "SCALPER" : upper;
+                                        };
+
+                                        const targetLogicRow = isGroupField
+                                          ? null
+                                          : targetGroup.logics.find((row) => {
+                                              const rowLogicId = String((row as any).logic_id || "").toUpperCase();
+
+                                              if (normalizedTargetLogicId) {
+                                                return rowLogicId === normalizedTargetLogicId;
+                                              }
+
+                                              const logicBaseName = logic.replace(/^(B|C)/i, "");
+                                              if (
+                                                normalizeLogicName(row.logic_name || "") !==
+                                                normalizeLogicName(logicBaseName)
+                                              ) {
+                                                return false;
+                                              }
+
+                                              const wantsDirection =
+                                                direction === "buy" || direction === "sell";
+                                              if (!wantsDirection) {
+                                                return true;
+                                              }
+
+                                              return resolveLogicRowDirection(row as any) === direction;
+                                            }) || null;
+
+                                        if (!isGroupField && !targetLogicRow) {
+                                          console.warn("[Index] LOGIC_UPDATE_MISS", {
+                                            engine: engineConfig.engine,
+                                            groupNum,
+                                            logic,
+                                            field,
+                                            direction: direction || null,
+                                            targetLogicId: normalizedTargetLogicId || null,
+                                          });
+                                          return;
+                                        }
+
+                                        const resolvedLogicId =
+                                          normalizedTargetLogicId ||
+                                          String((targetLogicRow as any)?.logic_id || "")
+                                            .trim()
+                                            .toUpperCase();
+                                        const previousValue = isGroupField
+                                          ? (targetGroup as any)[field]
+                                          : (targetLogicRow as any)?.[field];
+
+                                        if (deepEqual(previousValue, processedValue)) {
+                                          console.log("[Index] LOGIC_UPDATE_NOOP", {
+                                            engine: engineConfig.engine,
+                                            groupNum,
+                                            logic,
+                                            field,
+                                            previousValue,
+                                            processedValue,
+                                            direction: direction || null,
+                                            targetLogicId: resolvedLogicId || null,
+                                          });
+                                          return;
+                                        }
+
+                                        console.log(
+                                          `[Index] LOGIC_UPDATE_RESOLVED engine=${engineConfig.engine} group=${groupNum} logic=${logic} field=${field} prev=${JSON.stringify(previousValue)} next=${JSON.stringify(processedValue)} direction=${direction || "none"} targetLogicId=${resolvedLogicId || "none"}`,
+                                        );
+                                        console.log("[Index] LOGIC_UPDATE_RESOLVED", {
+                                          engine: engineConfig.engine,
+                                          groupNum,
+                                          logic,
+                                          field,
+                                          previousValue,
+                                          nextValue: processedValue,
+                                          direction: direction || null,
+                                          targetLogicId: resolvedLogicId || null,
+                                          targetRowLogicName: targetLogicRow?.logic_name || null,
+                                        });
+
+                                        undoRedoManagerRef.current.addOperation({
+                                          type: "UPDATE",
+                                          target: isGroupField
+                                            ? {
+                                                engineId: targetEngineId,
+                                                groupId: groupNum,
+                                                parameter: field,
+                                              }
+                                            : {
+                                                engineId: targetEngineId,
+                                                groupId: groupNum,
+                                                logicName:
+                                                  targetLogicRow?.logic_name || logic,
+                                                logicId: resolvedLogicId || undefined,
+                                                parameter: field,
+                                              },
+                                          before: cloneHistoryValue(previousValue),
+                                          after: cloneHistoryValue(processedValue),
+                                          description: isGroupField
+                                            ? `${field}: ${formatHistoryValue(previousValue)} -> ${formatHistoryValue(processedValue)} (Engine ${targetEngineId} G${groupNum})`
+                                            : `${field}: ${formatHistoryValue(previousValue)} -> ${formatHistoryValue(processedValue)} (${targetLogicRow?.logic_name || logic} G${groupNum}${direction ? ` ${direction.toUpperCase()}` : ""})`,
+                                        });
+
                                         const newConfig: MTConfig = {
-                                          ...config,
-                                          engines: config.engines.map((e) => {
-                                              if (e.engine_id !== targetEngineId) return e;
+                                          ...latestConfig,
+                                          engines: latestConfig.engines.map((e) => {
+                                            if (e.engine_id !== targetEngineId) return e;
                                             return {
                                               ...e,
                                               groups: e.groups.map((g) => {
                                                 if (g.group_number !== groupNum) return g;
+                                                if (isGroupField) {
+                                                  return {
+                                                    ...g,
+                                                    [field]: processedValue,
+                                                  };
+                                                }
                                                 return {
                                                   ...g,
                                                   logics: g.logics.map((l) => {
-                                                    // Strip engine prefix (B or C) from UI logic name to match config
-                                                    // "BPOWER" -> "Power", "BREPOWER" -> "Repower", etc.
-                                                    const logicBaseName = logic.replace(/^(B|C)/i, '');
-                                                    if (l.logic_name?.toUpperCase() !== logicBaseName.toUpperCase()) return l;
-
-                                                    const rowDirection = (() => {
-                                                      const dirRaw = String((l as any).direction || "").toUpperCase();
-                                                      if (dirRaw === "B" || dirRaw === "BUY") return "buy";
-                                                      if (dirRaw === "S" || dirRaw === "SELL") return "sell";
-                                                      const logicId = String((l as any).logic_id || "").toUpperCase();
-                                                      if (logicId.includes("_B_") || logicId.endsWith("_B")) return "buy";
-                                                      if (logicId.includes("_S_") || logicId.endsWith("_S")) return "sell";
-                                                      if ((l as any).allow_buy === true && (l as any).allow_sell !== true) return "buy";
-                                                      if ((l as any).allow_sell === true && (l as any).allow_buy !== true) return "sell";
-                                                      return null;
-                                                    })();
-
-                                                    const directionalFields = new Set([
-                                                      "initial_lot",
-                                                      "multiplier",
-                                                      "grid",
-                                                      "trail_value",
-                                                      "trail_start",
-                                                      "trail_step",
-                                                    ]);
-                                                    const isDirectionalField = directionalFields.has(field);
                                                     const rowLogicId = String((l as any).logic_id || "");
-                                                    const wantsDirection = direction === "buy" || direction === "sell";
-                                                    const normalizedTargetLogicId = String(targetLogicId || "");
 
-                                                    // Primary targeting: explicit logic row id from active canvas side.
-                                                    if (
-                                                      normalizedTargetLogicId &&
-                                                      rowLogicId &&
-                                                      rowLogicId !== normalizedTargetLogicId
-                                                    ) {
-                                                      return l;
-                                                    }
-
-                                                    if (wantsDirection) {
-                                                      if (rowDirection && rowDirection !== direction) {
+                                                    if (resolvedLogicId) {
+                                                      if (
+                                                        rowLogicId.toUpperCase() !==
+                                                        resolvedLogicId
+                                                      ) {
                                                         return l;
                                                       }
 
-                                                      // Single-row model: write only side-specific suffix field.
-                                                      if (!rowDirection && isDirectionalField) {
-                                                        const suffix = direction === "buy" ? "_b" : "_s";
-                                                        return {
-                                                          ...l,
-                                                          [`${field}${suffix}`]: processedValue,
-                                                        };
+                                                      return buildPatchedLogicRow(
+                                                        l as any,
+                                                        field,
+                                                        processedValue,
+                                                      );
+                                                    }
+
+                                                    // Strip engine prefix (B or C) from UI logic name to match config
+                                                    // "BPOWER" -> "Power", "BREPOWER" -> "Repower", etc.
+                                                    const logicBaseName = logic.replace(/^(B|C)/i, '');
+                                                    if (
+                                                      normalizeLogicName(l.logic_name || "") !==
+                                                      normalizeLogicName(logicBaseName)
+                                                    ) return l;
+
+                                                    const wantsDirection = direction === "buy" || direction === "sell";
+
+                                                    if (wantsDirection) {
+                                                      const rowDirection = resolveLogicRowDirection(l as any);
+                                                      if (!rowDirection || rowDirection !== direction) {
+                                                        return l;
                                                       }
                                                     }
 
-                                                    return { ...l, [field]: processedValue };
+                                                    return buildPatchedLogicRow(
+                                                      l as any,
+                                                      field,
+                                                      processedValue,
+                                                    );
                                                   }),
                                                 };
                                               }),
@@ -1182,14 +1259,19 @@ function Index() {
                         <div className="mt-4">
                           <GeneralCategories
                             platform={platform}
-                            generalConfig={config?.general || mockGeneralConfig}
+                            generalConfig={config?.general}
                             mtPlatform={platform}
                             mode={1}
                             selectedCategory={selectedGeneralCategory}
                             onConfigChange={(newGeneralConfig) => {
-                              if (config) {
+                              const latestConfig = configRef.current;
+                              if (latestConfig) {
+                                recordGeneralHistory(
+                                  latestConfig.general,
+                                  newGeneralConfig,
+                                );
                                 handleSaveConfig({
-                                  ...config,
+                                  ...latestConfig,
                                   general: newGeneralConfig,
                                 });
                               }
@@ -1245,7 +1327,7 @@ function Index() {
                         <div className="mt-4">
                           <UndoRedoPanel
                             config={config}
-                            onConfigChange={handleSaveConfigNoUndoRecord}
+                            onConfigChange={handleSaveConfig}
                           />
                         </div>
                       )}
@@ -1282,7 +1364,7 @@ function Index() {
                 onLoadSetfile={(loadedConfig) => {
                   setHasStarted(true);
                   if (loadedConfig) {
-                    handleSaveConfig(hydrateMTConfigDefaults(loadedConfig));
+                    handleSaveConfig(canonicalizeConfigForBackend(loadedConfig));
                     setSelectedEngines(["Engine A"]);
                     setSelectedGroups(["Group 1"]);
                     setSelectedLogics(["POWER"]);
@@ -1301,84 +1383,42 @@ function Index() {
             )}
           </ResizablePanel>
 
-          {viewMode !== "chat" &&
-            viewMode !== "save_config" &&
-            viewMode !== "vault" &&
-            viewMode !== "version-control" &&
-            viewMode !== "analytics" &&
-            viewMode !== "undo-redo" &&
-            viewMode !== "memory" &&
-            viewMode !== "grouping" &&
-            viewMode !== "collaboration" && viewMode !== "chat" && (
-              <>
-                <ResizableHandle withHandle />
+          {viewMode === "chat" && (
+            <>
+              <ResizableHandle withHandle />
 
-                <ResizablePanel
-                  id="quick-actions-panel"
-                  order={3}
-                  defaultSize={18}
-                  minSize={12}
-                  maxSize={30}
-                  collapsible={true}
-                  collapsedSize={4}
-                >
-                  <QuickActionsPanel
-                    config={config}
-                    onConfigChange={handleSaveConfig}
-                    onViewModeChange={handleViewModeChange}
-                    isCollapsed={isQuickActionsCollapsed}
-                    onToggleCollapse={() => setIsQuickActionsCollapsed(!isQuickActionsCollapsed)}
-                    onOpenVaultSave={(draft) => {
-                      setVaultSaveDraft(draft || null);
-                      setPreviousViewMode(viewMode);
-                      setViewMode("save_config");
-                      setHasStarted(true);
-                    }}
-                    favoritesOnly={favoritesOnly}
-                    onFavoritesOnlyChange={setFavoritesOnly}
-                    favoriteFields={settings.favoriteFields || []}
-                    onToggleFavorite={handleToggleFavorite}
-                    checkedFavorites={checkedFavorites}
-                    onCheckedFavoritesChange={setCheckedFavorites}
-                  />
-                </ResizablePanel>
-              </>
-            )}
-
-            {/* Quick Changes Sidebar for Chat mode - Advanced change review UI */}
-            {viewMode === "chat" && (
-              <>
-                <ResizableHandle withHandle />
-                
-                <ResizablePanel
-                  id="quick-changes-panel"
-                  order={3}
-                  defaultSize={28}
-                  minSize={20}
-                  maxSize={40}
-                  collapsible={true}
-                  collapsedSize={4}
-                >
-                  <QuickActionsPanel
-                    config={config}
-                    onConfigChange={handleSaveConfig}
-                    onViewModeChange={handleViewModeChange}
-                    isCollapsed={isQuickActionsCollapsed}
-                    onToggleCollapse={() => setIsQuickActionsCollapsed(!isQuickActionsCollapsed)}
-                    onOpenVaultSave={(draft) => {
-                      setVaultSaveDraft(draft || null);
-                      setPreviousViewMode(viewMode);
-                      setViewMode("save_config");
-                      setHasStarted(true);
-                    }}
-                    viewMode={viewMode}
-                    pendingPlan={chatPendingPlan}
-                    favoritesOnly={favoritesOnly}
-                    onFavoritesOnlyChange={setFavoritesOnly}
-                    favoriteFields={settings.favoriteFields || []}
-                    onToggleFavorite={handleToggleFavorite}
-                    checkedFavorites={checkedFavorites}
-                    onCheckedFavoritesChange={setCheckedFavorites}
+              <ResizablePanel
+                id="quick-changes-panel"
+                order={3}
+                defaultSize={28}
+                minSize={20}
+                maxSize={40}
+                collapsible={true}
+                collapsedSize={4}
+              >
+                <QuickActionsPanel
+                  config={config}
+                  onConfigChange={handleSaveConfig}
+                  onViewModeChange={handleViewModeChange}
+                  isCollapsed={isQuickActionsCollapsed}
+                  onToggleCollapse={() => setIsQuickActionsCollapsed(!isQuickActionsCollapsed)}
+                  onOpenVaultSave={(draft) => {
+                    setVaultSaveDraft(draft || null);
+                    setPreviousViewMode(viewMode);
+                    setViewMode("save_config");
+                    setHasStarted(true);
+                  }}
+                  viewMode={viewMode}
+                  pendingPlan={chatPendingPlan}
+                  commandHistory={commandHistory}
+                  stats={chatStats}
+                  onCommandClick={(command) => pushChatCommand(command)}
+                  favoritesOnly={favoritesOnly}
+                  onFavoritesOnlyChange={setFavoritesOnly}
+                  favoriteFields={settings.favoriteFields || []}
+                  onToggleFavorite={handleToggleFavorite}
+                  checkedFavorites={checkedFavorites}
+                  onCheckedFavoritesChange={setCheckedFavorites}
                   recentChanges={chatLastAppliedPreview?.map(p => ({
                     engine: p.engine,
                     group: p.group,
@@ -1397,7 +1437,14 @@ function Index() {
                           if (group) {
                             const logic = group.logics?.find(l => l.logic_name === change.logic);
                             if (logic && change.field in logic) {
-                              (logic as any)[change.field] = change.newValue;
+                              Object.assign(
+                                logic as any,
+                                buildPatchedLogicRow(
+                                  logic as any,
+                                  change.field,
+                                  change.newValue,
+                                ),
+                              );
                             }
                           }
                         }
@@ -1416,6 +1463,42 @@ function Index() {
                     setChatLastAppliedPreview(null);
                     toast.info("Undo not yet implemented - use version control");
                   }}
+                />
+              </ResizablePanel>
+            </>
+          )}
+
+          {viewMode !== "chat" && (
+            <>
+              <ResizableHandle withHandle />
+
+              <ResizablePanel
+                id="quick-actions-panel"
+                order={3}
+                defaultSize={18}
+                minSize={12}
+                maxSize={30}
+                collapsible={true}
+                collapsedSize={4}
+              >
+                <QuickActionsPanel
+                  config={config}
+                  onConfigChange={handleSaveConfig}
+                  onViewModeChange={handleViewModeChange}
+                  isCollapsed={isQuickActionsCollapsed}
+                  onToggleCollapse={() => setIsQuickActionsCollapsed(!isQuickActionsCollapsed)}
+                  onOpenVaultSave={(draft) => {
+                    setVaultSaveDraft(draft || null);
+                    setPreviousViewMode(viewMode);
+                    setViewMode("save_config");
+                    setHasStarted(true);
+                  }}
+                  favoritesOnly={favoritesOnly}
+                  onFavoritesOnlyChange={setFavoritesOnly}
+                  favoriteFields={settings.favoriteFields || []}
+                  onToggleFavorite={handleToggleFavorite}
+                  checkedFavorites={checkedFavorites}
+                  onCheckedFavoritesChange={setCheckedFavorites}
                 />
               </ResizablePanel>
             </>
