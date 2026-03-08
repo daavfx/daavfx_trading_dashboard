@@ -9,7 +9,6 @@ import {
   ChevronRight, 
   Sparkles,
   Trash2,
-  Zap,
   ChevronUp,
   ChevronDown,
   Search,
@@ -27,10 +26,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useChatCommands } from "@/hooks/useChatCommands";
-import { commandExecutor } from "@/lib/chat";
 import { ChatMessageContent } from "@/components/chat/ChatMessageContent";
-import { QuickActionsPanel } from "@/components/chat/QuickActionsPanel";
-import { FileOperationsPanel } from "@/components/chat/FileOperationsPanel";
 import { ChangePreviewPanel } from "@/components/chat/ChangePreviewPanel";
 import type { MTConfig } from "@/types/mt-config";
 import type { TransactionPlan, ChangePreview, FieldChange } from "@/lib/chat/types";
@@ -92,7 +88,6 @@ export function ChatPanel({
   onCommandSent,
 }: ChatPanelProps) {
   const [showGuide, setShowGuide] = useState(false);
-  const [showQuickActions, setShowQuickActions] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   
   // Track pending plan and recent changes for the ChangePreviewPanel
@@ -317,18 +312,6 @@ export function ChatPanel({
           </div>
         </div>
         <div className="flex items-center gap-1 shrink-0 ml-2">
-          <button
-            onClick={() => setShowQuickActions((prev) => !prev)}
-            className={cn(
-              "p-1.5 rounded-md transition-colors",
-              showQuickActions 
-                ? "bg-amber-500/20 text-amber-400"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
-            )}
-            title="Quick Actions"
-          >
-            <Zap className="w-3.5 h-3.5" />
-          </button>
           <button 
             onClick={clearHistory}
             className="p-1.5 text-muted-foreground hover:text-foreground rounded-md hover:bg-muted/30 transition-colors"
@@ -383,35 +366,6 @@ export function ChatPanel({
               </div>
             ))}
           </div>
-        </div>
-      )}
-
-      {/* Quick Actions Panel */}
-      {showQuickActions && (
-        <div className="border-b border-border/60 space-y-3 p-3">
-          <QuickActionsPanel
-            config={config}
-            onConfigChange={onConfigChange || (() => {})}
-            onMessage={(msg) => {
-              // Add message to chat
-              const assistantMessage = {
-                id: `assistant-${Date.now()}`,
-                role: "assistant" as const,
-                content: msg,
-                timestamp: Date.now()
-              };
-              // We need to trigger this through the hook
-              sendMessage(`/quick-action-result: ${msg}`);
-            }}
-          />
-          
-          {/* File Operations */}
-          <FileOperationsPanel
-            config={config}
-            onExport={(format) => sendMessage(`/export ${format}`)}
-            onLoad={(format) => sendMessage(`/load ${format}`)}
-            onImport={() => sendMessage("/load")}
-          />
         </div>
       )}
 

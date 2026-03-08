@@ -5,9 +5,6 @@ import { toast } from "sonner";
 import type { MTConfig } from "@/types/mt-config";
 import { useMTConfig } from "./useMTConfig";
 import { canonicalizeConfigForBackend, normalizeConfigForExport } from "@/utils/unit-mode";
-import {
-  generateMassiveCompleteConfig,
-} from "@/lib/config/generateMassiveConfig";
 
 export type ActiveSetStatus = {
   path: string;
@@ -76,18 +73,41 @@ export function useMTFileOps(
 
     try {
       const configToExport = config;
+      
+      // DEBUG: Log what we're about to export
+      console.log("[EXPORT DEBUG] Config to export:", configToExport);
+      if (configToExport?.engines?.[0]?.groups?.[0]?.logics?.[0]) {
+        const logic = configToExport.engines[0].groups[0].logics[0];
+        console.log("[EXPORT DEBUG] Power A Group 1 Logic grid:", logic.grid);
+        console.log("[EXPORT DEBUG] Power A Group 1 Logic grid_b:", logic.grid_b);
+        console.log("[EXPORT DEBUG] Power A Group 1 Logic grid_s:", logic.grid_s);
+      }
+      
+      // DEBUG: Log group_power_start values for all groups
+      if (configToExport?.engines?.[0]) {
+        const engineA = configToExport.engines[0];
+        console.log("[EXPORT DEBUG] Engine A groups:", JSON.stringify(engineA.groups?.map(g => ({
+          group_number: g.group_number,
+          group_power_start: g.group_power_start,
+          group_power_start_b: g.group_power_start_b,
+          group_power_start_s: g.group_power_start_s
+        })), null, 2));
+      }
 
       if (tauriAvailable) {
         const filePath = await save({
           filters: [{ name: "Set File", extensions: ["set"] }],
-          defaultPath: "ACTIVE.set",
+          defaultPath: "config.set",
         });
         if (!filePath) return;
 
-        const configToRust = canonicalizeConfigForBackend(configToExport);
-
+        // FIX: Don't use canonicalizeConfigForBackend on export - it applies hardcoded defaults!
+        // Pass user config directly to preserve their exact values.
+        const normalizedConfig = normalizeConfigForExport(configToExport);
+        console.log("[EXPORT DEBUG] Normalized config:", normalizedConfig);
+        
         await invoke("export_massive_v19_setfile", {
-          config: normalizeConfigForExport(configToRust),
+          config: normalizedConfig,
           filePath,
           platform: mtPlatform,
         });
@@ -139,17 +159,6 @@ export function useMTFileOps(
   }, [loadConfigOnly, tauriAvailable]);
 
   
-
-  const generateMassiveSetfile = useCallback(async () => {
-    const { config: massiveConfig, stats } =
-      generateMassiveCompleteConfig(mtPlatform);
-
-    await loadConfigOnly(massiveConfig);
-    toast.success(
-      `Generated massive setfile: ${stats.totalLogicDirections} logic-directions, ${stats.totalInputs.toLocaleString()} inputs`,
-    );
-  }, [mtPlatform, loadConfigOnly]);
-
   const importSetFileLocally = useCallback(
     async (configToLoad?: MTConfig) => {
       try {
@@ -339,7 +348,6 @@ export function useMTFileOps(
     importSetFileLocally,
     exportJsonFile,
     importJsonFile,
-    generateMassiveSetfile,
     activeSetStatus,
     refreshActiveSetStatus,
   };

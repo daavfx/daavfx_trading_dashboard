@@ -554,18 +554,6 @@ pub fn generate_training_data() -> Vec<TrainingExample> {
         });
     }
 
-    // TP/SL
-    for val in [100, 200, 500, 1000, 2000].iter() {
-        examples.push(TrainingExample {
-            text: format!("set tp to {}", val),
-            intent: TransformerIntent::Set,
-        });
-        examples.push(TrainingExample {
-            text: format!("set sl to {}", val),
-            intent: TransformerIntent::Set,
-        });
-    }
-
     // Groups
     for g in 1..=20 {
         examples.push(TrainingExample {
@@ -651,10 +639,6 @@ pub fn generate_training_data() -> Vec<TrainingExample> {
     // Reset
     examples.push(TrainingExample {
         text: "reset group 3".to_string(),
-        intent: TransformerIntent::Reset,
-    });
-    examples.push(TrainingExample {
-        text: "restore defaults".to_string(),
         intent: TransformerIntent::Reset,
     });
 

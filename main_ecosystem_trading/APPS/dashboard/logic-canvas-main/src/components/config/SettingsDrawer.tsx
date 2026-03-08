@@ -74,6 +74,9 @@ const sections: SettingsSection[] = [
   },
 ];
 
+const isDaavfxStorageKey = (key: string) =>
+  key.startsWith("daavfx-") || key.startsWith("daavfx_");
+
 // Elegant Card Component
 function SettingCard({ 
   title, 
@@ -161,7 +164,7 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
     
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i) || "";
-      if (key.startsWith("daavfx-")) {
+      if (isDaavfxStorageKey(key)) {
         const value = localStorage.getItem(key) || "";
         totalSize += value.length * 2; // UTF-16 encoding
         itemCount++;
@@ -205,7 +208,7 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
         const keysToRemove: string[] = [];
         for (let i = 0; i < localStorage.length; i++) {
           const key = localStorage.key(i) || "";
-          if (key.startsWith("daavfx-")) {
+          if (isDaavfxStorageKey(key)) {
             keysToRemove.push(key);
           }
         }
