@@ -427,19 +427,39 @@ export function LogicModule({
     fieldId: string,
     fieldValue: any,
   ): string | undefined => {
-    const ids = ["grid", "trail_value", "trail_start", "trail_step"];
-    if (!ids.includes(fieldId)) return;
+    const trailIds = ["trail_value", "trail_start", "trail_step"];
+    const gridIds = ["grid"];
+    if (!trailIds.includes(fieldId) && !gridIds.includes(fieldId)) return;
+    
     const n =
       typeof fieldValue === "number"
         ? fieldValue
         : parseFloat(String(fieldValue));
     if (!Number.isFinite(n)) return;
 
+    // Check if this is a percent-based trail mode
+    const trailMethod = fieldValues["trail_method"];
+    const isPercentTrail = trailMethod && (
+      trailMethod === "AVG_Percent" || 
+      trailMethod === "Percent" || 
+      String(trailMethod).includes("Percent")
+    );
+
     if (unitMode === "direct_price") {
       const move = n * 0.01;
       return `${unitSymbol || "Direct"}: ${n} → ${move.toFixed(2)} price`;
     }
 
+    // For trail fields: Points mode = "pts", Percent mode = "%"
+    if (trailIds.includes(fieldId)) {
+      if (isPercentTrail) {
+        return `${unitSymbol || "FX"}: ${n}%`;
+      }
+      // Points mode - show "pts" not "pips"
+      return `${unitSymbol || "FX"}: ${n} pts`;
+    }
+
+    // Grid always shows "pips"
     return `${unitSymbol || "FX"}: ${n} pips`;
   };
 
@@ -774,13 +794,27 @@ export function LogicModule({
                         .filter(
                           (f) => f.id !== "allow_buy" && f.id !== "allow_sell",
                         )
-                        .map((field) => (
+                        .map((field) => {
+                          // Calculate dynamic unit for trail fields based on trail method
+                          let dynamicUnit = field.unit;
+                          const trailMethod = fieldValues["trail_method"];
+                          const isPercentTrail = trailMethod && (
+                            trailMethod === "AVG_Percent" || 
+                            trailMethod === "Percent" || 
+                            String(trailMethod).includes("Percent")
+                          );
+                          const isTrailField = ["trail_value", "trail_start", "trail_step"].includes(field.id);
+                          if (isTrailField) {
+                            dynamicUnit = isPercentTrail ? "%" : (field.unit || "pts");
+                          }
+                          
+                          return (
                           <ConfigField
                             key={field.id}
                             label={field.label}
                             value={field.value}
                             type={field.type}
-                            unit={field.unit}
+                            unit={dynamicUnit}
                             description={field.description}
                             fieldId={field.id}
                             hint={getUnitHint(field.id, field.value)}
@@ -794,7 +828,7 @@ export function LogicModule({
                               }
                             }}
                           />
-                        ))}
+                        )})}
                     </div>
                   </div>
                 );

@@ -363,6 +363,7 @@ pub struct GroupConfig {
 fn default_true() -> bool { true }
 fn default_logic_none() -> String { "Logic_None".to_string() }
 fn default_trail_step_mode() -> String { "TrailStepMode_Auto".to_string() }
+fn default_partial_trigger() -> String { "PartialTrigger_Cycle".to_string() }
 fn default_strategy_trail() -> String { "Trail".to_string() }
 fn default_mode_trending() -> String { "Trending".to_string() }
 
@@ -493,29 +494,52 @@ pub struct LogicConfig {
     #[serde(default)] pub trail_step_balance_7: Option<f64>,
     #[serde(default)] pub trail_step_mode_7: Option<String>,
     
-    // ===== CLOSE PARTIAL (5 fields) =====
+    // ===== CLOSE PARTIAL (9 fields) =====
     pub close_partial: bool,
     pub close_partial_cycle: i32,
     pub close_partial_mode: String,
     pub close_partial_balance: String,
     #[serde(default = "default_trail_step_mode")]
-    pub close_partial_trail_step_mode: String, // gInput_ClosePartialTrailStepMode_{suffix}
+    pub close_partial_trail_step_mode: String, // gInput_ClosePartialTrailMode_{suffix}
+    #[serde(default = "default_partial_trigger")]
+    pub close_partial_trigger: String,
+    #[serde(default)]
+    pub close_partial_profit_threshold: f64,    // $ profit trigger
+    #[serde(default)]
+    pub close_partial_percent: f64,             // % of lot to close
+    #[serde(default)]
+    pub close_partial_hours: i32,               // hours for time trigger
 
-    // ===== CLOSE PARTIAL EXTENDED (Levels 2-4) =====
+    // ===== CLOSE PARTIAL EXTENDED (Levels 2-4, 9 fields each) =====
     #[serde(default)] pub close_partial_2: Option<bool>,
     #[serde(default)] pub close_partial_cycle_2: Option<i32>,
     #[serde(default)] pub close_partial_mode_2: Option<String>,
     #[serde(default)] pub close_partial_balance_2: Option<String>,
+    #[serde(default)] pub close_partial_trail_step_mode_2: Option<String>,
+    #[serde(default)] pub close_partial_trigger_2: Option<String>,
+    #[serde(default)] pub close_partial_profit_threshold_2: Option<f64>,
+    #[serde(default)] pub close_partial_percent_2: Option<f64>,
+    #[serde(default)] pub close_partial_hours_2: Option<i32>,
 
     #[serde(default)] pub close_partial_3: Option<bool>,
     #[serde(default)] pub close_partial_cycle_3: Option<i32>,
     #[serde(default)] pub close_partial_mode_3: Option<String>,
     #[serde(default)] pub close_partial_balance_3: Option<String>,
+    #[serde(default)] pub close_partial_trail_step_mode_3: Option<String>,
+    #[serde(default)] pub close_partial_trigger_3: Option<String>,
+    #[serde(default)] pub close_partial_profit_threshold_3: Option<f64>,
+    #[serde(default)] pub close_partial_percent_3: Option<f64>,
+    #[serde(default)] pub close_partial_hours_3: Option<i32>,
 
     #[serde(default)] pub close_partial_4: Option<bool>,
     #[serde(default)] pub close_partial_cycle_4: Option<i32>,
     #[serde(default)] pub close_partial_mode_4: Option<String>,
     #[serde(default)] pub close_partial_balance_4: Option<String>,
+    #[serde(default)] pub close_partial_trail_step_mode_4: Option<String>,
+    #[serde(default)] pub close_partial_trigger_4: Option<String>,
+    #[serde(default)] pub close_partial_profit_threshold_4: Option<f64>,
+    #[serde(default)] pub close_partial_percent_4: Option<f64>,
+    #[serde(default)] pub close_partial_hours_4: Option<i32>,
     
     // ===== TRIGGERS (optional) =====
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1263,7 +1287,11 @@ pub fn export_set_file(
                 lines.push(format!("gInput_ClosePartialCycle_{}={}", suffix, logic.close_partial_cycle));
                 lines.push(format!("gInput_ClosePartialMode_{}={}", suffix, encode_partial_mode(&logic.close_partial_mode)));
                 lines.push(format!("gInput_ClosePartialBalance_{}={}", suffix, encode_partial_balance(&logic.close_partial_balance)));
-                lines.push(format!("gInput_ClosePartialTrailStepMode_{}={}", suffix, encode_trail_step_mode(&logic.close_partial_trail_step_mode)));
+                lines.push(format!("gInput_ClosePartialTrailMode_{}={}", suffix, encode_trail_step_mode(&logic.close_partial_trail_step_mode)));
+                lines.push(format!("gInput_ClosePartialTrigger_{}={}", suffix, encode_partial_trigger(&logic.close_partial_trigger)));
+                lines.push(format!("gInput_ClosePartialProfitThreshold_{}={:.1}", suffix, logic.close_partial_profit_threshold));
+                lines.push(format!("gInput_ClosePartialPercent_{}={:.1}", suffix, logic.close_partial_percent));
+                lines.push(format!("gInput_ClosePartialHours_{}={}", suffix, logic.close_partial_hours));
 
                 // Close Partial Extended (Levels 2-4)
                 // Level 2
@@ -1271,18 +1299,33 @@ pub fn export_set_file(
                 if let Some(v) = logic.close_partial_cycle_2 { lines.push(format!("gInput_ClosePartialCycle2_{}={}", suffix, v)); }
                 if let Some(ref v) = logic.close_partial_mode_2 { lines.push(format!("gInput_ClosePartialMode2_{}={}", suffix, encode_partial_mode(v))); }
                 if let Some(ref v) = logic.close_partial_balance_2 { lines.push(format!("gInput_ClosePartialBalance2_{}={}", suffix, encode_partial_balance(v))); }
+                if let Some(ref v) = logic.close_partial_trail_step_mode_2 { lines.push(format!("gInput_ClosePartialTrailMode2_{}={}", suffix, encode_trail_step_mode(v))); }
+                if let Some(ref v) = logic.close_partial_trigger_2 { lines.push(format!("gInput_ClosePartialTrigger2_{}={}", suffix, encode_partial_trigger(v))); }
+                if let Some(v) = logic.close_partial_profit_threshold_2 { lines.push(format!("gInput_ClosePartialProfitThreshold2_{}={:.1}", suffix, v)); }
+                if let Some(v) = logic.close_partial_percent_2 { lines.push(format!("gInput_ClosePartialPercent2_{}={:.1}", suffix, v)); }
+                if let Some(v) = logic.close_partial_hours_2 { lines.push(format!("gInput_ClosePartialHours2_{}={}", suffix, v)); }
 
                 // Level 3
                 if let Some(v) = logic.close_partial_3 { lines.push(format!("gInput_ClosePartial3_{}={}", suffix, if v { 1 } else { 0 })); }
                 if let Some(v) = logic.close_partial_cycle_3 { lines.push(format!("gInput_ClosePartialCycle3_{}={}", suffix, v)); }
                 if let Some(ref v) = logic.close_partial_mode_3 { lines.push(format!("gInput_ClosePartialMode3_{}={}", suffix, encode_partial_mode(v))); }
                 if let Some(ref v) = logic.close_partial_balance_3 { lines.push(format!("gInput_ClosePartialBalance3_{}={}", suffix, encode_partial_balance(v))); }
+                if let Some(ref v) = logic.close_partial_trail_step_mode_3 { lines.push(format!("gInput_ClosePartialTrailMode3_{}={}", suffix, encode_trail_step_mode(v))); }
+                if let Some(ref v) = logic.close_partial_trigger_3 { lines.push(format!("gInput_ClosePartialTrigger3_{}={}", suffix, encode_partial_trigger(v))); }
+                if let Some(v) = logic.close_partial_profit_threshold_3 { lines.push(format!("gInput_ClosePartialProfitThreshold3_{}={:.1}", suffix, v)); }
+                if let Some(v) = logic.close_partial_percent_3 { lines.push(format!("gInput_ClosePartialPercent3_{}={:.1}", suffix, v)); }
+                if let Some(v) = logic.close_partial_hours_3 { lines.push(format!("gInput_ClosePartialHours3_{}={}", suffix, v)); }
 
                 // Level 4
                 if let Some(v) = logic.close_partial_4 { lines.push(format!("gInput_ClosePartial4_{}={}", suffix, if v { 1 } else { 0 })); }
                 if let Some(v) = logic.close_partial_cycle_4 { lines.push(format!("gInput_ClosePartialCycle4_{}={}", suffix, v)); }
                 if let Some(ref v) = logic.close_partial_mode_4 { lines.push(format!("gInput_ClosePartialMode4_{}={}", suffix, encode_partial_mode(v))); }
                 if let Some(ref v) = logic.close_partial_balance_4 { lines.push(format!("gInput_ClosePartialBalance4_{}={}", suffix, encode_partial_balance(v))); }
+                if let Some(ref v) = logic.close_partial_trail_step_mode_4 { lines.push(format!("gInput_ClosePartialTrailMode4_{}={}", suffix, encode_trail_step_mode(v))); }
+                if let Some(ref v) = logic.close_partial_trigger_4 { lines.push(format!("gInput_ClosePartialTrigger4_{}={}", suffix, encode_partial_trigger(v))); }
+                if let Some(v) = logic.close_partial_profit_threshold_4 { lines.push(format!("gInput_ClosePartialProfitThreshold4_{}={:.1}", suffix, v)); }
+                if let Some(v) = logic.close_partial_percent_4 { lines.push(format!("gInput_ClosePartialPercent4_{}={:.1}", suffix, v)); }
+                if let Some(v) = logic.close_partial_hours_4 { lines.push(format!("gInput_ClosePartialHours4_{}={}", suffix, v)); }
 
                 
                 if let Some(tt) = &logic.trigger_type {
@@ -2415,10 +2458,21 @@ fn encode_trail_step_method(raw: &str) -> i32 {
 
 fn encode_trail_step_mode(raw: &str) -> i32 {
     match raw {
-        "TrailStepMode_Auto" => 0,
-        "TrailStepMode_Fixed" => 1,
-        "TrailStepMode_PerOrder" => 3,
-        "TrailStepMode_Disabled" => 4,
+        "0" | "TrailStepMode_Auto" => 0,
+        "1" | "TrailStepMode_Fixed" | "TrailStepMode_Points" => 1,
+        "2" | "TrailStepMode_Percent" => 2,
+        "3" | "TrailStepMode_PerOrder" => 3,
+        "4" | "TrailStepMode_Disabled" => 4,
+        _ => 0,
+    }
+}
+
+fn encode_partial_trigger(raw: &str) -> i32 {
+    match raw {
+        "0" | "PartialTrigger_Cycle" => 0,
+        "1" | "PartialTrigger_Profit" => 1,
+        "2" | "PartialTrigger_Time" => 2,
+        "3" | "PartialTrigger_Both" => 3,
         _ => 0,
     }
 }
@@ -3017,7 +3071,11 @@ fn build_logic_config(
     let close_partial_cycle = get_param_i32("ClosePartialCycle", 1);
     let close_partial_mode = get_param("ClosePartialMode", "PartialMode_Balanced");
     let close_partial_balance = get_param("ClosePartialBalance", "PartialBalance_Balanced");
-    let close_partial_trail_step_mode = get_param("ClosePartialTrailStepMode", "TrailStepMode_Auto");
+    let close_partial_trail_step_mode = get_param("ClosePartialTrailMode", "TrailStepMode_Auto");
+    let close_partial_trigger = get_param("ClosePartialTrigger", "PartialTrigger_Cycle");
+    let close_partial_profit_threshold = get_param_f64("ClosePartialProfitThreshold", 0.0);
+    let close_partial_percent = get_param_f64("ClosePartialPercent", 0.0);
+    let close_partial_hours = get_param_i32("ClosePartialHours", 0);
     
     // Check if logic is enabled
     let enabled = get_param_bool(&format!("Start_{}", logic_suffix));
@@ -3105,18 +3163,37 @@ fn build_logic_config(
         close_partial_mode,
         close_partial_balance,
         close_partial_trail_step_mode,
+        close_partial_trigger,
+        close_partial_profit_threshold,
+        close_partial_percent,
+        close_partial_hours,
         close_partial_2: None,
         close_partial_cycle_2: None,
         close_partial_mode_2: None,
         close_partial_balance_2: None,
+        close_partial_trail_step_mode_2: None,
+        close_partial_trigger_2: None,
+        close_partial_profit_threshold_2: None,
+        close_partial_percent_2: None,
+        close_partial_hours_2: None,
         close_partial_3: None,
         close_partial_cycle_3: None,
         close_partial_mode_3: None,
         close_partial_balance_3: None,
+        close_partial_trail_step_mode_3: None,
+        close_partial_trigger_3: None,
+        close_partial_profit_threshold_3: None,
+        close_partial_percent_3: None,
+        close_partial_hours_3: None,
         close_partial_4: None,
         close_partial_cycle_4: None,
         close_partial_mode_4: None,
         close_partial_balance_4: None,
+        close_partial_trail_step_mode_4: None,
+        close_partial_trigger_4: None,
+        close_partial_profit_threshold_4: None,
+        close_partial_percent_4: None,
+        close_partial_hours_4: None,
         trigger_type: None,
         trigger_bars: None,
         trigger_minutes: None,
@@ -3233,18 +3310,37 @@ fn create_default_logic(logic_name: &str) -> LogicConfig {
         close_partial_mode: "PartialMode_Balanced".to_string(),
         close_partial_balance: "PartialBalance_Balanced".to_string(),
         close_partial_trail_step_mode: "TrailStepMode_Auto".to_string(),
+        close_partial_trigger: "PartialTrigger_Cycle".to_string(),
+        close_partial_profit_threshold: 0.0,
+        close_partial_percent: 0.0,
+        close_partial_hours: 0,
         close_partial_2: None,
         close_partial_cycle_2: None,
         close_partial_mode_2: None,
         close_partial_balance_2: None,
+        close_partial_trail_step_mode_2: None,
+        close_partial_trigger_2: None,
+        close_partial_profit_threshold_2: None,
+        close_partial_percent_2: None,
+        close_partial_hours_2: None,
         close_partial_3: None,
         close_partial_cycle_3: None,
         close_partial_mode_3: None,
         close_partial_balance_3: None,
+        close_partial_trail_step_mode_3: None,
+        close_partial_trigger_3: None,
+        close_partial_profit_threshold_3: None,
+        close_partial_percent_3: None,
+        close_partial_hours_3: None,
         close_partial_4: None,
         close_partial_cycle_4: None,
         close_partial_mode_4: None,
         close_partial_balance_4: None,
+        close_partial_trail_step_mode_4: None,
+        close_partial_trigger_4: None,
+        close_partial_profit_threshold_4: None,
+        close_partial_percent_4: None,
+        close_partial_hours_4: None,
         trigger_type: None,
         trigger_bars: None,
         trigger_minutes: None,

@@ -39,6 +39,7 @@ export function ConfigField({
   fieldId,
 }: ConfigFieldProps) {
   const [localValue, setLocalValue] = useState(value);
+
   useEffect(() => {
     setLocalValue(value);
   }, [value]);

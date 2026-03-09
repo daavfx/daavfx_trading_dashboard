@@ -41,6 +41,7 @@ export interface PartialCloseConfig {
   trailMode: TrailStepMode;
   trigger: PartialTrigger;
   profitThreshold: number;
+  closePercent: number;
   hours: number;
 }
 
