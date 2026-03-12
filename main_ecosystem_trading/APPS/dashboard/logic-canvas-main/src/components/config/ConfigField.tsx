@@ -125,7 +125,7 @@ export function ConfigField({
             handleChange(isNumericSelect ? parseInt(val, 10) : val)
           }
         >
-          <SelectTrigger className="h-6 w-[100px] text-[9px] font-mono bg-transparent border border-neutral-800 hover:border-neutral-600 focus:ring-1 focus:ring-neutral-600 transition-all">
+          <SelectTrigger className="h-6 w-[100px] text-[9px] font-mono bg-transparent border border-amber-600/40 hover:border-amber-500/60 focus:border-amber-400 focus:ring-1 focus:ring-amber-500/30 transition-all shadow-[0_0_8px_rgba(245,158,11,0.1)]">
             <SelectValue placeholder={localValue} />
           </SelectTrigger>
           <SelectContent className="bg-neutral-950 border-neutral-800">
@@ -154,7 +154,7 @@ export function ConfigField({
             type="text"
             value={localValue}
             onChange={(e) => handleChange(e.target.value)}
-            className="w-14 h-6 text-right font-mono text-[9px] px-1.5 bg-transparent border border-neutral-800 hover:border-neutral-600 text-neutral-200 focus:border-neutral-400 focus:ring-1 focus:ring-neutral-600 transition-all rounded placeholder:text-neutral-700"
+            className="w-14 h-6 text-right font-mono text-[9px] px-1.5 bg-transparent border border-amber-600/40 hover:border-amber-500/60 text-neutral-200 focus:border-amber-400 focus:ring-1 focus:ring-amber-500/30 transition-all rounded placeholder:text-neutral-700 shadow-[0_0_8px_rgba(245,158,11,0.1)]"
           />
           {unit && (
             <span className="text-[8px] text-neutral-500 w-5 text-left font-medium">
@@ -167,12 +167,12 @@ export function ConfigField({
           type="text"
           value={localValue}
           onChange={(e) => handleChange(e.target.value)}
-          className="w-full max-w-[120px] h-6 text-right font-mono text-[9px] px-1.5 bg-transparent border border-neutral-800 hover:border-neutral-600 text-neutral-200 focus:border-neutral-400 focus:ring-1 focus:ring-neutral-600 transition-all rounded placeholder:text-neutral-700"
+          className="w-full max-w-[120px] h-6 text-right font-mono text-[9px] px-1.5 bg-transparent border border-amber-600/40 hover:border-amber-500/60 text-neutral-200 focus:border-amber-400 focus:ring-1 focus:ring-amber-500/30 transition-all rounded placeholder:text-neutral-700 shadow-[0_0_8px_rgba(245,158,11,0.1)]"
         />
       ) : (
         <span
           className={cn(
-            "text-[9px] font-mono px-1.5 py-0.5 rounded bg-transparent border border-neutral-800 text-neutral-400",
+            "text-[9px] font-mono px-1.5 py-0.5 rounded bg-transparent border border-amber-600/30 text-neutral-400",
             value === "-" && "text-neutral-700",
           )}
         >
