@@ -1148,33 +1148,14 @@ export function LogicModule({
                   return (
                     <div
                       key={category}
-                      className={cn(
-                        "rounded-lg border p-2 shadow-sm relative overflow-hidden group transition-all duration-200",
-                        style.bg,
-                        style.border,
-                        `border-l-[2px] ${style.color.replace("text-", "border-")}`,
-                      )}
+                      className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-3 shadow-lg"
                     >
-                      {/* Subtle gradient overlay */}
-                      <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-transparent opacity-30 group-hover:opacity-60 transition-opacity duration-300 pointer-events-none" />
-
-                      <div className="flex items-center gap-1.5 mb-2 relative z-10">
-                        <div
-                          className={cn(
-                            "p-1 rounded border shadow-sm backdrop-blur-sm transition-all duration-200",
-                            style.bg.replace("/5", "/20"),
-                            style.border,
-                            style.color,
-                          )}
-                        >
-                          <Icon className="w-3 h-3" />
+                      {/* Category Header - Metallic dark style */}
+                      <div className="flex items-center gap-2 mb-3 pb-2 border-b border-zinc-800">
+                        <div className="p-1.5 rounded bg-zinc-800 border border-zinc-700">
+                          <Icon className="w-3.5 h-3.5 text-zinc-400" />
                         </div>
-                        <div
-                          className={cn(
-                            "text-[10px] uppercase tracking-wider font-semibold text-foreground/80 group-hover:text-foreground transition-colors",
-                            style.color,
-                          )}
-                        >
+                        <div className="text-[11px] uppercase tracking-widest font-semibold text-zinc-300">
                           {category}
                         </div>
 
@@ -1187,21 +1168,21 @@ export function LogicModule({
                                 setTrailAdvancedEnabled(!trailAdvancedEnabled);
                               }}
                               className={cn(
-                                "text-[9px] font-medium flex items-center gap-1 px-2 py-1 rounded-md border transition-all duration-200",
+                                "text-[10px] font-medium flex items-center gap-1.5 px-3 py-1.5 rounded-md border transition-all duration-200",
                                 trailAdvancedEnabled
-                                  ? "bg-violet-500/20 border-violet-500/50 text-violet-300 shadow-sm"
-                                  : "bg-slate-800/50 border-slate-700 text-slate-400 hover:bg-slate-700/50 hover:text-slate-300",
+                                  ? "bg-zinc-700 border-zinc-600 text-zinc-200 shadow-inner"
+                                  : "bg-zinc-800/60 border-zinc-700 text-zinc-500 hover:bg-zinc-700 hover:text-zinc-300",
                               )}
                             >
                               {trailAdvancedEnabled ? (
                                 <>
                                   <Zap className="w-3 h-3" />
-                                  Advanced: ON
+                                  <span className="text-zinc-300">Advanced</span>
                                 </>
                               ) : (
                                 <>
-                                  <Zap className="w-3 h-3 opacity-50" />
-                                  + Advanced
+                                  <Zap className="w-3 h-3" />
+                                  <span>+ Advanced</span>
                                 </>
                               )}
                             </button>
@@ -1290,10 +1271,10 @@ export function LogicModule({
 {category === "Mode Selectors" && (
                           <div className="col-span-2 lg:col-span-3 mb-1">
                             {/* Trading Direction */}
-                            <div className="flex items-center gap-1 mb-1">
-                              <span className="text-[9px] text-muted-foreground/70 uppercase tracking-wider">Direction</span>
+                            <div className="flex items-center gap-1 mb-1.5">
+                              <span className="text-[9px] text-zinc-500 uppercase tracking-wider">Direction</span>
                             </div>
-                            <div className="flex flex-row gap-1 mb-2">
+                            <div className="flex flex-row gap-2 mb-3">
                               <button
                                 type="button"
                                 onClick={() => {
@@ -1305,10 +1286,10 @@ export function LogicModule({
                                   setActiveDirection("buy");
                                 }}
                                 className={cn(
-                                  "flex-1 h-6 px-2 text-[10px] rounded-md border transition-all duration-200",
+                                  "flex-1 h-8 px-4 text-[11px] font-medium rounded-md border transition-all duration-200",
                                   activeDirection === "buy"
-                                    ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/40 font-medium"
-                                    : "bg-slate-800/50 border-slate-700 text-slate-400 hover:bg-slate-700/50 hover:text-slate-300"
+                                    ? "bg-zinc-600 border-zinc-500 text-zinc-100 shadow-inner"
+                                    : "bg-zinc-800/60 border-zinc-700 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200"
                                 )}
                               >
                                 Buy
@@ -1324,10 +1305,10 @@ export function LogicModule({
                                   setActiveDirection("sell");
                                 }}
                                 className={cn(
-                                  "flex-1 h-6 px-2 text-[10px] rounded-md border transition-all duration-200",
+                                  "flex-1 h-8 px-4 text-[11px] font-medium rounded-md border transition-all duration-200",
                                   activeDirection === "sell"
-                                    ? "bg-rose-500/15 text-rose-400 border-rose-500/40 font-medium"
-                                    : "bg-slate-800/50 border-slate-700 text-slate-400 hover:bg-slate-700/50 hover:text-slate-300"
+                                    ? "bg-zinc-600 border-zinc-500 text-zinc-100 shadow-inner"
+                                    : "bg-zinc-800/60 border-zinc-700 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200"
                                 )}
                               >
                                 Sell
@@ -1335,10 +1316,10 @@ export function LogicModule({
                             </div>
                             
                             {/* Exit Mode */}
-                            <div className="flex items-center gap-1 mb-1">
-                              <span className="text-[9px] text-muted-foreground/70 uppercase tracking-wider">Exit</span>
+                            <div className="flex items-center gap-1 mb-1.5">
+                              <span className="text-[9px] text-zinc-500 uppercase tracking-wider">Exit</span>
                             </div>
-                            <div className="flex flex-row gap-1">
+                            <div className="flex flex-row gap-2">
                               <button
                                 type="button"
                                 onClick={() => {
@@ -1348,10 +1329,10 @@ export function LogicModule({
                                   }
                                 }}
                                 className={cn(
-                                  "flex-1 h-6 px-2 text-[10px] rounded-md border transition-all duration-200",
+                                  "flex-1 h-8 px-4 text-[11px] font-medium rounded-md border transition-all duration-200",
                                   exitMode === "Trail"
-                                    ? "bg-violet-500/15 text-violet-400 border-violet-500/40 font-medium"
-                                    : "bg-slate-800/50 border-slate-700 text-slate-400 hover:bg-slate-700/50 hover:text-slate-300",
+                                    ? "bg-zinc-600 border-zinc-500 text-zinc-100 shadow-inner"
+                                    : "bg-zinc-800/60 border-zinc-700 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200",
                                 )}
                               >
                                 Trail
@@ -1364,10 +1345,10 @@ export function LogicModule({
                                   }
                                 }}
                                 className={cn(
-                                  "flex-1 h-6 px-2 text-[10px] rounded-md border transition-all duration-200",
+                                  "flex-1 h-8 px-4 text-[11px] font-medium rounded-md border transition-all duration-200",
                                   exitMode === "TPSL"
-                                    ? "bg-amber-500/15 text-amber-400 border-amber-500/40 font-medium"
-                                    : "bg-slate-800/50 border-slate-700 text-slate-400 hover:bg-slate-700/50 hover:text-slate-300",
+                                    ? "bg-zinc-600 border-zinc-500 text-zinc-100 shadow-inner"
+                                    : "bg-zinc-800/60 border-zinc-700 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200",
                                 )}
                               >
                                 TP/SL
