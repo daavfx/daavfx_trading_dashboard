@@ -191,79 +191,79 @@ const categoryStyles: Record<
   "Mode Selectors": {
     color: "text-sky-500",
     bg: "bg-transparent",
-    border: "border-neutral-800",
+    border: "border-b border-sky-500/30",
     icon: Settings2,
   },
   Core: {
     color: "text-blue-500",
     bg: "bg-transparent",
-    border: "border-neutral-800",
+    border: "border-b border-blue-500/30",
     icon: Layers,
   },
   Lots: {
     color: "text-blue-400",
     bg: "bg-transparent",
-    border: "border-neutral-800",
+    border: "border-b border-blue-400/30",
     icon: Box,
   },
   Grid: {
     color: "text-indigo-500",
     bg: "bg-transparent",
-    border: "border-neutral-800",
+    border: "border-b border-indigo-500/30",
     icon: ArrowLeftRight,
   },
   Trail: {
     color: "text-purple-500",
     bg: "bg-transparent",
-    border: "border-neutral-800",
+    border: "border-b border-purple-500/30",
     icon: ChevronRight,
   },
   "Trail Advanced": {
     color: "text-fuchsia-500",
     bg: "bg-transparent",
-    border: "border-neutral-800",
+    border: "border-b border-fuchsia-500/30",
     icon: Settings2,
   },
   Logic: {
     color: "text-emerald-500",
     bg: "bg-transparent",
-    border: "border-neutral-800",
+    border: "border-b border-emerald-500/30",
     icon: Zap,
   },
   TPSL: {
     color: "text-amber-500",
     bg: "bg-transparent",
-    border: "border-neutral-800",
+    border: "border-b border-amber-500/30",
     icon: Shield,
   },
   "Reverse/Hedge": {
     color: "text-orange-500",
     bg: "bg-transparent",
-    border: "border-neutral-800",
+    border: "border-b border-orange-500/30",
     icon: ArrowLeftRight,
   },
   "Close Partial": {
     color: "text-cyan-500",
     bg: "bg-transparent",
-    border: "border-neutral-800",
+    border: "border-b border-cyan-500/30",
     icon: RefreshCw,
   },
   Triggers: {
     color: "text-rose-500",
     bg: "bg-transparent",
-    border: "border-neutral-800",
+    border: "border-b border-rose-500/30",
     icon: Shield,
   },
   Safety: {
     color: "text-red-500",
     bg: "bg-transparent",
-    border: "border-neutral-800",
+    border: "border-b border-red-500/30",
     icon: Shield,
   },
   Restart: {
-    color: "text-slate-500",
+    color: "text-slate-400",
     bg: "bg-transparent",
-    border: "border-neutral-800",
+    border: "border-b border-neutral-600/30",
     icon: RefreshCw,
   },
 };
@@ -1148,16 +1148,31 @@ export function LogicModule({
                   return (
                     <div
                       key={category}
-                      className="rounded-lg border border-neutral-800 bg-transparent shadow-xl"
+                      className={cn(
+                        "rounded-lg border bg-transparent",
+                        // Subtle shadow morphism - colored bottom border for accent
+                        "shadow-[0_4px_12px_rgba(0,0,0,0.3)]",
+                        style.border,
+                      )}
                     >
-                      {/* Category Header - Transparent to show canvas */}
-                      <div className="flex items-center gap-2 px-3 py-2 border-b border-neutral-800/50">
-                        <div className="p-1 rounded bg-neutral-900/50">
-                          <Icon className="w-3 h-3 text-neutral-400" />
+                      {/* Category Header - Transparent to show canvas with colored accent */}
+                      <div className={cn(
+                        "flex items-center gap-2 px-3 py-2 border-b",
+                        style.border,
+                      )}>
+                        <div className={cn(
+                          "p-1 rounded",
+                          // Morphism subtle colored background
+                          "bg-neutral-900/60 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]",
+                        )}>
+                          <Icon className={cn("w-3 h-3", style.color)} />
                         </div>
                         <div className="text-[10px] uppercase tracking-wider font-semibold text-neutral-300">
                           {category}
                         </div>
+
+                        {/* Colored separator line */}
+                        <div className={cn("flex-1 h-px mx-2", style.color.replace("text-", "bg-"), "opacity-40")} />
 
                         {/* Trail: Enable Advanced toggle */}
                         {isTrail && (
@@ -1285,9 +1300,10 @@ export function LogicModule({
                                 }}
                                 className={cn(
                                   "h-7 px-3 text-[10px] font-medium rounded border transition-all duration-200",
+                                  // Elegant dark green - muted, sophisticated
                                   activeDirection === "buy"
-                                    ? "bg-neutral-600/40 border-neutral-500/50 text-neutral-200"
-                                    : "bg-neutral-800/60 border-neutral-700 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200"
+                                    ? "bg-emerald-950/60 border-emerald-800/60 text-emerald-300 shadow-[inset_0_1px_2px_rgba(255,255,255,0.05)]"
+                                    : "bg-neutral-800/40 border-neutral-700 text-neutral-400 hover:bg-emerald-950/30 hover:border-emerald-800/40 hover:text-emerald-400"
                                 )}
                               >
                                 Buy
@@ -1304,17 +1320,18 @@ export function LogicModule({
                                 }}
                                 className={cn(
                                   "h-7 px-3 text-[10px] font-medium rounded border transition-all duration-200",
+                                  // Elegant dark red - muted, sophisticated
                                   activeDirection === "sell"
-                                    ? "bg-neutral-600/40 border-neutral-500/50 text-neutral-200"
-                                    : "bg-neutral-800/60 border-neutral-700 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200"
+                                    ? "bg-rose-950/60 border-rose-800/60 text-rose-300 shadow-[inset_0_1px_2px_rgba(255,255,255,0.05)]"
+                                    : "bg-neutral-800/40 border-neutral-700 text-neutral-400 hover:bg-rose-950/30 hover:border-rose-800/40 hover:text-rose-400"
                                 )}
                               >
                                 Sell
                               </button>
                             </div>
                             
-                            {/* Separator */}
-                            <div className="w-px h-6 bg-neutral-700" />
+                            {/* Colored separator */}
+                            <div className="w-px h-6 bg-gradient-to-b from-transparent via-neutral-600 to-transparent" />
                             
                             {/* Exit */}
                             <div className="flex items-center gap-1.5">
@@ -1330,8 +1347,8 @@ export function LogicModule({
                                 className={cn(
                                   "h-7 px-3 text-[10px] font-medium rounded border transition-all duration-200",
                                   exitMode === "Trail"
-                                    ? "bg-neutral-600/40 border-neutral-500/50 text-neutral-200"
-                                    : "bg-neutral-800/60 border-neutral-700 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200",
+                                    ? "bg-violet-950/60 border-violet-800/60 text-violet-300 shadow-[inset_0_1px_2px_rgba(255,255,255,0.05)]"
+                                    : "bg-neutral-800/40 border-neutral-700 text-neutral-400 hover:bg-violet-950/30 hover:border-violet-800/40 hover:text-violet-400",
                                 )}
                               >
                                 Trail
@@ -1346,8 +1363,8 @@ export function LogicModule({
                                 className={cn(
                                   "h-7 px-3 text-[10px] font-medium rounded border transition-all duration-200",
                                   exitMode === "TPSL"
-                                    ? "bg-neutral-600/40 border-neutral-500/50 text-neutral-200"
-                                    : "bg-neutral-800/60 border-neutral-700 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200",
+                                    ? "bg-amber-950/60 border-amber-800/60 text-amber-300 shadow-[inset_0_1px_2px_rgba(255,255,255,0.05)]"
+                                    : "bg-neutral-800/40 border-neutral-700 text-neutral-400 hover:bg-amber-950/30 hover:border-amber-800/40 hover:text-amber-400",
                                 )}
                               >
                                 TP/SL
