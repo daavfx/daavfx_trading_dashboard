@@ -315,6 +315,7 @@ export function LogicModule({
 
   const [trailLevelsVisible, setTrailLevelsVisible] = useState(1);
   const [showAdvancedFields, setShowAdvancedFields] = useState(false);
+  const [trailAdvancedEnabled, setTrailAdvancedEnabled] = useState(false);
   const [partialLevelsVisible, setPartialLevelsVisible] = useState(1);
   const { settings } = useSettings() || {};
   const unitSymbol = (settings?.unitSymbol || "").trim().toUpperCase();
@@ -1037,6 +1038,7 @@ export function LogicModule({
                   const isCore = category === "Core";
                   const isLots = category === "Lots";
                   const isRestart = category === "Restart";
+                  const isTrail = category === "Trail";
                   const isPowerEngineA = engineSafe.includes("Engine A") && nameSafe.toUpperCase() === "POWER";
 
                   // Get current trigger type from field values
@@ -1137,6 +1139,9 @@ export function LogicModule({
                             })
                         : categoryFields;
 
+                  // Skip Trail Advanced category if not enabled
+                  if (category === "Trail Advanced" && !trailAdvancedEnabled) return null;
+
                   // Skip if no fields to display
                   if (displayFields.length === 0) return null;
 
@@ -1173,8 +1178,38 @@ export function LogicModule({
                           {category}
                         </div>
 
-                        {/* Trail Advanced: Level selector */}
-                        {isTrailAdvanced && (
+                        {/* Trail: Enable Advanced toggle */}
+                        {isTrail && (
+                          <div className="flex items-center gap-2 ml-auto">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setTrailAdvancedEnabled(!trailAdvancedEnabled);
+                              }}
+                              className={cn(
+                                "text-[9px] font-medium flex items-center gap-1 px-2 py-1 rounded-md border transition-all duration-200",
+                                trailAdvancedEnabled
+                                  ? "bg-violet-500/20 border-violet-500/50 text-violet-300 shadow-sm"
+                                  : "bg-slate-800/50 border-slate-700 text-slate-400 hover:bg-slate-700/50 hover:text-slate-300",
+                              )}
+                            >
+                              {trailAdvancedEnabled ? (
+                                <>
+                                  <Zap className="w-3 h-3" />
+                                  Advanced: ON
+                                </>
+                              ) : (
+                                <>
+                                  <Zap className="w-3 h-3 opacity-50" />
+                                  + Advanced
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Trail Advanced: Level selector - only show when enabled */}
+                        {isTrailAdvanced && trailAdvancedEnabled && (
                           <div className="flex items-center gap-2 ml-auto">
                             <span className="text-[9px] text-muted-foreground">
                               Levels:
