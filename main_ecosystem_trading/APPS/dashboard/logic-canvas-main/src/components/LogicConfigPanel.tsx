@@ -978,7 +978,7 @@ export const LogicConfigPanel = ({
   // HEDGE MODE - Minimal UI
   if (mode === "hedge") {
     return (
-      <div className="space-y-6 p-6 bg-slate-900/50 rounded-xl border border-blue-500/30">
+      <div className="space-y-6 p-6 bg-neutral-900/50 rounded-xl border border-blue-500/30">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-xl font-semibold text-white">Hedge</h3>
           <Button
@@ -992,7 +992,7 @@ export const LogicConfigPanel = ({
                 onChangeMode("counter_trend");
               }
             }}
-            className="text-slate-400 hover:text-white hover:bg-slate-800"
+            className="text-neutral-400 hover:text-white hover:bg-neutral-800"
           >
             Cancel
           </Button>

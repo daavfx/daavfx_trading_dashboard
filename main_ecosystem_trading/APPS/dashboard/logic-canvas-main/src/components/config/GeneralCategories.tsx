@@ -1171,8 +1171,8 @@ export function GeneralCategories({
             <div className={cn(
               "mt-3 p-4 rounded-lg border",
               isSingleEdit 
-                ? "bg-slate-800/60 border-slate-600/50" 
-                : "bg-slate-800/60 border-slate-600/50"
+                ? "bg-neutral-800/60 border-neutral-700" 
+                : "bg-neutral-800/60 border-neutral-700"
             )}>
               {/* Mode & Count */}
               <div className="flex items-center justify-between mb-3">
@@ -1228,12 +1228,12 @@ export function GeneralCategories({
               </div>
               
               {/* Formula */}
-              <div className="text-[10px] text-slate-400 pt-2 border-t border-slate-700">
+              <div className="text-[10px] text-neutral-400 pt-2 border-t border-neutral-700">
                 {enginesCount} engine{enginesCount !== 1 ? 's' : ''} × {groupsCount} group{groupsCount !== 1 ? 's' : ''} × {logicsCount} logic{logicsCount !== 1 ? 's' : ''} × 2 (Buy/Sell) = {totalEditCount}
               </div>
               
               {/* Buy/Sell Toggle */}
-              <div className="mt-3 pt-3 border-t border-slate-700">
+              <div className="mt-3 pt-3 border-t border-neutral-700">
                 <ToggleGroup
                   type="single"
                   value={generalEditScope === "Buy" ? "buy" : "sell"}
@@ -1249,7 +1249,7 @@ export function GeneralCategories({
                     className={cn(
                       "flex-1 h-9 px-4 text-sm font-medium",
                       "data-[state=on]:bg-emerald-500/20 data-[state=on]:text-emerald-400 data-[state=on]:border-emerald-500/30",
-                      "border border-slate-600 text-slate-400 hover:text-emerald-400"
+                      "border border-neutral-600 text-neutral-400 hover:text-emerald-400"
                     )}
                   >
                     Buy
@@ -1259,7 +1259,7 @@ export function GeneralCategories({
                     className={cn(
                       "flex-1 h-9 px-4 text-sm font-medium",
                       "data-[state=on]:bg-rose-500/20 data-[state=on]:text-rose-400 data-[state=on]:border-rose-500/30",
-                      "border border-slate-600 text-slate-400 hover:text-rose-400"
+                      "border border-neutral-600 text-neutral-400 hover:text-rose-400"
                     )}
                   >
                     Sell
@@ -1271,8 +1271,8 @@ export function GeneralCategories({
           
           {/* No selection warning for risk management */}
           {validCategory === "risk_management" && !hasSelection && (
-            <div className="mt-3 p-4 rounded-lg bg-slate-800/30 border border-dashed border-slate-700">
-              <div className="flex items-center gap-2 text-slate-400">
+            <div className="mt-3 p-4 rounded-lg bg-neutral-800/30 border border-dashed border-neutral-700">
+              <div className="flex items-center gap-2 text-neutral-400">
                 <AlertTriangle className="w-4 h-4" />
                 <span className="text-sm">Select engine, group, or logic from sidebar</span>
               </div>

@@ -190,80 +190,80 @@ const categoryStyles: Record<
 > = {
   "Mode Selectors": {
     color: "text-sky-500",
-    bg: "bg-sky-500/5",
-    border: "border-sky-500/10",
+    bg: "bg-transparent",
+    border: "border-neutral-800",
     icon: Settings2,
   },
   Core: {
     color: "text-blue-500",
-    bg: "bg-blue-500/5",
-    border: "border-blue-500/10",
+    bg: "bg-transparent",
+    border: "border-neutral-800",
     icon: Layers,
   },
   Lots: {
     color: "text-blue-400",
-    bg: "bg-blue-400/5",
-    border: "border-blue-400/10",
+    bg: "bg-transparent",
+    border: "border-neutral-800",
     icon: Box,
   },
   Grid: {
     color: "text-indigo-500",
-    bg: "bg-indigo-500/5",
-    border: "border-indigo-500/10",
+    bg: "bg-transparent",
+    border: "border-neutral-800",
     icon: ArrowLeftRight,
   },
   Trail: {
     color: "text-purple-500",
-    bg: "bg-purple-500/5",
-    border: "border-purple-500/10",
+    bg: "bg-transparent",
+    border: "border-neutral-800",
     icon: ChevronRight,
   },
   "Trail Advanced": {
     color: "text-fuchsia-500",
-    bg: "bg-fuchsia-500/5",
-    border: "border-fuchsia-500/10",
+    bg: "bg-transparent",
+    border: "border-neutral-800",
     icon: Settings2,
   },
   Logic: {
     color: "text-emerald-500",
-    bg: "bg-emerald-500/5",
-    border: "border-emerald-500/10",
+    bg: "bg-transparent",
+    border: "border-neutral-800",
     icon: Zap,
   },
   TPSL: {
     color: "text-amber-500",
-    bg: "bg-amber-500/5",
-    border: "border-amber-500/10",
+    bg: "bg-transparent",
+    border: "border-neutral-800",
     icon: Shield,
   },
   "Reverse/Hedge": {
     color: "text-orange-500",
-    bg: "bg-orange-500/5",
-    border: "border-orange-500/10",
+    bg: "bg-transparent",
+    border: "border-neutral-800",
     icon: ArrowLeftRight,
   },
   "Close Partial": {
     color: "text-cyan-500",
-    bg: "bg-cyan-500/5",
-    border: "border-cyan-500/10",
+    bg: "bg-transparent",
+    border: "border-neutral-800",
     icon: RefreshCw,
   },
   Triggers: {
     color: "text-rose-500",
-    bg: "bg-rose-500/5",
-    border: "border-rose-500/10",
+    bg: "bg-transparent",
+    border: "border-neutral-800",
     icon: Shield,
   },
   Safety: {
     color: "text-red-500",
-    bg: "bg-red-500/5",
-    border: "border-red-500/10",
+    bg: "bg-transparent",
+    border: "border-neutral-800",
     icon: Shield,
   },
   Restart: {
     color: "text-slate-500",
-    bg: "bg-slate-500/5",
-    border: "border-slate-500/10",
+    bg: "bg-transparent",
+    border: "border-neutral-800",
     icon: RefreshCw,
   },
 };
@@ -1148,63 +1148,14 @@ export function LogicModule({
                   return (
                     <div
                       key={category}
-                      className={cn(
-                        "rounded-lg border shadow-lg overflow-hidden",
-                        // Subtle gradient backgrounds per category
-                        category === "Mode Selectors" && "bg-gradient-to-br from-slate-900 via-slate-800/90 to-slate-900 border-slate-700/50",
-                        category === "Core" && "bg-gradient-to-br from-blue-950/50 via-slate-900 to-blue-950/30 border-blue-900/30",
-                        category === "Triggers" && "bg-gradient-to-br from-rose-950/30 via-slate-900 to-rose-950/20 border-rose-900/30",
-                        category === "Lots" && "bg-gradient-to-br from-emerald-950/30 via-slate-900 to-emerald-950/20 border-emerald-900/30",
-                        category === "Grid" && "bg-gradient-to-br from-amber-950/30 via-slate-900 to-amber-950/20 border-amber-900/30",
-                        category === "Trail" && "bg-gradient-to-br from-violet-950/30 via-slate-900 to-violet-950/20 border-violet-900/30",
-                        category === "Trail Advanced" && "bg-gradient-to-br from-fuchsia-950/30 via-slate-900 to-fuchsia-950/20 border-fuchsia-900/30",
-                        category === "Close Partial" && "bg-gradient-to-br from-cyan-950/30 via-slate-900 to-cyan-950/20 border-cyan-900/30",
-                        category === "Restart" && "bg-gradient-to-br from-orange-950/30 via-slate-900 to-orange-950/20 border-orange-900/30",
-                        !["Mode Selectors", "Core", "Triggers", "Lots", "Grid", "Trail", "Trail Advanced", "Close Partial", "Restart"].includes(category) && "bg-gradient-to-br from-slate-900 via-slate-800/50 to-slate-900 border-slate-700/50"
-                      )}
+                      className="rounded-lg border border-neutral-800 bg-transparent shadow-xl"
                     >
-                      {/* Category Header with gradient accent */}
-                      <div className={cn(
-                        "flex items-center gap-2 px-3 py-2 border-b",
-                        category === "Mode Selectors" && "border-slate-700/50",
-                        category === "Core" && "border-blue-900/30",
-                        category === "Triggers" && "border-rose-900/30",
-                        category === "Lots" && "border-emerald-900/30",
-                        category === "Grid" && "border-amber-900/30",
-                        category === "Trail" && "border-violet-900/30",
-                        category === "Trail Advanced" && "border-fuchsia-900/30",
-                        category === "Close Partial" && "border-cyan-900/30",
-                        category === "Restart" && "border-orange-900/30",
-                        !["Mode Selectors", "Core", "Triggers", "Lots", "Grid", "Trail", "Trail Advanced", "Close Partial", "Restart"].includes(category) && "border-slate-700/50"
-                      )}>
-                        <div className={cn(
-                          "p-1 rounded",
-                          category === "Mode Selectors" && "bg-slate-800",
-                          category === "Core" && "bg-blue-900/50",
-                          category === "Triggers" && "bg-rose-900/50",
-                          category === "Lots" && "bg-emerald-900/50",
-                          category === "Grid" && "bg-amber-900/50",
-                          category === "Trail" && "bg-violet-900/50",
-                          category === "Trail Advanced" && "bg-fuchsia-900/50",
-                          category === "Close Partial" && "bg-cyan-900/50",
-                          category === "Restart" && "bg-orange-900/50",
-                          !["Mode Selectors", "Core", "Triggers", "Lots", "Grid", "Trail", "Trail Advanced", "Close Partial", "Restart"].includes(category) && "bg-slate-800"
-                        )}>
-                          <Icon className={cn(
-                            "w-3 h-3",
-                            category === "Mode Selectors" && "text-slate-400",
-                            category === "Core" && "text-blue-400",
-                            category === "Triggers" && "text-rose-400",
-                            category === "Lots" && "text-emerald-400",
-                            category === "Grid" && "text-amber-400",
-                            category === "Trail" && "text-violet-400",
-                            category === "Trail Advanced" && "text-fuchsia-400",
-                            category === "Close Partial" && "text-cyan-400",
-                            category === "Restart" && "text-orange-400",
-                            !["Mode Selectors", "Core", "Triggers", "Lots", "Grid", "Trail", "Trail Advanced", "Close Partial", "Restart"].includes(category) && "text-slate-400"
-                          )} />
+                      {/* Category Header - Transparent to show canvas */}
+                      <div className="flex items-center gap-2 px-3 py-2 border-b border-neutral-800/50">
+                        <div className="p-1 rounded bg-neutral-900/50">
+                          <Icon className="w-3 h-3 text-neutral-400" />
                         </div>
-                        <div className="text-[10px] uppercase tracking-wider font-semibold text-zinc-300">
+                        <div className="text-[10px] uppercase tracking-wider font-semibold text-neutral-300">
                           {category}
                         </div>
 
@@ -1219,14 +1170,14 @@ export function LogicModule({
                               className={cn(
                                 "text-[10px] font-medium flex items-center gap-1.5 px-3 py-1.5 rounded-md border transition-all duration-200",
                                 trailAdvancedEnabled
-                                  ? "bg-zinc-700 border-zinc-600 text-zinc-200 shadow-inner"
-                                  : "bg-zinc-800/60 border-zinc-700 text-zinc-500 hover:bg-zinc-700 hover:text-zinc-300",
+                                  ? "bg-neutral-700 border-neutral-600 text-neutral-200 shadow-inner"
+                                  : "bg-neutral-800/60 border-neutral-700 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300",
                               )}
                             >
                               {trailAdvancedEnabled ? (
                                 <>
                                   <Zap className="w-3 h-3" />
-                                  <span className="text-zinc-300">Advanced</span>
+                                  <span className="text-neutral-300">Advanced</span>
                                 </>
                               ) : (
                                 <>
@@ -1241,11 +1192,11 @@ export function LogicModule({
                         {/* Trail Advanced: Level selector - only show when enabled */}
                         {isTrailAdvanced && trailAdvancedEnabled && (
                           <div className="flex items-center gap-2 ml-auto">
-                            <span className="text-[9px] text-fuchsia-400/70 uppercase tracking-wider">
+                            <span className="text-[9px] text-neutral-500 uppercase tracking-wider">
                               Levels
                             </span>
                             <select
-                              className="text-[10px] bg-slate-800/80 border border-slate-700 rounded px-2 py-1 cursor-pointer hover:border-slate-500 transition-colors text-slate-300"
+                              className="text-[10px] bg-neutral-800/80 border border-neutral-700 rounded px-2 py-1 cursor-pointer hover:border-neutral-500 transition-colors text-neutral-300"
                               value={trailLevelsVisible}
                               onChange={(e) =>
                                 setTrailLevelsVisible(parseInt(e.target.value))
@@ -1266,8 +1217,8 @@ export function LogicModule({
                               className={cn(
                                 "text-[9px] flex items-center gap-1 px-2 py-1 rounded border transition-colors",
                                 showAdvancedFields
-                                  ? "bg-fuchsia-600/20 border-fuchsia-500/50 text-fuchsia-300"
-                                  : "bg-slate-800/60 border-slate-700 text-slate-400 hover:text-slate-200",
+                                  ? "bg-neutral-600/30 border-neutral-500/50 text-neutral-300"
+                                  : "bg-neutral-800/60 border-neutral-700 text-neutral-400 hover:text-neutral-200",
                               )}
                             >
                               {showAdvancedFields ? (
@@ -1282,11 +1233,11 @@ export function LogicModule({
 
                         {isClosePartial && (
                           <div className="flex items-center gap-2 ml-auto">
-                            <span className="text-[9px] text-cyan-400/70 uppercase tracking-wider">
+                            <span className="text-[9px] text-neutral-500 uppercase tracking-wider">
                               Levels
                             </span>
                             <select
-                              className="text-[10px] bg-slate-800/80 border border-slate-700 rounded px-2 py-1 cursor-pointer hover:border-slate-500 transition-colors text-slate-300"
+                              className="text-[10px] bg-neutral-800/80 border border-neutral-700 rounded px-2 py-1 cursor-pointer hover:border-neutral-500 transition-colors text-neutral-300"
                               value={partialLevelsVisible}
                               onChange={(e) =>
                                 setPartialLevelsVisible(
@@ -1321,7 +1272,7 @@ export function LogicModule({
                           <div className="col-span-2 xl:col-span-4 flex flex-wrap items-center gap-x-4 gap-y-2">
                             {/* Direction */}
                             <div className="flex items-center gap-1.5">
-                              <span className="text-[9px] text-blue-400/70 uppercase tracking-wider">Dir</span>
+                              <span className="text-[9px] text-neutral-500 uppercase tracking-wider">Dir</span>
                               <button
                                 type="button"
                                 onClick={() => {
@@ -1335,8 +1286,8 @@ export function LogicModule({
                                 className={cn(
                                   "h-7 px-3 text-[10px] font-medium rounded border transition-all duration-200",
                                   activeDirection === "buy"
-                                    ? "bg-blue-600/30 border-blue-500/50 text-blue-300"
-                                    : "bg-slate-800/60 border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-slate-200"
+                                    ? "bg-neutral-600/40 border-neutral-500/50 text-neutral-200"
+                                    : "bg-neutral-800/60 border-neutral-700 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200"
                                 )}
                               >
                                 Buy
@@ -1354,8 +1305,8 @@ export function LogicModule({
                                 className={cn(
                                   "h-7 px-3 text-[10px] font-medium rounded border transition-all duration-200",
                                   activeDirection === "sell"
-                                    ? "bg-rose-600/30 border-rose-500/50 text-rose-300"
-                                    : "bg-slate-800/60 border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-slate-200"
+                                    ? "bg-neutral-600/40 border-neutral-500/50 text-neutral-200"
+                                    : "bg-neutral-800/60 border-neutral-700 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200"
                                 )}
                               >
                                 Sell
@@ -1363,11 +1314,11 @@ export function LogicModule({
                             </div>
                             
                             {/* Separator */}
-                            <div className="w-px h-6 bg-slate-700" />
+                            <div className="w-px h-6 bg-neutral-700" />
                             
                             {/* Exit */}
                             <div className="flex items-center gap-1.5">
-                              <span className="text-[9px] text-violet-400/70 uppercase tracking-wider">Exit</span>
+                              <span className="text-[9px] text-neutral-500 uppercase tracking-wider">Exit</span>
                               <button
                                 type="button"
                                 onClick={() => {
@@ -1379,8 +1330,8 @@ export function LogicModule({
                                 className={cn(
                                   "h-7 px-3 text-[10px] font-medium rounded border transition-all duration-200",
                                   exitMode === "Trail"
-                                    ? "bg-violet-600/30 border-violet-500/50 text-violet-300"
-                                    : "bg-slate-800/60 border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-slate-200",
+                                    ? "bg-neutral-600/40 border-neutral-500/50 text-neutral-200"
+                                    : "bg-neutral-800/60 border-neutral-700 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200",
                                 )}
                               >
                                 Trail
@@ -1395,8 +1346,8 @@ export function LogicModule({
                                 className={cn(
                                   "h-7 px-3 text-[10px] font-medium rounded border transition-all duration-200",
                                   exitMode === "TPSL"
-                                    ? "bg-amber-600/30 border-amber-500/50 text-amber-300"
-                                    : "bg-slate-800/60 border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-slate-200",
+                                    ? "bg-neutral-600/40 border-neutral-500/50 text-neutral-200"
+                                    : "bg-neutral-800/60 border-neutral-700 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200",
                                 )}
                               >
                                 TP/SL
