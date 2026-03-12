@@ -666,6 +666,7 @@ export function LogicModule({
 
     if (tpslActive) {
       if (f.category === "Trail" || f.category === "Trail Advanced") return false;
+      if (f.category === "Close Partial") return false;
     } else {
       if (f.category === "TPSL") return false;
     }
@@ -1020,7 +1021,13 @@ export function LogicModule({
               {/* Show standard category-based UI for Counter Trend and Reverse - 2 columns */}
               {tradingMode !== "Hedge" && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {categories.map((category) => {
+                  {categories
+                    .filter((cat) => {
+                      // Hide Close Partial when in TPSL mode
+                      if (exitMode === "TPSL" && cat === "Close Partial") return false;
+                      return true;
+                    })
+                    .map((category) => {
                   const categoryFields = filteredFields.filter(
                     (f) => (f.category || "General") === category,
                   );
