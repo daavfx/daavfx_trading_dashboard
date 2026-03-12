@@ -56,28 +56,26 @@ export function ConfigField({
   };
 
   return (
-    <div className="group flex items-center justify-between py-1.5 px-2 rounded bg-transparent border border-transparent hover:bg-neutral-900/30 hover:border-neutral-800 transition-all duration-200">
-      <div className="flex flex-col gap-0.5 min-w-0 flex-1">
-        <div className="flex items-center gap-1">
-          <span className="text-[9px] font-medium text-neutral-400 group-hover:text-neutral-300 transition-colors truncate">
-            {label}
-          </span>
-          {description && (
-            <EnhancedTooltip
-              fieldId={fieldId || label.toLowerCase().replace(/\s+/g, "_")}
-              description={description}
-            >
-              <div className="p-0.5 rounded-full hover:bg-neutral-800 transition-colors flex-shrink-0">
-                <Info className="w-2.5 h-2.5 text-neutral-500 cursor-help group-hover:text-neutral-400 transition-colors" />
-              </div>
-            </EnhancedTooltip>
-          )}
-        </div>
-        {hint ? (
+    <div className="group flex items-center justify-between py-1 px-2 rounded bg-neutral-900/20 hover:bg-neutral-800/40 transition-all duration-200 min-h-[2rem]">
+      <div className="flex items-center gap-2 min-w-0 flex-1">
+        <span className="text-[9px] font-medium text-neutral-300 group-hover:text-neutral-200 transition-colors truncate shrink-0">
+          {label}
+        </span>
+        {description && (
+          <EnhancedTooltip
+            fieldId={fieldId || label.toLowerCase().replace(/\s+/g, "_")}
+            description={description}
+          >
+            <div className="p-0.5 rounded-full hover:bg-neutral-800 transition-colors flex-shrink-0">
+              <Info className="w-2.5 h-2.5 text-neutral-500 cursor-help group-hover:text-neutral-400 transition-colors" />
+            </div>
+          </EnhancedTooltip>
+        )}
+        {hint && (
           <div className="text-[8px] font-mono text-neutral-500 truncate">
             {hint}
           </div>
-        ) : null}
+        )}
       </div>
 
       {type === "segmented" && options ? (
