@@ -1148,14 +1148,63 @@ export function LogicModule({
                   return (
                     <div
                       key={category}
-                      className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-3 shadow-lg"
+                      className={cn(
+                        "rounded-lg border shadow-lg overflow-hidden",
+                        // Subtle gradient backgrounds per category
+                        category === "Mode Selectors" && "bg-gradient-to-br from-slate-900 via-slate-800/90 to-slate-900 border-slate-700/50",
+                        category === "Core" && "bg-gradient-to-br from-blue-950/50 via-slate-900 to-blue-950/30 border-blue-900/30",
+                        category === "Triggers" && "bg-gradient-to-br from-rose-950/30 via-slate-900 to-rose-950/20 border-rose-900/30",
+                        category === "Lots" && "bg-gradient-to-br from-emerald-950/30 via-slate-900 to-emerald-950/20 border-emerald-900/30",
+                        category === "Grid" && "bg-gradient-to-br from-amber-950/30 via-slate-900 to-amber-950/20 border-amber-900/30",
+                        category === "Trail" && "bg-gradient-to-br from-violet-950/30 via-slate-900 to-violet-950/20 border-violet-900/30",
+                        category === "Trail Advanced" && "bg-gradient-to-br from-fuchsia-950/30 via-slate-900 to-fuchsia-950/20 border-fuchsia-900/30",
+                        category === "Close Partial" && "bg-gradient-to-br from-cyan-950/30 via-slate-900 to-cyan-950/20 border-cyan-900/30",
+                        category === "Restart" && "bg-gradient-to-br from-orange-950/30 via-slate-900 to-orange-950/20 border-orange-900/30",
+                        !["Mode Selectors", "Core", "Triggers", "Lots", "Grid", "Trail", "Trail Advanced", "Close Partial", "Restart"].includes(category) && "bg-gradient-to-br from-slate-900 via-slate-800/50 to-slate-900 border-slate-700/50"
+                      )}
                     >
-                      {/* Category Header - Metallic dark style */}
-                      <div className="flex items-center gap-2 mb-3 pb-2 border-b border-zinc-800">
-                        <div className="p-1.5 rounded bg-zinc-800 border border-zinc-700">
-                          <Icon className="w-3.5 h-3.5 text-zinc-400" />
+                      {/* Category Header with gradient accent */}
+                      <div className={cn(
+                        "flex items-center gap-2 px-3 py-2 border-b",
+                        category === "Mode Selectors" && "border-slate-700/50",
+                        category === "Core" && "border-blue-900/30",
+                        category === "Triggers" && "border-rose-900/30",
+                        category === "Lots" && "border-emerald-900/30",
+                        category === "Grid" && "border-amber-900/30",
+                        category === "Trail" && "border-violet-900/30",
+                        category === "Trail Advanced" && "border-fuchsia-900/30",
+                        category === "Close Partial" && "border-cyan-900/30",
+                        category === "Restart" && "border-orange-900/30",
+                        !["Mode Selectors", "Core", "Triggers", "Lots", "Grid", "Trail", "Trail Advanced", "Close Partial", "Restart"].includes(category) && "border-slate-700/50"
+                      )}>
+                        <div className={cn(
+                          "p-1 rounded",
+                          category === "Mode Selectors" && "bg-slate-800",
+                          category === "Core" && "bg-blue-900/50",
+                          category === "Triggers" && "bg-rose-900/50",
+                          category === "Lots" && "bg-emerald-900/50",
+                          category === "Grid" && "bg-amber-900/50",
+                          category === "Trail" && "bg-violet-900/50",
+                          category === "Trail Advanced" && "bg-fuchsia-900/50",
+                          category === "Close Partial" && "bg-cyan-900/50",
+                          category === "Restart" && "bg-orange-900/50",
+                          !["Mode Selectors", "Core", "Triggers", "Lots", "Grid", "Trail", "Trail Advanced", "Close Partial", "Restart"].includes(category) && "bg-slate-800"
+                        )}>
+                          <Icon className={cn(
+                            "w-3 h-3",
+                            category === "Mode Selectors" && "text-slate-400",
+                            category === "Core" && "text-blue-400",
+                            category === "Triggers" && "text-rose-400",
+                            category === "Lots" && "text-emerald-400",
+                            category === "Grid" && "text-amber-400",
+                            category === "Trail" && "text-violet-400",
+                            category === "Trail Advanced" && "text-fuchsia-400",
+                            category === "Close Partial" && "text-cyan-400",
+                            category === "Restart" && "text-orange-400",
+                            !["Mode Selectors", "Core", "Triggers", "Lots", "Grid", "Trail", "Trail Advanced", "Close Partial", "Restart"].includes(category) && "text-slate-400"
+                          )} />
                         </div>
-                        <div className="text-[11px] uppercase tracking-widest font-semibold text-zinc-300">
+                        <div className="text-[10px] uppercase tracking-wider font-semibold text-zinc-300">
                           {category}
                         </div>
 
@@ -1192,11 +1241,11 @@ export function LogicModule({
                         {/* Trail Advanced: Level selector - only show when enabled */}
                         {isTrailAdvanced && trailAdvancedEnabled && (
                           <div className="flex items-center gap-2 ml-auto">
-                            <span className="text-[9px] text-muted-foreground">
-                              Levels:
+                            <span className="text-[9px] text-fuchsia-400/70 uppercase tracking-wider">
+                              Levels
                             </span>
                             <select
-                              className="text-[10px] bg-background/80 border border-border/50 rounded px-1.5 py-0.5 cursor-pointer hover:border-primary/50 transition-colors"
+                              className="text-[10px] bg-slate-800/80 border border-slate-700 rounded px-2 py-1 cursor-pointer hover:border-slate-500 transition-colors text-slate-300"
                               value={trailLevelsVisible}
                               onChange={(e) =>
                                 setTrailLevelsVisible(parseInt(e.target.value))
@@ -1215,10 +1264,10 @@ export function LogicModule({
                                 setShowAdvancedFields(!showAdvancedFields);
                               }}
                               className={cn(
-                                "text-[9px] flex items-center gap-1 px-1.5 py-0.5 rounded border transition-colors",
+                                "text-[9px] flex items-center gap-1 px-2 py-1 rounded border transition-colors",
                                 showAdvancedFields
-                                  ? "bg-primary/10 border-primary/30 text-primary"
-                                  : "bg-muted/50 border-border/50 text-muted-foreground hover:text-foreground",
+                                  ? "bg-fuchsia-600/20 border-fuchsia-500/50 text-fuchsia-300"
+                                  : "bg-slate-800/60 border-slate-700 text-slate-400 hover:text-slate-200",
                               )}
                             >
                               {showAdvancedFields ? (
@@ -1233,11 +1282,11 @@ export function LogicModule({
 
                         {isClosePartial && (
                           <div className="flex items-center gap-2 ml-auto">
-                            <span className="text-[9px] text-muted-foreground">
-                              Partials:
+                            <span className="text-[9px] text-cyan-400/70 uppercase tracking-wider">
+                              Levels
                             </span>
                             <select
-                              className="text-[10px] bg-background/80 border border-border/50 rounded px-1.5 py-0.5 cursor-pointer hover:border-primary/50 transition-colors"
+                              className="text-[10px] bg-slate-800/80 border border-slate-700 rounded px-2 py-1 cursor-pointer hover:border-slate-500 transition-colors text-slate-300"
                               value={partialLevelsVisible}
                               onChange={(e) =>
                                 setPartialLevelsVisible(
@@ -1266,15 +1315,13 @@ export function LogicModule({
                         )}
                       </div>
 
-                      <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-3 gap-y-2 relative z-10">
-                        {/* Custom Trading Direction & Exit Mode for Mode Selectors */}
+                      <div className="grid grid-cols-2 xl:grid-cols-4 gap-x-2 gap-y-1 relative z-10 px-3 pb-3">
+                        {/* Custom Trading Direction & Exit Mode for Mode Selectors - COMPACT */}
 {category === "Mode Selectors" && (
-                          <div className="col-span-2 lg:col-span-3 mb-1">
-                            {/* Trading Direction */}
-                            <div className="flex items-center gap-1 mb-1.5">
-                              <span className="text-[9px] text-zinc-500 uppercase tracking-wider">Direction</span>
-                            </div>
-                            <div className="flex flex-row gap-2 mb-3">
+                          <div className="col-span-2 xl:col-span-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+                            {/* Direction */}
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[9px] text-blue-400/70 uppercase tracking-wider">Dir</span>
                               <button
                                 type="button"
                                 onClick={() => {
@@ -1286,10 +1333,10 @@ export function LogicModule({
                                   setActiveDirection("buy");
                                 }}
                                 className={cn(
-                                  "flex-1 h-8 px-4 text-[11px] font-medium rounded-md border transition-all duration-200",
+                                  "h-7 px-3 text-[10px] font-medium rounded border transition-all duration-200",
                                   activeDirection === "buy"
-                                    ? "bg-zinc-600 border-zinc-500 text-zinc-100 shadow-inner"
-                                    : "bg-zinc-800/60 border-zinc-700 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200"
+                                    ? "bg-blue-600/30 border-blue-500/50 text-blue-300"
+                                    : "bg-slate-800/60 border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-slate-200"
                                 )}
                               >
                                 Buy
@@ -1305,21 +1352,22 @@ export function LogicModule({
                                   setActiveDirection("sell");
                                 }}
                                 className={cn(
-                                  "flex-1 h-8 px-4 text-[11px] font-medium rounded-md border transition-all duration-200",
+                                  "h-7 px-3 text-[10px] font-medium rounded border transition-all duration-200",
                                   activeDirection === "sell"
-                                    ? "bg-zinc-600 border-zinc-500 text-zinc-100 shadow-inner"
-                                    : "bg-zinc-800/60 border-zinc-700 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200"
+                                    ? "bg-rose-600/30 border-rose-500/50 text-rose-300"
+                                    : "bg-slate-800/60 border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-slate-200"
                                 )}
                               >
                                 Sell
                               </button>
                             </div>
                             
-                            {/* Exit Mode */}
-                            <div className="flex items-center gap-1 mb-1.5">
-                              <span className="text-[9px] text-zinc-500 uppercase tracking-wider">Exit</span>
-                            </div>
-                            <div className="flex flex-row gap-2">
+                            {/* Separator */}
+                            <div className="w-px h-6 bg-slate-700" />
+                            
+                            {/* Exit */}
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[9px] text-violet-400/70 uppercase tracking-wider">Exit</span>
                               <button
                                 type="button"
                                 onClick={() => {
@@ -1329,10 +1377,10 @@ export function LogicModule({
                                   }
                                 }}
                                 className={cn(
-                                  "flex-1 h-8 px-4 text-[11px] font-medium rounded-md border transition-all duration-200",
+                                  "h-7 px-3 text-[10px] font-medium rounded border transition-all duration-200",
                                   exitMode === "Trail"
-                                    ? "bg-zinc-600 border-zinc-500 text-zinc-100 shadow-inner"
-                                    : "bg-zinc-800/60 border-zinc-700 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200",
+                                    ? "bg-violet-600/30 border-violet-500/50 text-violet-300"
+                                    : "bg-slate-800/60 border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-slate-200",
                                 )}
                               >
                                 Trail
@@ -1345,10 +1393,10 @@ export function LogicModule({
                                   }
                                 }}
                                 className={cn(
-                                  "flex-1 h-8 px-4 text-[11px] font-medium rounded-md border transition-all duration-200",
+                                  "h-7 px-3 text-[10px] font-medium rounded border transition-all duration-200",
                                   exitMode === "TPSL"
-                                    ? "bg-zinc-600 border-zinc-500 text-zinc-100 shadow-inner"
-                                    : "bg-zinc-800/60 border-zinc-700 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200",
+                                    ? "bg-amber-600/30 border-amber-500/50 text-amber-300"
+                                    : "bg-slate-800/60 border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-slate-200",
                                 )}
                               >
                                 TP/SL
