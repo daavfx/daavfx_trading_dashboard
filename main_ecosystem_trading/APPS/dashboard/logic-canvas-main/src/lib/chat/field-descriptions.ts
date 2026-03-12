@@ -141,9 +141,9 @@ export const FIELD_DESCRIPTIONS: Record<string, {
   },
   tp_mode: {
     name: "Take Profit Mode",
-    description: "How TP is calculated: Points, Pips, or Percent of the grid spacing.",
+    description: "TP mode is fixed to points in V4 (no percent/price modes).",
     unit: "mode",
-    example: "Points, Pips, Percent",
+    example: "Points",
     category: "tpsl"
   },
   use_sl: {
@@ -162,9 +162,23 @@ export const FIELD_DESCRIPTIONS: Record<string, {
   },
   sl_mode: {
     name: "Stop Loss Mode",
-    description: "How SL is calculated: Points, Pips, or Percent of the grid spacing.",
+    description: "SL mode is fixed to points in V4 (no percent/price modes).",
     unit: "mode",
-    example: "Points, Pips, Percent",
+    example: "Points",
+    category: "tpsl"
+  },
+  continue_tp_hit: {
+    name: "Continue Trading TP Hit",
+    description: "If OFF, stop opening new trades for this logic direction after a TP close.",
+    unit: "boolean",
+    example: "ON, OFF",
+    category: "tpsl"
+  },
+  continue_sl_hit: {
+    name: "Continue Trading SL Hit",
+    description: "If OFF, stop opening new trades for this logic direction after an SL close.",
+    unit: "boolean",
+    example: "ON, OFF",
     category: "tpsl"
   },
 

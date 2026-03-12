@@ -15,7 +15,7 @@ import { EnhancedTooltip } from "@/components/tooltips/EnhancedTooltip";
 
 interface ConfigFieldProps {
   label: string;
-  value: string | number;
+  value: string | number | undefined | null;
   type: "number" | "toggle" | "text" | "select" | "segmented" | "multiselect";
   unit?: string;
   description?: string;
@@ -38,9 +38,10 @@ export function ConfigField({
   currentLogicId,
   fieldId,
 }: ConfigFieldProps) {
-  const [localValue, setLocalValue] = useState(value);
+  const normalizedValue = value ?? "";
+  const [localValue, setLocalValue] = useState(normalizedValue);
   useEffect(() => {
-    setLocalValue(value);
+    setLocalValue(value ?? "");
   }, [value]);
 
   const isNumericSelect =

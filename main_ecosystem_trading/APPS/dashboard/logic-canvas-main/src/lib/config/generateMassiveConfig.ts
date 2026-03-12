@@ -108,6 +108,8 @@ export function generateMassiveCompleteConfig(
             use_sl: false,
             sl_mode: "TPSL_Points",
             sl_value: 100 + logicIndex * 25,
+            continue_tp_hit: true,
+            continue_sl_hit: true,
 
             // REVERSE/HEDGE
             reverse_enabled: logicIndex % 3 === 0,
@@ -319,16 +321,12 @@ export function generateMassiveCompleteConfig(
     showTrailLines: true,
     colorBuy: "#00ff00",
     colorSell: "#ff0000",
-
-    // License
-    licenseKey: "",
-    licenseServer: "",
-    requireLicense: false,
-
-    // Debug
-    debugMode: false,
-    verboseLogging: false,
-    logProfile: 0,
+    
+    // Restart Policy (aggregated from per-logic Group 1 settings - will be populated during export)
+    restartPolicyPower: "Restart_Default",
+    restartPolicyNonPower: "Restart_Default",
+    closeNonPowerOnPowerClose: false,
+    holdTimeoutSeconds: 0,
   };
 
   const massiveConfig: MTConfigComplete = {

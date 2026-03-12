@@ -190,7 +190,14 @@ export class CommandExecutor {
 
   // GREETINGS GO TO RUST - return unknown for command terminal
   // No conversational responses - it's a strict command terminal
-  ];
+    private readonly GREETING_PATTERNS: RegExp[] = [
+      /^(hi|hello|hey|yo|sup|hola|buenas)$/i,
+      /^(good morning|good afternoon|good evening)$/i,
+    ];
+
+    private readonly GREETING_RESPONSES: string[] = [
+      "Unknown command. Try: 'set grid to 500 for G1'",
+    ];
 
   private isGreeting(input: string): boolean {
     const trimmed = input.trim().toLowerCase();
@@ -426,6 +433,8 @@ export class CommandExecutor {
             use_sl: false,
             sl_mode,
             sl_value: 0,
+            continue_tp_hit: true,
+            continue_sl_hit: true,
             reverse_enabled: false,
             hedge_enabled: false,
             reverse_scale: 100.0,

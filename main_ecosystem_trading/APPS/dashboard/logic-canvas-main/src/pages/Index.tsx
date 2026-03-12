@@ -10,7 +10,7 @@ import { BatchEditPanel } from "@/components/config/BatchEditPanel";
 import { EngineCard } from "@/components/config/EngineCard";
 import { GroupCard } from "@/components/config/GroupCard";
 import { GeneralCategories } from "@/components/config/GeneralCategories";
-import { GroupThresholdsCard } from "@/components/config/GroupThresholdsCard";
+// import { GroupThresholdsCard } from "@/components/config/GroupThresholdsCard";
 import { MultiEditIndicator } from "@/components/config/MultiEditIndicator";
 import { CLITerminal } from "@/components/config/CLITerminal";
 import { EmptyState } from "@/components/config/EmptyState";
@@ -41,7 +41,6 @@ import {
   getWarningSummary,
   type ConfigWarning,
 } from "@/utils/config-validation";
-import { hydrateMTConfigDefaults } from "@/utils/hydrate-mt-config-defaults";
 import { useSettings } from "@/contexts/SettingsContext";
 import { ChatStateProvider, useChatState } from "@/contexts/ChatStateContext";
 import { canonicalizeConfigForBackend, normalizeConfigForExport } from "@/utils/unit-mode";
@@ -175,6 +174,11 @@ function Index() {
   const [selectedEngines, setSelectedEngines] = useState<string[]>([]);
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
   const [selectedLogics, setSelectedLogics] = useState<string[]>([]);
+  
+  // Separate selections for Control view (independent from Logics view)
+  const [controlSelectedEngines, setControlSelectedEngines] = useState<string[]>([]);
+  const [controlSelectedGroups, setControlSelectedGroups] = useState<string[]>([]);
+  const [controlSelectedLogics, setControlSelectedLogics] = useState<string[]>([]);
   const [selectedFields, setSelectedFields] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [favoritesOnly, setFavoritesOnly] = useState(false);
@@ -186,7 +190,7 @@ function Index() {
   const [viewMode, setViewMode] = useState<ViewMode>("logics");
   const [previousViewMode, setPreviousViewMode] = useState<ViewMode>("logics");
   const [selectedGeneralCategory, setSelectedGeneralCategory] =
-    useState<string>("risk");
+    useState<string>("risk_management");
 
   const [isChatCollapsed, setIsChatCollapsed] = useState(false);
   const [isQuickActionsCollapsed, setIsQuickActionsCollapsed] = useState(false);
@@ -333,6 +337,7 @@ function Index() {
   } = useMTConfig(mtPlatform);
   const [configWarnings, setConfigWarnings] = useState<ConfigWarning[]>([]);
   const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [configLoadId, setConfigLoadId] = useState(0);
   const config = realConfig;
   const undoRedoManagerRef = useRef(getUndoRedoManager());
   const skipUndoRecordRef = useRef(false);
@@ -433,6 +438,10 @@ function Index() {
   };
 
   const handleSaveConfig = async (newConfig: MTConfig) => {
+    console.log(`[Index] handleSaveConfig called`, {
+      hasPrev: !!config,
+      enginesCount: newConfig?.engines?.length,
+    });
     const prev = config;
     if (prev && !skipUndoRecordRef.current) {
       const changeCount = countConfigChanges(prev, newConfig);
@@ -464,15 +473,21 @@ function Index() {
 
   // Load config on mount or platform change
   useEffect(() => {
+    let isMounted = true;
     loadConfig()
       .then((loaded) => {
+        if (!isMounted) return;
         if (!loaded) {
-          setConfigOnly(hydrateMTConfigDefaults(mockFullConfig));
+          setConfigOnly(mockFullConfig);
         }
+        setConfigLoadId((id) => id + 1);
       })
       .catch(() => {
-        setConfigOnly(hydrateMTConfigDefaults(mockFullConfig));
+        if (!isMounted) return;
+        setConfigOnly(mockFullConfig);
+        setConfigLoadId((id) => id + 1);
       });
+    return () => { isMounted = false; };
   }, [loadConfig, setConfigOnly]);
 
   // Validate config on changes (debounced) - only update warnings state, no toasts
@@ -603,6 +618,16 @@ function Index() {
     }
   };
 
+  // Handle selection changes for Control view (independent from Logics)
+  const handleControlSelectionChange = (
+    type: "engines" | "groups" | "logics",
+    items: string[],
+  ) => {
+    if (type === "engines") setControlSelectedEngines(items);
+    if (type === "groups") setControlSelectedGroups(items);
+    if (type === "logics") setControlSelectedLogics(items);
+  };
+
   const handleChatNavigation = (target: {
     engines?: string[];
     groups?: number[];
@@ -672,11 +697,6 @@ function Index() {
 
       // Create a copy of config to modify based on strategy type
       const configToSave = JSON.parse(JSON.stringify(config));
-
-      // Update magic number
-      if (data.magicNumber !== undefined) {
-        configToSave.general.magic_number = data.magicNumber;
-      }
 
       // Single source of truth: do not rewrite allow_buy / allow_sell on save/export.
 
@@ -794,10 +814,6 @@ function Index() {
         onViewModeChange={handleViewModeChange}
         lastSavedLabel={lastSavedLabel}
         currentConfig={config}
-        magicNumber={config?.general.magic_number}
-        onMagicNumberChange={(val) =>
-          handleGeneralUpdate({ magic_number: val })
-        }
         onLoadConfig={(c) => {
           handleSaveConfig(c);
           setHasStarted(true);
@@ -847,6 +863,10 @@ function Index() {
               selectedGroups={selectedGroups}
               selectedLogics={selectedLogics}
               onSelectionChange={handleSelectionChange}
+              controlSelectedEngines={controlSelectedEngines}
+              controlSelectedGroups={controlSelectedGroups}
+              controlSelectedLogics={controlSelectedLogics}
+              onControlSelectionChange={handleControlSelectionChange}
               platform={platform}
               viewMode={viewMode}
               onViewModeChange={handleViewModeChange}
@@ -1034,13 +1054,6 @@ function Index() {
 
                       {viewMode === "logics" && (
                         <div className="space-y-3 mt-4">
-                          {config && selectedGroups.length > 0 && (
-                            <GroupThresholdsCard
-                              config={config}
-                              selectedGroups={selectedGroups}
-                              onConfigChange={handleSaveConfig}
-                            />
-                          )}
                           {loading ? (
                             <div className="text-center py-8 text-muted-foreground">
                               Loading configuration...
@@ -1064,6 +1077,7 @@ function Index() {
                                       mode={1}
                                       platform={platform}
                                       config={config}
+                                      configLoadId={configLoadId}
                                       onUpdateLogic={(logic, field, value, groupNum, direction, targetLogicId) => {
                                         if (!config) return;
                                         let processedValue = value;
@@ -1081,6 +1095,14 @@ function Index() {
                                         ) {
                                           processedValue = Number(value);
                                         }
+                                        const directionSuffix =
+                                          direction === "buy"
+                                            ? "_b"
+                                            : direction === "sell"
+                                              ? "_s"
+                                              : "";
+                                        const directionalField =
+                                          directionSuffix ? `${field}${directionSuffix}` : "";
                                         const targetEngineId = engineConfig.engineData?.engine_id as
                                           | "A"
                                           | "B"
@@ -1135,13 +1157,44 @@ function Index() {
                                                       }
                                                     }
 
-                                                    return { ...l, [field]: processedValue };
+                                                    const nextLogic = {
+                                                      ...l,
+                                                      [field]: processedValue,
+                                                    } as LogicConfig & Record<string, any>;
+
+                                                    if (
+                                                      directionalField &&
+                                                      Object.prototype.hasOwnProperty.call(l as Record<string, any>, directionalField)
+                                                    ) {
+                                                      nextLogic[directionalField] = processedValue;
+                                                    }
+
+                                                    if (directionalField && direction) {
+                                                      console.log(
+                                                        `[Index] onUpdateLogic mapped field`,
+                                                        {
+                                                          field,
+                                                          directionalField,
+                                                          direction,
+                                                          logicId: rowLogicId,
+                                                        },
+                                                      );
+                                                    }
+
+                                                    return nextLogic;
                                                   }),
                                                 };
                                               }),
-                                            };
-                                          }),
-                                        };
+                                              };
+                                            }),
+                                      };
+                                        console.log(`[Index] onUpdateLogic calling handleSaveConfig:`, {
+                                          logic,
+                                          field,
+                                          value,
+                                          groupNum,
+                                          direction,
+                                        });
                                         handleSaveConfig(newConfig);
                                       }}
                                     />
@@ -1168,6 +1221,31 @@ function Index() {
                                 });
                               }
                             }}
+                          />
+                        </div>
+                      )}
+
+                      {viewMode === "control" && (
+                        <div className="mt-4">
+                          <GeneralCategories
+                            platform={platform}
+                            generalConfig={config?.general || mockGeneralConfig}
+                            mtPlatform={platform}
+                            mode={1}
+                            selectedCategory={selectedGeneralCategory}
+                            onSelectGeneralCategory={setSelectedGeneralCategory}
+                            onConfigChange={(newGeneralConfig) => {
+                              if (config) {
+                                handleSaveConfig({
+                                  ...config,
+                                  general: newGeneralConfig,
+                                });
+                              }
+                            }}
+                            isHorizontal={true}
+                            selectedEngines={controlSelectedEngines}
+                            selectedGroups={controlSelectedGroups}
+                            selectedLogics={controlSelectedLogics}
                           />
                         </div>
                       )}

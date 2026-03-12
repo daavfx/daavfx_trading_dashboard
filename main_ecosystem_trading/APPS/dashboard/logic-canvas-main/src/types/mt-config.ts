@@ -151,7 +151,8 @@ export interface GeneralConfig {
   magic_number: number; // GLOBAL magic number
   magic_number_buy: number; // BUY direction magic number
   magic_number_sell: number; // SELL direction magic number
-  max_slippage_points: number; // GLOBAL slippage
+  slippage_enabled: boolean; // GLOBAL slippage enabled
+  max_slippage_points: number; // GLOBAL slippage points
   reverse_magic_base: number;
   hedge_magic_base: number;
   hedge_magic_independent: boolean;
@@ -296,6 +297,10 @@ export interface LogicConfig {
   close_targets: string;                // gInput_CloseTargets_{Logic} - comma-separated logic labels (e.g. "Logic_A_Power,Logic_A_Repower")
   order_count_reference: LogicReference; // gInput_Power_OrderCountReference (enum)
   reset_lot_on_restart: boolean;        // gInput_Power_ResetLotOnRestart
+  restart_policy_power?: RestartPolicy;  // gInput_RestartPolicy_PowerA
+  restart_policy_non_power?: RestartPolicy; // gInput_RestartPolicy_NonPower
+  close_non_power_on_power_close?: boolean; // gInput_CloseNonPowerOnPowerClose
+  hold_timeout_seconds?: number;        // gInput_HoldTimeoutBars (now seconds)
   
   // ===== TPSL (6 fields - dashboard-managed, hidden in MT4) =====
   use_tp: boolean;                      // gInput_G1_UseTP_P
@@ -304,6 +309,8 @@ export interface LogicConfig {
   use_sl: boolean;                      // gInput_G1_UseSL_P
   sl_mode: TPSLMode;                    // gInput_G1_SL_Mode_P
   sl_value: number;                     // gInput_G1_SL_Value_P
+  continue_tp_hit: boolean;             // gInput_G1_ContinueTPHit_P
+  continue_sl_hit: boolean;             // gInput_G1_ContinueSLHit_P
   
   // ===== REVERSE/HEDGE PER-LOGIC (8 fields) =====
   reverse_enabled: boolean;             // gInput_G{group}_{logic}_ReverseEnabled
@@ -396,11 +403,11 @@ export interface LogicConfig {
 
 // Field count verification (V17.04+):
 // GROUP 1:
-// - Power: 3 meta + 8 base + 3 logic + 6 tpsl + 8 rev/hedge + 3 trail_adv + 5 partial + 4 triggers = 40 fields
-// - Non-Power: 3 meta + 8 base + 5 logic + 6 tpsl + 8 rev/hedge + 3 trail_adv + 5 partial + 4 triggers = 42 fields
+// - Power: 3 meta + 8 base + 3 logic + 8 tpsl + 8 rev/hedge + 3 trail_adv + 5 partial + 4 triggers = 42 fields
+// - Non-Power: 3 meta + 8 base + 5 logic + 8 tpsl + 8 rev/hedge + 3 trail_adv + 5 partial + 4 triggers = 44 fields
 // GROUPS 2-20:
-// - Power: 3 meta + 8 base + 3 logic + 6 tpsl + 8 rev/hedge + 3 trail_adv + 5 partial = 36 fields
-// - Non-Power: 3 meta + 8 base + 5 logic + 6 tpsl + 8 rev/hedge + 3 trail_adv + 5 partial = 38 fields
+// - Power: 3 meta + 8 base + 3 logic + 8 tpsl + 8 rev/hedge + 3 trail_adv + 5 partial = 38 fields
+// - Non-Power: 3 meta + 8 base + 5 logic + 8 tpsl + 8 rev/hedge + 3 trail_adv + 5 partial = 40 fields
 // GROUP-LEVEL: 4 fields (reverse_mode, hedge_mode, hedge_reference, entry_delay_bars)
 
 // UI-specific types

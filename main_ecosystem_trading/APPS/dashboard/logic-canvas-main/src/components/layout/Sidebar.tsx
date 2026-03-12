@@ -35,13 +35,18 @@ const engines = ["Engine A", "Engine B", "Engine C"] as const;
 const groups = Array.from({ length: 20 }, (_, i) => `Group ${i + 1}`);
 const logics = ["POWER", "REPOWER", "SCALPER", "STOPPER", "STO", "SCA", "RPO"] as const;
 
-export type ViewMode = "logics" | "general" | "chat" | "vault" | "version-control" | "analytics" | "undo-redo" | "memory" | "grouping" | "collaboration" | "save_config";
+export type ViewMode = "logics" | "control" | "general" | "chat" | "vault" | "version-control" | "analytics" | "undo-redo" | "memory" | "grouping" | "collaboration" | "save_config";
 
 interface SidebarProps {
   selectedEngines: string[];
   selectedGroups: string[];
   selectedLogics: string[];
   onSelectionChange: (type: "engines" | "groups" | "logics", items: string[]) => void;
+  // Separate props for Control view (independent from Logics view)
+  controlSelectedEngines?: string[];
+  controlSelectedGroups?: string[];
+  controlSelectedLogics?: string[];
+  onControlSelectionChange?: (type: "engines" | "groups" | "logics", items: string[]) => void;
   config?: MTConfig | null;
   onConfigChange?: (config: MTConfig) => void;
   viewMode: ViewMode;
@@ -87,6 +92,10 @@ export function Sidebar({
   selectedGroups,
   selectedLogics,
   onSelectionChange,
+  controlSelectedEngines = [],
+  controlSelectedGroups = [],
+  controlSelectedLogics = [],
+  onControlSelectionChange,
   config,
   onConfigChange,
   viewMode,
@@ -101,6 +110,12 @@ export function Sidebar({
   stats = { totalChangesApplied: 0, commandsToday: 0, snapshotsCount: 0, lastCommandAt: null },
   onCommandClick,
 }: SidebarProps) {
+  // Use appropriate selections based on view mode
+  const isControlView = viewMode === "control";
+  const currentSelectedEngines = isControlView ? controlSelectedEngines : selectedEngines;
+  const currentSelectedGroups = isControlView ? controlSelectedGroups : selectedGroups;
+  const currentSelectedLogics = isControlView ? controlSelectedLogics : selectedLogics;
+  const currentOnSelectionChange = isControlView ? onControlSelectionChange : onSelectionChange;
   const [searchQuery, setSearchQuery] = useState("");
   const sidebarRef = useRef<HTMLElement>(null);
   const [isCompact, setIsCompact] = useState(false);
@@ -140,45 +155,54 @@ export function Sidebar({
   const { state, createSnapshot, restoreFromSnapshot, getSnapshots } = useVersionControl(config || undefined);
   const snapshots = state.snapshots;
 
-  // Group 1 unique selection logic
-  const hasGroup1Selected = selectedGroups.includes("Group 1");
-  const hasOtherGroupsSelected = selectedGroups.some((g) => g !== "Group 1");
+  // Group 1 unique selection logic (only for Logics view, not Control)
+  const hasGroup1Selected = !isControlView && currentSelectedGroups.includes("Group 1");
+  const hasOtherGroupsSelected = !isControlView && currentSelectedGroups.some((g) => g !== "Group 1");
 
   const toggleItem = (type: "engines" | "groups" | "logics", item: string) => {
-    if (type === "groups") {
+    if (!currentOnSelectionChange) return;
+    
+    if (type === "groups" && !isControlView) {
+      // Group 1 exclusive logic only applies to Logics view, not Control
       const isGroup1 = item === "Group 1";
-      const current = selectedGroups;
+      const current = currentSelectedGroups;
 
       if (isGroup1) {
         if (current.includes("Group 1")) {
-          onSelectionChange("groups", []);
+          currentOnSelectionChange("groups", []);
         } else {
-          onSelectionChange("groups", ["Group 1"]);
+          currentOnSelectionChange("groups", ["Group 1"]);
         }
       } else {
         const withoutGroup1 = current.filter((g) => g !== "Group 1");
         const updated = withoutGroup1.includes(item)
           ? withoutGroup1.filter((g) => g !== item)
           : [...withoutGroup1, item];
-        onSelectionChange("groups", updated);
+        currentOnSelectionChange("groups", updated);
       }
       return;
     }
 
-    const current = type === "engines" ? selectedEngines : selectedLogics;
+    // Control view: allow full multi-select for all groups
+    const current = type === "engines" ? currentSelectedEngines : 
+                    type === "groups" ? currentSelectedGroups : currentSelectedLogics;
     const updated = current.includes(item)
       ? current.filter((i) => i !== item)
       : [...current, item];
-    onSelectionChange(type, updated);
+    currentOnSelectionChange(type, updated);
   };
 
   const selectAll = (type: "engines" | "groups" | "logics") => {
-    if (type === "groups") {
-      onSelectionChange("groups", groups.filter((g) => g !== "Group 1"));
+    if (!currentOnSelectionChange) return;
+    
+    if (type === "groups" && !isControlView) {
+      currentOnSelectionChange("groups", groups.filter((g) => g !== "Group 1"));
       return;
     }
-    const items = type === "engines" ? [...engines] : [...logics];
-    onSelectionChange(type, items);
+    // Control view: select all groups including Group 1
+    const items = type === "engines" ? [...engines] : 
+                  type === "groups" ? [...groups] : [...logics];
+    currentOnSelectionChange(type, items);
   };
 
   // Filter items based on search
@@ -225,9 +249,9 @@ export function Sidebar({
           />
           <ViewModePill
             icon={<Settings2 className="w-4 h-4" />}
-            label="General"
-            isActive={viewMode === "general"}
-            onClick={() => onViewModeChange("general")}
+            label="Control"
+            isActive={viewMode === "control"}
+            onClick={() => onViewModeChange("control")}
             compact={isCompact}
           />
           <ViewModePill
@@ -316,6 +340,71 @@ export function Sidebar({
                 />
               ))}
             </div>
+          ) : viewMode === "control" ? (
+            <div className="space-y-3">
+              {/* Control Mode: Show Engine/Group/Logic selector for applying Control settings */}
+              <div className="text-xs text-muted-foreground px-1 mb-2">
+                Select engines, groups, and logics to apply Control settings
+              </div>
+              
+              {/* Engines Section */}
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 px-1 py-1">
+                  <Grid3X3 className="w-3 h-3 text-muted-foreground" />
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Engines</span>
+                </div>
+                {engines.map((engine) => (
+                  <TreeItem
+                    key={engine}
+                    label={engine}
+                    selected={currentSelectedEngines.includes(engine)}
+                    onToggle={() => toggleItem("engines", engine)}
+                    highlight={searchQuery}
+                    compact={isCompact}
+                  />
+                ))}
+              </div>
+
+              <div className="border-t border-border/30 my-2" />
+
+              {/* Groups Section */}
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 px-1 py-1">
+                  <FolderOpen className="w-3 h-3 text-muted-foreground" />
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Groups</span>
+                </div>
+                {filteredGroups.map((group) => (
+                  <TreeItem
+                    key={group}
+                    label={group}
+                    selected={currentSelectedGroups.includes(group)}
+                    onToggle={() => toggleItem("groups", group)}
+                    highlight={searchQuery}
+                    compact={isCompact}
+                  />
+                ))}
+              </div>
+
+              <div className="border-t border-border/30 my-2" />
+
+              {/* Logics Section */}
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 px-1 py-1">
+                  <Zap className="w-3 h-3 text-muted-foreground" />
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Logics</span>
+                </div>
+                {filteredLogics.map((logic) => (
+                  <TreeItem
+                    key={logic}
+                    label={logic}
+                    selected={currentSelectedLogics.includes(logic)}
+                    onToggle={() => toggleItem("logics", logic)}
+                    highlight={searchQuery}
+                    compact={isCompact}
+                  />
+                ))}
+              </div>
+            </div>
           ) : viewMode === "chat" ? (
             <>
               {/* Change Review UI - Use Aggregated view for scalability */}
@@ -385,14 +474,15 @@ export function Sidebar({
                 expanded={expandedSections.engines}
                 onToggle={() => toggleSection("engines")}
                 onSelectAll={() => selectAll("engines")}
-                count={`${selectedEngines.length}/${engines.length}`}
+                type="engines"
+                count={`${currentSelectedEngines.length}/${engines.length}`}
                 compact={isCompact}
               >
                 {filteredEngines.map((engine) => (
                   <TreeItem
                     key={engine}
                     label={engine}
-                    selected={selectedEngines.includes(engine)}
+                    selected={currentSelectedEngines.includes(engine)}
                     onToggle={() => toggleItem("engines", engine)}
                     highlight={searchQuery}
                     compact={isCompact}
@@ -406,16 +496,18 @@ export function Sidebar({
                 expanded={expandedSections.groups}
                 onToggle={() => toggleSection("groups")}
                 onSelectAll={() => selectAll("groups")}
-                count={`${selectedGroups.length}/${groups.length}`}
+                onSelectionChange={currentOnSelectionChange}
+                type="groups"
+                count={`${currentSelectedGroups.length}/${groups.length}`}
                 warning={hasGroup1Selected && hasOtherGroupsSelected ? "Invalid selection" : undefined}
                 compact={isCompact}
               >
                 <div className={cn("max-h-56 overflow-y-auto space-y-0.5", isCompact && "overflow-visible max-h-none")}>
-                  {/* Group 1 - Special */}
-                  {filteredGroups.includes("Group 1") && (
+                  {/* Group 1 - Special - only show in Logics view */}
+                  {!isControlView && filteredGroups.includes("Group 1") && (
                     <TreeItem
                       label="Group 1"
-                      selected={selectedGroups.includes("Group 1")}
+                      selected={currentSelectedGroups.includes("Group 1")}
                       onToggle={() => toggleItem("groups", "Group 1")}
                       badge="main"
                       disabled={hasOtherGroupsSelected}
@@ -425,23 +517,23 @@ export function Sidebar({
                     />
                   )}
 
-                  {/* Separator */}
-                  {filteredGroups.includes("Group 1") && filteredGroups.length > 1 && !isCompact && (
+                  {/* Separator - only in Logics view */}
+                  {!isControlView && filteredGroups.includes("Group 1") && filteredGroups.length > 1 && !isCompact && (
                     <div className="flex items-center gap-2 py-2 px-2">
                       <div className="flex-1 h-px bg-border/50" />
-                      <span className="text-[9px] text-muted-foreground/60 font-medium">GROUPS 2-20</span>
+                      <span className="text-[9px] text-muted-foreground/60 font-medium">GROUPS {isControlView ? "1-20" : "2-20"}</span>
                       <div className="flex-1 h-px bg-border/50" />
                     </div>
                   )}
 
-                  {/* Groups 2-20 */}
-                  {filteredGroups.filter(g => g !== "Group 1").map((group) => (
+                  {/* Groups - filter out Group 1 for Logics view since it's shown separately */}
+                  {filteredGroups.filter(g => isControlView || g !== "Group 1").map((group) => (
                     <TreeItem
                       key={group}
                       label={group}
-                      selected={selectedGroups.includes(group)}
+                      selected={currentSelectedGroups.includes(group)}
                       onToggle={() => toggleItem("groups", group)}
-                      disabled={hasGroup1Selected}
+                      disabled={!isControlView && hasGroup1Selected && group !== "Group 1"}
                       highlight={searchQuery}
                       compact={isCompact}
                     />
@@ -456,14 +548,16 @@ export function Sidebar({
                   expanded={expandedSections.logics}
                   onToggle={() => toggleSection("logics")}
                   onSelectAll={() => selectAll("logics")}
-                  count={`${selectedLogics.length}/${logics.length}`}
+                  onSelectionChange={currentOnSelectionChange}
+                  type="logics"
+                  count={`${currentSelectedLogics.length}/${logics.length}`}
                   compact={isCompact}
                 >
                   {filteredLogics.map((logic) => (
                     <TreeItem
                       key={logic}
                       label={logic}
-                      selected={selectedLogics.includes(logic)}
+                      selected={currentSelectedLogics.includes(logic)}
                       onToggle={() => toggleItem("logics", logic)}
                       mono
                       highlight={searchQuery}
@@ -481,26 +575,26 @@ export function Sidebar({
       </ScrollArea>
 
       {/* Selection Summary */}
-      {(selectedEngines.length > 1 || selectedGroups.length > 1 || selectedLogics.length > 1) && (
+      {(currentSelectedEngines.length > 1 || currentSelectedGroups.length > 1 || currentSelectedLogics.length > 1) && (
         <div className="p-3 border-t border-border bg-gradient-to-t from-muted/30 to-transparent">
           <div className="flex items-center gap-2 mb-2">
             <Sparkles className="w-3 h-3 text-primary" />
             <span className="text-[10px] text-foreground font-semibold">Multi-Edit Mode</span>
           </div>
           <div className="flex flex-wrap gap-1.5">
-            {selectedEngines.length > 1 && (
+            {currentSelectedEngines.length > 1 && (
               <span className="px-2 py-1 rounded-md bg-blue-500/15 text-blue-400 text-[10px] font-medium border border-blue-500/20">
-                {selectedEngines.length} engines
+                {currentSelectedEngines.length} engines
               </span>
             )}
-            {selectedGroups.length > 1 && (
+            {currentSelectedGroups.length > 1 && (
               <span className="px-2 py-1 rounded-md bg-green-500/15 text-green-400 text-[10px] font-medium border border-green-500/20">
-                {selectedGroups.length} groups
+                {currentSelectedGroups.length} groups
               </span>
             )}
-            {selectedLogics.length > 1 && (
+            {currentSelectedLogics.length > 1 && (
               <span className="px-2 py-1 rounded-md bg-amber-500/15 text-amber-400 text-[10px] font-medium border border-amber-500/20">
-                {selectedLogics.length} logics
+                {currentSelectedLogics.length} logics
               </span>
             )}
           </div>
@@ -551,6 +645,8 @@ interface SectionProps {
   expanded: boolean;
   onToggle: () => void;
   onSelectAll?: () => void;
+  onSelectionChange?: (type: "engines" | "groups" | "logics", items: string[]) => void;
+  type?: "engines" | "groups" | "logics";
   count?: string;
   muted?: boolean;
   warning?: string;
@@ -558,7 +654,7 @@ interface SectionProps {
   compact?: boolean;
 }
 
-function Section({ title, icon, expanded, onToggle, onSelectAll, count, muted, warning, children, compact }: SectionProps) {
+function Section({ title, icon, expanded, onToggle, onSelectAll, onSelectionChange, type, count, muted, warning, children, compact }: SectionProps) {
   if (compact) {
     return (
       <div className="rounded-lg overflow-hidden space-y-1">
@@ -588,7 +684,7 @@ function Section({ title, icon, expanded, onToggle, onSelectAll, count, muted, w
         tabIndex={0}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onToggle(); }}
         className={cn(
-          "w-full flex items-center gap-2 px-3 py-2.5 text-xs font-medium transition-colors cursor-pointer select-none",
+          "w-full flex items-center gap-1.5 px-2 py-1.5 text-[10px] font-medium transition-colors cursor-pointer select-none",
           expanded 
             ? "bg-gradient-to-r from-muted/50 to-transparent border-b border-border/30" 
             : "hover:bg-muted/30",
@@ -611,12 +707,22 @@ function Section({ title, icon, expanded, onToggle, onSelectAll, count, muted, w
           </span>
         )}
         {onSelectAll && expanded && (
-          <button
-            onClick={(e) => { e.stopPropagation(); onSelectAll(); }}
-            className="text-[10px] text-muted-foreground hover:text-primary px-1.5 py-0.5 rounded hover:bg-primary/10 transition-colors"
-          >
-            all
-          </button>
+          <div className="ml-auto flex gap-1">
+            <button
+              onClick={(e) => { e.stopPropagation(); onSelectionChange?.(type || "engines", []); }}
+              className="text-[10px] text-muted-foreground hover:text-primary px-1.5 py-0.5 rounded hover:bg-primary/10 transition-colors"
+              title="Deselect all"
+            >
+              none
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); onSelectAll(); }}
+              className="text-[10px] text-muted-foreground hover:text-primary px-1.5 py-0.5 rounded hover:bg-primary/10 transition-colors"
+              title="Select all"
+            >
+              all
+            </button>
+          </div>
         )}
       </div>
       <AnimatePresence>
@@ -667,13 +773,13 @@ function TreeItem({ label, selected, onToggle, mono, badge, badgeColor, disabled
         disabled={disabled}
         title={label}
         className={cn(
-          "w-8 h-8 flex items-center justify-center rounded-md transition-all",
+          "w-6 h-6 flex items-center justify-center rounded transition-all",
           disabled && "opacity-40 cursor-not-allowed",
           !disabled && selected && "bg-primary/10 text-foreground border border-primary/20",
           !disabled && !selected && "text-muted-foreground hover:text-foreground hover:bg-muted/30 border border-transparent"
         )}
       >
-        {selected ? <Check className="w-4 h-4 text-primary" /> : <div className="w-3 h-3 rounded border border-border" />}
+        {selected ? <Check className="w-3 h-3 text-primary" /> : <div className="w-2 h-2 rounded border border-border" />}
       </button>
     );
   }
@@ -683,18 +789,18 @@ function TreeItem({ label, selected, onToggle, mono, badge, badgeColor, disabled
       onClick={disabled ? undefined : onToggle}
       disabled={disabled}
       className={cn(
-        "group w-full flex items-center gap-2.5 py-2 px-2.5 text-xs rounded-md transition-all duration-150",
+        "group w-full flex items-center gap-1.5 py-1 px-1.5 text-[10px] rounded-md transition-all duration-150",
         disabled && "opacity-40 cursor-not-allowed",
         !disabled && selected && "bg-primary/10 text-foreground border border-primary/20",
         !disabled && !selected && "text-muted-foreground hover:text-foreground hover:bg-muted/40 border border-transparent hover:border-border/50"
       )}
     >
-      {indicator && <div className={cn("w-1.5 h-4 rounded-full transition-all", indicator, selected && "scale-110")} />}
+      {indicator && <div className={cn("w-1 h-3 rounded-full transition-all", indicator, selected && "scale-110")} />}
       <div className={cn(
-        "w-4 h-4 rounded border flex items-center justify-center transition-all",
+        "w-3 h-3 rounded border flex items-center justify-center transition-all",
         selected ? "bg-primary border-primary" : "border-border group-hover:border-muted-foreground/50"
       )}>
-        {selected && <Check className="w-3 h-3 text-primary-foreground" />}
+        {selected && <Check className="w-2 h-2 text-primary-foreground" />}
       </div>
       <span className={cn(mono && "font-mono font-medium")}>{highlightText(label, highlight || "")}</span>
       {badge && (

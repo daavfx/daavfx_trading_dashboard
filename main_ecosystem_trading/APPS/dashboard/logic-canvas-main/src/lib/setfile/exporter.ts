@@ -131,6 +131,16 @@ function newsActionToInt(action: string): number {
   }
 }
 
+// Restart mode to number
+function restartModeToInt(mode: string): number {
+  switch (mode) {
+    case "RestartMode_Disable": return 0;  // Auto-restart when condition clears
+    case "RestartMode_Stop": return 1;     // Manual restart required
+    case "RestartMode_Trigger": return 2;   // Use trigger type for restart
+    default: return 0;
+  }
+}
+
 // Entry trigger to number
 function entryTriggerToInt(trigger: string): number {
   switch (trigger) {
@@ -273,6 +283,8 @@ function exportLogicConfig(
     add(direction, "UseSL", logic.useSL);
     add(direction, "SLMode", tpslModeToInt(logic.slMode));
     add(direction, "SLValue", logic.stopLoss);
+    add(direction, "ContinueTPHit", logic.continueTPHit);
+    add(direction, "ContinueSLHit", logic.continueSLHit);
 
     // Break-even
     add(direction, "BreakEvenMode", breakevenModeToInt(logic.breakEvenMode));
@@ -320,7 +332,8 @@ function exportGlobalConfig(global: GlobalConfig, entries: Map<string, string>):
   add("MagicNumber", global.baseMagicNumber);
   add("MagicNumberBuy", global.magicNumberBuy);
   add("MagicNumberSell", global.magicNumberSell);
-  add("MaxSlippage", global.maxSlippage);
+  add("SlippageEnabled", global.slippageEnabled || false);
+  add("MaxSlippagePoints", global.maxSlippagePoints || global.maxSlippage || 30);
   add("EnableLogs", global.enableLogs);
   add("AllowBuy", global.allowBuy);
   add("AllowSell", global.allowSell);
@@ -355,9 +368,44 @@ function exportGlobalConfig(global: GlobalConfig, entries: Map<string, string>):
   add("RiskStopMode", global.risk.stopMode === "Stop_ByPercent" ? 0 : 1);
   add("RiskAction", global.risk.action);
 
+  // Equity Protection
+  add("EquityProtectionEnabled", (global as any).equityProtectionEnabled || false);
+  add("EquityProtectionUseEquity", (global as any).equityProtectionUseEquity ?? true);
+  add("EquityProtectionDrawdownEnabled", (global as any).equityProtectionDrawdownEnabled || false);
+  add("EquityProtectionDrawdownValue", (global as any).equityProtectionDrawdownValue ?? 35);
+  add("EquityProtectionProfitEnabled", (global as any).equityProtectionProfitEnabled || false);
+  add("EquityProtectionProfitValue", (global as any).equityProtectionProfitValue ?? 100);
+  add("EquityProtectionMarginEnabled", (global as any).equityProtectionMarginEnabled || false);
+  add("EquityProtectionMarginValue", (global as any).equityProtectionMarginValue ?? 150);
+  add("EquityProtectionStopEA", (global as any).equityProtectionStopEA ?? true);
+  add("EquityProtectionCloseTrades", (global as any).equityProtectionCloseTrades || false);
+  add("EquityProtectionRestartMode", restartModeToInt((global as any).equityProtectionRestartMode || "RestartMode_Disable"));
+
+  // Balance Protection
+  add("BalanceProtectionEnabled", (global as any).balanceProtectionEnabled || false);
+  add("BalanceProtectionUseEquity", (global as any).balanceProtectionUseEquity ?? false);
+  add("BalanceProtectionDrawdownEnabled", (global as any).balanceProtectionDrawdownEnabled || false);
+  add("BalanceProtectionDrawdownValue", (global as any).balanceProtectionDrawdownValue ?? 35);
+  add("BalanceProtectionProfitEnabled", (global as any).balanceProtectionProfitEnabled || false);
+  add("BalanceProtectionProfitValue", (global as any).balanceProtectionProfitValue ?? 100);
+  add("BalanceProtectionMarginEnabled", (global as any).balanceProtectionMarginEnabled || false);
+  add("BalanceProtectionMarginValue", (global as any).balanceProtectionMarginValue ?? 150);
+  add("BalanceProtectionStopEA", (global as any).balanceProtectionStopEA ?? true);
+  add("BalanceProtectionCloseTrades", (global as any).balanceProtectionCloseTrades || false);
+  add("BalanceProtectionRestartMode", restartModeToInt((global as any).balanceProtectionRestartMode || "RestartMode_Disable"));
+
+  // News Filter - Restart Mode
+  add("NewsRestartMode", restartModeToInt((global as any).newsRestartMode || "RestartMode_Disable"));
+
   // UI settings
   add("ShowUI", global.showUI);
   add("ShowTrailLines", global.showTrailLines);
+
+  // Restart Policy (aggregated from per-logic Group 1 settings)
+  add("RestartPolicyPower", global.restartPolicyPower);
+  add("RestartPolicyNonPower", global.restartPolicyNonPower);
+  add("CloseNonPowerOnPowerClose", global.closeNonPowerOnPowerClose);
+  add("HoldTimeoutBars", global.holdTimeoutSeconds);
 
   // License
   add("RequireLicense", global.requireLicense);
@@ -379,6 +427,10 @@ function exportGlobalConfig(global: GlobalConfig, entries: Map<string, string>):
       add(`Session${idx + 1}EndHour`, session.endHour);
       add(`Session${idx + 1}EndMinute`, session.endMinute);
       add(`Session${idx + 1}Action`, session.action);
+      // New session fields
+      add(`Session${idx + 1}StopEA`, (session as any).stopEa ?? true);
+      add(`Session${idx + 1}CloseTrades`, (session as any).closeTrades ?? false);
+      add(`Session${idx + 1}RestartMode`, restartModeToInt((session as any).restartMode || "RestartMode_Disable"));
     }
   });
 
@@ -434,8 +486,11 @@ export function exportToSetFile(config: MTConfigComplete): string {
 export function exportToSetFileWithDirections(config: MTConfigComplete): string {
   const entries = new Map<string, string>();
 
+  // Aggregate restart policy from Group 1 per-logic settings
+  const aggregatedGlobal = aggregateRestartPolicyFromLogics(config);
+  
   // Export global config
-  exportGlobalConfig(config.global, entries);
+  exportGlobalConfig(aggregatedGlobal, entries);
 
   // Export all engines, groups, and logics with directional separation
   config.engines.forEach(engine => {
@@ -461,4 +516,45 @@ export function exportToSetFileWithDirections(config: MTConfigComplete): string 
   });
 
   return content;
+}
+
+// Aggregate restart policy from Group 1 per-logic settings to global
+function aggregateRestartPolicyFromLogics(config: MTConfigComplete): GlobalConfig {
+  const global = { ...config.global };
+  
+  // Find Group 1
+  const group1 = config.engines
+    .flatMap(e => e.groups)
+    .find(g => g.group_number === 1);
+  
+  if (!group1) {
+    return global;
+  }
+  
+  // Find Engine A Power (Buy/Sell) for restart_policy_power and close_non_power_on_power_close
+  const engineAPower = group1.logics.find(l => 
+    l.logic_name.toUpperCase() === "POWER"
+  );
+  
+  if (engineAPower) {
+    // Use Buy side values (they should be the same for both directions)
+    global.restartPolicyPower = (engineAPower as any).restart_policy_power || "Restart_Default";
+    global.closeNonPowerOnPowerClose = (engineAPower as any).close_non_power_on_power_close || false;
+    global.holdTimeoutSeconds = (engineAPower as any).hold_timeout_seconds || 0;
+  }
+  
+  // Find any non-Power logic for restart_policy_non_power
+  const nonPowerLogic = group1.logics.find(l => 
+    l.logic_name.toUpperCase() !== "POWER"
+  );
+  
+  if (nonPowerLogic) {
+    global.restartPolicyNonPower = (nonPowerLogic as any).restart_policy_non_power || "Restart_Default";
+    // Use hold_timeout_seconds from non-power if not set from power
+    if (!global.holdTimeoutSeconds) {
+      global.holdTimeoutSeconds = (nonPowerLogic as any).hold_timeout_seconds || 0;
+    }
+  }
+  
+  return global;
 }

@@ -164,6 +164,8 @@ export function convertSeparatedToUnified(config: BuySellSeparatedConfig): MTCon
           use_sl: false,
           sl_mode: "TPSL_Points" as const,
           sl_value: 1000,
+          continue_tp_hit: true,
+          continue_sl_hit: true,
           reverse_enabled: false,
           hedge_enabled: false,
           reverse_scale: 100.0,

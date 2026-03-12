@@ -41,17 +41,15 @@ interface GeneralCategoriesProps {
   platform?: Platform;
   mtPlatform?: Platform;
   mode?: 1 | 2;
+  isHorizontal?: boolean;
+  selectedEngines?: string[];
+  selectedGroups?: string[];
+  selectedLogics?: string[];
 }
 
 export const generalCategoriesList = [
-  { id: "risk_management", label: "Risk Management", icon: Shield, color: "text-red-400" },
-  { id: "compounding", label: "Compounding", icon: TrendingUp, color: "text-indigo-400" },
-  { id: "restart_policy", label: "Restart Policy", icon: RotateCw, color: "text-orange-400" },
-  { id: "news", label: "News Filter", icon: Newspaper, color: "text-amber-400" },
-  { id: "time", label: "Time Filter", icon: Clock, color: "text-blue-400" },
-  { id: "general", label: "General", icon: Settings2, color: "text-slate-400" },
-  { id: "ui", label: "UI Settings", icon: Palette, color: "text-teal-400" },
-  { id: "logs", label: "Logs", icon: Terminal, color: "text-green-400" },
+  { id: "risk_management", label: "Risk Management", icon: Shield, color: "text-red-400", hasBuySell: true },
+  { id: "general", label: "Core", icon: Settings2, color: "text-slate-400", hasBuySell: false },
 ] as const;
 
 export function GeneralCategories({ 
@@ -63,12 +61,33 @@ export function GeneralCategories({
   platform,
   mtPlatform,
   mode = 1,
+  isHorizontal = false,
+  selectedEngines = [],
+  selectedGroups = [],
+  selectedLogics = [],
 }: GeneralCategoriesProps) {
   const [expandedCategories, setExpandedCategories] = useState<string[]>(["risk_management"]);
   const [generalEditScope, setGeneralEditScope] = useState<"Buy" | "Sell">(
     "Buy",
   );
+  
+  // Expanded sections within risk management view
+  const [expandedRiskSections, setExpandedRiskSections] = useState<string[]>([
+    "spread", "slippage", "equity", "balance", "compounding", "news", "time"
+  ]);
 
+  // Calculate selection summary for Control view
+  const enginesCount = selectedEngines.length;
+  const groupsCount = selectedGroups.length;
+  const logicsCount = selectedLogics.length;
+  
+  // Each logic has Buy and Sell variants (x2)
+  const buySellMultiplier = 2;
+  const totalEditCount = enginesCount * groupsCount * logicsCount * buySellMultiplier;
+  
+  const isSingleEdit = enginesCount === 1 && groupsCount === 1 && logicsCount === 1;
+  const isMultiEdit = !isSingleEdit && totalEditCount > 0;
+  
   const toggleCategory = (id: string) => {
     setExpandedCategories((prev) =>
       prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
@@ -77,6 +96,19 @@ export function GeneralCategories({
 
   const expandAll = () => setExpandedCategories(generalCategoriesList.map((c) => c.id));
   const collapseAll = () => setExpandedCategories([]);
+  
+  // Risk section toggles
+  const toggleRiskSection = (section: string) => {
+    setExpandedRiskSections(prev => 
+      prev.includes(section) ? prev.filter(s => s !== section) : [...prev, section]
+    );
+  };
+  
+  const expandAllRiskSections = () => setExpandedRiskSections([
+    "spread", "slippage", "equity", "balance", "compounding", "news", "time"
+  ]);
+  
+  const collapseAllRiskSections = () => setExpandedRiskSections([]);
 
   const handleUpdate = (categoryId: string, fieldId: string, value: any) => {
     if (!generalConfig || !onConfigChange) return;
@@ -86,6 +118,18 @@ export function GeneralCategories({
     if (fieldId === "grid_unit" && typeof value === "string") {
         const n = parseInt(value, 10);
         if (!Number.isNaN(n)) value = n;
+    }
+    
+    // Handle slippage fields at global level (not buy/sell scoped)
+    if (fieldId === "slippage_enabled") {
+        newConfig.slippage_enabled = value === "ON";
+        onConfigChange(newConfig);
+        return;
+    }
+    if (fieldId === "max_slippage_points") {
+        newConfig.max_slippage_points = typeof value === "string" ? parseInt(value, 10) : value;
+        onConfigChange(newConfig);
+        return;
     }
 
     if (categoryId === "general" && fieldId === "trading_direction") {
@@ -98,6 +142,13 @@ export function GeneralCategories({
         } else {
             newConfig.allow_buy = false;
             newConfig.allow_sell = false;
+        }
+    } else if (categoryId === "general" && fieldId === "magic_number") {
+        // Route magic_number to _buy or _sell based on current toggle
+        if (generalEditScope === "Buy") {
+            newConfig.magic_number_buy = typeof value === "string" ? parseInt(value, 10) : value;
+        } else {
+            newConfig.magic_number_sell = typeof value === "string" ? parseInt(value, 10) : value;
         }
     } else if (categoryId === "risk_management") {
         const setRisk = (key: "risk_management" | "risk_management_b" | "risk_management_s") => {
@@ -148,7 +199,9 @@ export function GeneralCategories({
     return sell ?? base;
   };
 
-  const renderModeSelectors = () => (
+  const renderModeSelectors = (showBuySell: boolean = true) => {
+    if (!showBuySell) return null;
+    return (
     <div className="mb-3 p-3 bg-muted/30 rounded-lg border border-border/50">
       <div className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-2">
         <ArrowLeftRight className="w-3 h-3" />
@@ -185,6 +238,7 @@ export function GeneralCategories({
       </ToggleGroup>
     </div>
   );
+  }
 
   // Helper to map type string to "number" | "toggle" | "text" | "select"
   const mapType = (type: string): "number" | "toggle" | "text" | "select" | "header" => {
@@ -208,9 +262,10 @@ export function GeneralCategories({
           generalConfig.risk_management_b,
           generalConfig.risk_management_s,
         );
-        return generalInputs.risk_management.fields.map(field => ({
+        // Get risk management fields from the risk_management object
+        const riskFields = generalInputs.risk_management.fields.map(field => ({
           id: field.id,
-          label: field.mt4_variable.replace("gInput_", "").replace(/([A-Z])/g, ' $1').trim(),
+          label: field.label || field.mt4_variable.replace("gInput_", "").replace(/([A-Z])/g, ' $1').trim(),
           value: (riskScoped as any)?.[field.id] ?? field.default,
           type: mapType(field.type),
           unit: (field as any).unit,
@@ -218,6 +273,34 @@ export function GeneralCategories({
           options: (field as any).options,
           onChange: createHandler(field.id)
         }));
+        
+        // Add slippage fields at global level (not Buy/Sell scoped)
+        riskFields.push({
+          id: "slippage_header",
+          label: "Slippage Protection",
+          type: "header" as const,
+          value: "",
+          onChange: () => {}
+        });
+        riskFields.push({
+          id: "slippage_enabled",
+          label: "Enable Slippage Protection",
+          value: generalConfig.slippage_enabled ? "ON" : "OFF",
+          type: "toggle" as const,
+          description: "Enable maximum slippage protection",
+          onChange: createHandler("slippage_enabled")
+        });
+        riskFields.push({
+          id: "max_slippage_points",
+          label: "Max Slippage Points",
+          value: generalConfig.max_slippage_points ?? 30,
+          type: "number" as const,
+          unit: "pts",
+          description: "Maximum permitted slippage in points",
+          onChange: createHandler("max_slippage_points")
+        });
+        
+        return riskFields;
 
       case "time":
         const timeScoped = getScopedValue(
@@ -287,6 +370,7 @@ export function GeneralCategories({
         const fields = generalInputs.global_system.fields
             .filter(f => f.id !== "allow_buy" && f.id !== "allow_sell")
             .filter(f => f.id !== "magic_number_buy" && f.id !== "magic_number_sell")
+            .filter(f => f.id !== "max_slippage_points")
             .map(field => ({
               id: field.id,
               label: field.mt4_variable.replace("gInput_", "").replace(/([A-Z])/g, ' $1').trim(),
@@ -297,25 +381,15 @@ export function GeneralCategories({
               onChange: createHandler(field.id)
             }));
             
-        if (generalEditScope === "Sell") {
-          fields.unshift({
-            id: "magic_number_sell",
-            label: "Magic Number (Sell)",
-            value: generalConfig.magic_number_sell,
-            type: "number" as const,
-            description: "Terminal-facing magic number for Buy/Sell cycles",
-            onChange: createHandler("magic_number_sell"),
-          });
-        } else {
-          fields.unshift({
-            id: "magic_number_buy",
-            label: "Magic Number (Buy)",
-            value: generalConfig.magic_number_buy,
-            type: "number" as const,
-            description: "Terminal-facing magic number for Buy/Sell cycles",
-            onChange: createHandler("magic_number_buy"),
-          });
-        }
+        // Show magic number based on Buy/Sell toggle
+        fields.unshift({
+          id: "magic_number",
+          label: generalEditScope === "Buy" ? "Magic Number (Buy)" : "Magic Number (Sell)",
+          value: generalEditScope === "Buy" ? generalConfig.magic_number_buy : generalConfig.magic_number_sell,
+          type: "number" as const,
+          description: generalEditScope === "Buy" ? "Terminal-facing magic number for Buy cycles" : "Terminal-facing magic number for Sell cycles",
+          onChange: createHandler("magic_number"),
+        });
 
         // Compute direction
         let direction = "Disabled";
@@ -332,6 +406,46 @@ export function GeneralCategories({
             options: ["Buy Only", "Sell Only", "Disabled"],
             onChange: createHandler("trading_direction")
         } as any);
+
+        // Add UI Settings and Logs as headers
+        fields.push({
+          id: "ui_settings_header",
+          label: "UI Settings",
+          type: "header" as const,
+          value: "",
+          onChange: () => {}
+        });
+        fields.push({
+          id: "theme",
+          label: "Theme",
+          value: "Dark",
+          type: "text" as const,
+          description: "UI Theme",
+          onChange: () => {}
+        });
+        fields.push({
+          id: "language",
+          label: "Language",
+          value: "English",
+          type: "text" as const,
+          description: "UI Language",
+          onChange: () => {}
+        });
+        fields.push({
+          id: "logs_header",
+          label: "Logs",
+          type: "header" as const,
+          value: "",
+          onChange: () => {}
+        });
+        fields.push({
+          id: "enable_logs",
+          label: "Enable Logs",
+          value: generalConfig.enable_logs ? "ON" : "OFF",
+          type: "toggle" as const,
+          description: "Enable detailed logging",
+          onChange: createHandler("enable_logs")
+        });
         
         return fields;
         
@@ -347,29 +461,8 @@ export function GeneralCategories({
           options: (field as any).options,
           onChange: createHandler(field.id)
         }));
-        
-      case "restart_policy":
-        return generalInputs.restart_policies.fields.map(field => ({
-          id: field.id,
-          label: field.mt4_variable.replace("gInput_", "").replace(/([A-Z])/g, ' $1').trim(),
-          value: generalConfig[field.id as keyof GeneralConfig] ?? field.default,
-          type: mapType(field.type),
-          unit: (field as any).unit,
-          description: field.description,
-          options: (field as any).options,
-          onChange: createHandler(field.id)
-        }));
-
-      case "logs":
-         return [
-           { id: "enable_logs", label: "Enable Logs", value: generalConfig.enable_logs ? "ON" : "OFF", type: "toggle" as const, description: "Enable detailed logging (gInput_EnableLogs)", onChange: createHandler("enable_logs") }
-         ];
-         
-      case "ui":
-        return [
-          { id: "theme", label: "Theme", value: "Dark", type: "text" as const, description: "UI Theme" },
-          { id: "language", label: "Language", value: "English", type: "text" as const, description: "UI Language" }
-        ];
+      // Restart Policy moved to per-logic in Group 1
+      // UI Settings and Logs merged into Core
 
       default:
         return [];
@@ -471,14 +564,10 @@ export function GeneralCategories({
                       </div>
                     </div>
                     <div className="col-span-2 space-y-2 p-3 rounded-lg bg-black/10 border border-white/5">
-                      <h4 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Action & Restart</h4>
-                      <div className="grid gap-2">
+                      <h4 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Session Actions</h4>
+                      <div className="grid grid-cols-3 gap-2">
                         {session.fields.filter(f => 
-                          !f.id.includes("header") && 
-                          !f.id.includes("enabled") && 
-                          !f.id.includes("start_") && 
-                          !f.id.includes("end_") && 
-                          !f.id.includes("day")
+                          f.id.includes("stop_ea") || f.id.includes("close_trades") || f.id.includes("restart_mode")
                         ).map(f => (
                           <ConfigField key={f.id} {...f} />
                         ))}
@@ -494,43 +583,202 @@ export function GeneralCategories({
     );
   };
 
+  // UNIFIED RISK MANAGEMENT - ALL in ONE canvas: Risk + Compounding + News + Time
   const renderRiskManagement = (fields: any[]) => {
-    const spreadFields = fields.filter(f => f.id.includes("spread"));
-    const equityFields = fields.filter(f => f.id.includes("equity"));
-    const drawdownFields = fields.filter(f => f.id.includes("drawdown"));
+    // Get fields for each category
+    const compoundingFields = getRealCategoryFields("compounding");
+    const newsFields = getRealCategoryFields("news");
+    const timeFields = getRealCategoryFields("time");
 
-    const renderGroup = (title: string, groupFields: any[], icon: any, color: string) => (
-      <div className="space-y-2">
-        <div className="flex items-center gap-2 mb-1">
-          <div className={cn("w-1 h-3 rounded-full", color)} />
-          <h4 className="text-xs font-medium text-foreground/80">{title}</h4>
+    // Filter from risk_management fields
+    const spreadFields = fields.filter(f => f.id.includes("spread"));
+    const slippageFields = fields.filter(f => f.id.includes("slippage"));
+    const equityProtectionFields = fields.filter(f => f.id.startsWith("equity_protection"));
+    const balanceProtectionFields = fields.filter(f => f.id.startsWith("balance_protection"));
+
+    // Collapsible section component
+    const CollapsibleSection = ({ 
+      id, 
+      title, 
+      icon, 
+      iconColor, 
+      children,
+      defaultExpanded = true 
+    }: { 
+      id: string; 
+      title: string; 
+      icon: React.ReactNode; 
+      iconColor: string;
+      children: React.ReactNode;
+      defaultExpanded?: boolean;
+    }) => {
+      const isExpanded = expandedRiskSections.includes(id);
+      
+      return (
+        <Card className="bg-card/40 border-border/60 overflow-hidden">
+          <CardHeader 
+            className="py-3 px-4 cursor-pointer select-none hover:bg-muted/30 transition-colors"
+            onClick={() => toggleRiskSection(id)}
+          >
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <span className={iconColor}>{icon}</span>
+                {title}
+              </CardTitle>
+              <ChevronRight className={cn("w-4 h-4 text-muted-foreground transition-transform", isExpanded && "rotate-90")} />
+            </div>
+          </CardHeader>
+          <AnimatePresence>
+            {isExpanded && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <CardContent className="grid grid-cols-2 gap-4 pt-0">
+                  {children}
+                </CardContent>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </Card>
+      );
+    };
+
+    // Simple collapsible section without Card wrapper (for compound sections)
+    const SimpleCollapsibleSection = ({ 
+      id, 
+      title, 
+      icon, 
+      iconColor, 
+      children,
+    }: { 
+      id: string; 
+      title: string; 
+      icon: React.ReactNode; 
+      iconColor: string;
+      children: React.ReactNode;
+    }) => {
+      const isExpanded = expandedRiskSections.includes(id);
+      
+      return (
+        <div className="bg-card/40 border border-border/60 rounded-lg overflow-hidden">
+          <div 
+            className="py-3 px-4 cursor-pointer select-none hover:bg-muted/30 transition-colors flex items-center justify-between"
+            onClick={() => toggleRiskSection(id)}
+          >
+            <div className="flex items-center gap-2">
+              <span className={iconColor}>{icon}</span>
+              <span className="text-sm font-medium">{title}</span>
+            </div>
+            <ChevronRight className={cn("w-4 h-4 text-muted-foreground transition-transform", isExpanded && "rotate-90")} />
+          </div>
+          <AnimatePresence>
+            {isExpanded && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="px-2 pb-2"
+              >
+                {children}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
-        <div className="grid gap-2 p-3 rounded-lg bg-black/10 border border-white/5 hover:border-white/10 transition-colors">
-          {groupFields.map(f => (
-            <ConfigField key={f.id} {...f} />
-          ))}
-        </div>
-      </div>
-    );
+      );
+    };
+
+    const riskSections = [
+      { id: "spread", title: "Spread Protection", icon: <Shield className="w-4 h-4" />, iconColor: "text-blue-400", fields: spreadFields, prefix: "spread_" },
+      { id: "slippage", title: "Slippage Protection", icon: <Shield className="w-4 h-4" />, iconColor: "text-amber-400", fields: slippageFields.filter(f => f.type !== "header"), prefix: "slippage_" },
+      { id: "equity", title: "Equity Protection", icon: <TrendingUp className="w-4 h-4" />, iconColor: "text-green-400", fields: equityProtectionFields, prefix: "equity_" },
+      { id: "balance", title: "Balance Protection", icon: <TrendingUp className="w-4 h-4" />, iconColor: "text-purple-400", fields: balanceProtectionFields, prefix: "balance_" },
+    ];
 
     return (
       <div className="space-y-4">
-        <Card className="bg-card/40 border-border/60">
-          <CardHeader className="pb-3">
-             <CardTitle className="text-sm font-medium flex items-center gap-2">
-               <Shield className="w-4 h-4 text-red-400" />
-               Risk Management Controls
-             </CardTitle>
-             <CardDescription className="text-xs">
-               Configure safety mechanisms to protect your account
-             </CardDescription>
-          </CardHeader>
-          <CardContent className="grid md:grid-cols-3 gap-4">
-             {renderGroup("Spread Protection", spreadFields, Shield, "bg-blue-400")}
-             {renderGroup("Equity Protection", equityFields, TrendingUp, "bg-green-400")}
-             {renderGroup("Drawdown Protection", drawdownFields, TrendingUp, "bg-red-400")}
-          </CardContent>
-        </Card>
+        {/* Expand/Collapse All Buttons - Fixed Position */}
+        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm pb-3 pt-2 border-b border-border/50">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <span className="text-sm text-muted-foreground font-medium">
+              {expandedRiskSections.length} of {riskSections.length + 3} sections expanded
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={expandAllRiskSections}
+                className="text-xs px-4 py-2 rounded-md bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors font-medium"
+              >
+                Expand All
+              </button>
+              <button
+                onClick={collapseAllRiskSections}
+                className="text-xs px-4 py-2 rounded-md bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors font-medium"
+              >
+                Collapse All
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Risk Sections */}
+        {riskSections.map(section => (
+          <CollapsibleSection
+            key={section.id}
+            id={section.id}
+            title={section.title}
+            icon={section.icon}
+            iconColor={section.iconColor}
+          >
+            {section.fields.map(f => (
+              <ConfigField key={`${section.prefix}${f.id}`} {...f} />
+            ))}
+          </CollapsibleSection>
+        ))}
+
+        {/* COMPOUNDING - Simple collapsible without extra Card */}
+        <SimpleCollapsibleSection
+          id="compounding"
+          title="Compounding Strategy"
+          icon={<TrendingUp className="w-4 h-4" />}
+          iconColor="text-indigo-400"
+        >
+          <Card className="bg-card/40 border-border/60">
+            <CardContent className="grid grid-cols-2 gap-4">
+              {renderCompounding(compoundingFields)}
+            </CardContent>
+          </Card>
+        </SimpleCollapsibleSection>
+
+        {/* NEWS FILTER - Simple collapsible without extra Card */}
+        <SimpleCollapsibleSection
+          id="news"
+          title="News Filter"
+          icon={<Newspaper className="w-4 h-4" />}
+          iconColor="text-red-400"
+        >
+          <Card className="bg-card/40 border-border/60">
+            <CardContent className="grid grid-cols-2 gap-4">
+              {renderNewsFilter(newsFields)}
+            </CardContent>
+          </Card>
+        </SimpleCollapsibleSection>
+
+        {/* TIME FILTER - Simple collapsible without extra Card */}
+        <SimpleCollapsibleSection
+          id="time"
+          title="Time Filter"
+          icon={<Clock className="w-4 h-4" />}
+          iconColor="text-cyan-400"
+        >
+          <Card className="bg-card/40 border-border/60">
+            <CardContent className="grid grid-cols-2 gap-4">
+              {renderTimeFilter(timeFields)}
+            </CardContent>
+          </Card>
+        </SimpleCollapsibleSection>
       </div>
     );
   };
@@ -554,7 +802,7 @@ export function GeneralCategories({
           <CardContent className="grid gap-4">
              <div className="p-4 rounded-lg bg-indigo-500/5 border border-indigo-500/10">
                 <h4 className="text-[10px] font-semibold text-indigo-300 uppercase tracking-wider mb-3">Strategy Selection</h4>
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid grid-cols-2 gap-4">
                    {modeFields.map(f => (
                       <ConfigField key={f.id} {...f} />
                    ))}
@@ -563,7 +811,7 @@ export function GeneralCategories({
              
              <div className="p-4 rounded-lg bg-black/10 border border-white/5">
                 <h4 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">Risk Parameters</h4>
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid grid-cols-2 gap-4">
                    {paramFields.map(f => (
                       <ConfigField key={f.id} {...f} />
                    ))}
@@ -616,18 +864,19 @@ export function GeneralCategories({
   const renderNewsFilter = (fields: any[]) => {
     const impactFields = fields.filter(f => f.id.includes("impact"));
     const timeFields = fields.filter(f => f.id.includes("minutes") || f.id.includes("time"));
-    const otherFields = fields.filter(f => !impactFields.includes(f) && !timeFields.includes(f));
+    const actionFields = fields.filter(f => f.id === "stop_ea" || f.id === "close_trades" || f.id === "restart_mode");
+    const otherFields = fields.filter(f => !impactFields.includes(f) && !timeFields.includes(f) && !actionFields.includes(f));
 
     return (
       <div className="space-y-4">
         <Card className="bg-card/40 border-border/60">
           <CardHeader className="pb-3">
              <CardTitle className="text-sm font-medium flex items-center gap-2">
-               <Newspaper className="w-4 h-4 text-amber-400" />
-               Economic Calendar Filter
+                <Newspaper className="w-4 h-4 text-amber-400" />
+                Economic Calendar Filter
              </CardTitle>
              <CardDescription className="text-xs">
-               Avoid trading during high-impact news events
+                Avoid trading during high-impact news events
              </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -668,6 +917,15 @@ export function GeneralCategories({
                       ))}
                    </div>
                 </div>
+             </div>
+
+             {/* Action & Restart Controls */}
+             <div className="grid md:grid-cols-3 gap-4">
+                {actionFields.map(f => (
+                   <div key={f.id} className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/10">
+                      <ConfigField {...f} />
+                   </div>
+                ))}
              </div>
           </CardContent>
         </Card>
@@ -714,28 +972,98 @@ export function GeneralCategories({
   };
 
   const renderGeneralGlobal = (fields: any[]) => {
+    const mainFields = fields.filter(f => !f.type === "header");
+    const uiFields = fields.filter(f => f.id === "theme" || f.id === "language" || f.id === "ui_settings_header");
+    const logFields = fields.filter(f => f.id === "enable_logs" || f.id === "logs_header");
+    const coreFields = fields.filter(f => f.id !== "theme" && f.id !== "language" && f.id !== "ui_settings_header" && f.id !== "enable_logs" && f.id !== "logs_header" && f.type !== "header");
+
+    // Get scoped magic number based on Buy/Sell toggle
+    const magicNumberValue = generalEditScope === "Buy" 
+      ? fields.find(f => f.id === "magic_number_buy")?.value
+      : fields.find(f => f.id === "magic_number_sell")?.value;
+
     return (
       <div className="space-y-4">
-         <Card className="bg-card/40 border-border/60">
-            <CardHeader className="pb-3">
-               <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <Settings2 className="w-4 h-4 text-slate-400" />
-                  Global System Parameters
-               </CardTitle>
-               <CardDescription className="text-xs">
-                  Core settings affecting the entire trading operation
-               </CardDescription>
-            </CardHeader>
-            <CardContent>
-               <div className="grid md:grid-cols-2 gap-6">
-                  {fields.map(f => (
-                     <div key={f.id} className="p-3 rounded-lg bg-black/10 border border-white/5 hover:bg-black/20 transition-colors">
-                        <ConfigField {...f} />
-                     </div>
-                  ))}
-               </div>
-            </CardContent>
-         </Card>
+        {/* Core System Parameters */}
+        <Card className="bg-card/40 border-border/60 overflow-hidden">
+          <div className="bg-gradient-to-r from-slate-500/10 to-transparent px-4 py-3 border-b border-border/40">
+            <div className="flex items-center gap-2">
+              <Settings2 className="w-4 h-4 text-slate-400" />
+              <span className="text-sm font-medium text-slate-200">Core System Parameters</span>
+            </div>
+            <p className="text-[10px] text-slate-400/60 mt-0.5">Essential settings for trading operation</p>
+          </div>
+          <CardContent className="p-4">
+             <div className="grid grid-cols-2 gap-3">
+              {coreFields.map(f => {
+                // Override magic_number field to show scoped value
+                if (f.id === "magic_number") {
+                  return (
+                    <div key={f.id} className="p-3 rounded-lg bg-black/20 border border-white/5 hover:bg-black/30 transition-all">
+                      <ConfigField 
+                        {...f} 
+                        label={generalEditScope === "Buy" ? "Magic Number (Buy)" : "Magic Number (Sell)"}
+                        value={magicNumberValue ?? f.value} 
+                      />
+                    </div>
+                  );
+                }
+                return (
+                  <div key={f.id} className="p-3 rounded-lg bg-black/20 border border-white/5 hover:bg-black/30 transition-all">
+                    <ConfigField {...f} />
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* UI Settings */}
+        <Card className="bg-card/40 border-border/60 overflow-hidden">
+          <div className="bg-gradient-to-r from-teal-500/10 to-transparent px-4 py-3 border-b border-border/40">
+            <div className="flex items-center gap-2">
+              <Palette className="w-4 h-4 text-teal-400" />
+              <span className="text-sm font-medium text-teal-200">Interface Settings</span>
+            </div>
+            <p className="text-[10px] text-teal-400/60 mt-0.5">Customize your dashboard appearance</p>
+          </div>
+          <CardContent className="p-4">
+             <div className="grid grid-cols-2 gap-3">
+              {uiFields.filter(f => f.type !== "header").map(f => (
+                <div key={f.id} className="p-3 rounded-lg bg-black/20 border border-white/5 hover:bg-black/30 transition-all">
+                  <ConfigField {...f} />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Logs */}
+        <Card className="bg-card/40 border-border/60 overflow-hidden">
+          <div className="bg-gradient-to-r from-green-500/10 to-transparent px-4 py-3 border-b border-border/40">
+            <div className="flex items-center gap-2">
+              <Terminal className="w-4 h-4 text-green-400" />
+              <span className="text-sm font-medium text-green-200">Logging & Diagnostics</span>
+            </div>
+            <p className="text-[10px] text-green-400/60 mt-0.5">Debug and monitoring options</p>
+          </div>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between p-4 rounded-lg bg-green-900/10 border border-green-500/20">
+              <div className="flex items-center gap-3">
+                <Activity className="w-5 h-5 text-green-400" />
+                <div>
+                   <h4 className="text-sm font-medium text-green-100">Debug Mode</h4>
+                   <p className="text-[10px] text-green-400/60">Enable detailed logging output</p>
+                </div>
+              </div>
+              <div className="w-32">
+                {logFields.filter(f => f.id === "enable_logs").map(f => (
+                  <ConfigField key={f.id} {...f} />
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   };
@@ -804,6 +1132,201 @@ export function GeneralCategories({
 
   // Single Category View Mode Logic
   if (selectedCategory) {
+    // Horizontal Tab View Mode (Control Panel in Canvas)
+    if (isHorizontal) {
+      const hasSelection = selectedEngines.length > 0 || selectedGroups.length > 0 || selectedLogics.length > 0;
+      const validCategory = selectedCategory && generalCategoriesList.find(c => c.id === selectedCategory)
+        ? selectedCategory 
+        : generalCategoriesList[0]?.id || "risk_management";
+      
+      return (
+        <div className="space-y-4 p-4">
+          {/* Category Tabs */}
+          <div className="border-b border-border">
+            <nav className="flex gap-1 -mb-px overflow-x-auto">
+              {generalCategoriesList.map((category) => {
+                const Icon = category.icon;
+                const isActive = validCategory === category.id;
+                return (
+                  <button
+                    key={category.id}
+                    onClick={() => onSelectGeneralCategory?.(category.id)}
+                    className={cn(
+                      "flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap",
+                      isActive
+                        ? "border-primary text-primary"
+                        : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted"
+                    )}
+                  >
+                    <Icon className={cn("w-4 h-4", category.color)} />
+                    {category.label}
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+          
+          {/* Selection Banner - Only show for Risk Management categories */}
+          {validCategory === "risk_management" && hasSelection && (
+            <div className={cn(
+              "mt-3 p-4 rounded-lg border",
+              isSingleEdit 
+                ? "bg-slate-800/60 border-slate-600/50" 
+                : "bg-slate-800/60 border-slate-600/50"
+            )}>
+              {/* Mode & Count */}
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  {isSingleEdit ? (
+                    <Zap className="w-4 h-4 text-blue-400" />
+                  ) : (
+                    <Activity className="w-4 h-4 text-amber-400" />
+                  )}
+                  <span className={cn(
+                    "text-sm font-semibold",
+                    isSingleEdit ? "text-blue-400" : "text-amber-400"
+                  )}>
+                    {isSingleEdit ? "SINGLE EDIT MODE" : "MULTI-EDIT MODE"}
+                  </span>
+                </div>
+                <span className={cn(
+                  "text-xs px-2 py-1 rounded font-mono",
+                  isSingleEdit 
+                    ? "bg-blue-500/20 text-blue-300" 
+                    : "bg-amber-500/20 text-amber-300"
+                )}>
+                  {totalEditCount} configs
+                </span>
+              </div>
+              
+              {/* Applying To */}
+              <div className="flex flex-wrap gap-2 mb-2">
+                {selectedEngines.length > 0 && (
+                  <span className="px-2 py-1 rounded-md bg-blue-500/15 text-blue-400 text-xs font-medium border border-blue-500/20">
+                    {selectedEngines.length === 1 ? selectedEngines[0] : `${selectedEngines.length} Engines`}
+                  </span>
+                )}
+                {selectedGroups.length > 0 && (
+                  <span className="px-2 py-1 rounded-md bg-green-500/15 text-green-400 text-xs font-medium border border-green-500/20">
+                    {selectedGroups.length === 20 
+                      ? "All 20 Groups" 
+                      : selectedGroups.length === 1 ? selectedGroups[0] : `${selectedGroups.length} Groups`
+                    }
+                  </span>
+                )}
+                {selectedLogics.length > 0 && (
+                  <span className="px-2 py-1 rounded-md bg-amber-500/15 text-amber-400 text-xs font-medium border border-amber-500/20">
+                    {selectedLogics.length === 7 
+                      ? "All 7 Logics" 
+                      : selectedLogics.length === 1 ? selectedLogics[0] : `${selectedLogics.length} Logics`
+                    }
+                  </span>
+                )}
+                <span className="px-2 py-1 rounded-md bg-purple-500/15 text-purple-400 text-xs font-medium border border-purple-500/20">
+                  Buy + Sell
+                </span>
+              </div>
+              
+              {/* Formula */}
+              <div className="text-[10px] text-slate-400 pt-2 border-t border-slate-700">
+                {enginesCount} engine{enginesCount !== 1 ? 's' : ''} × {groupsCount} group{groupsCount !== 1 ? 's' : ''} × {logicsCount} logic{logicsCount !== 1 ? 's' : ''} × 2 (Buy/Sell) = {totalEditCount}
+              </div>
+              
+              {/* Buy/Sell Toggle */}
+              <div className="mt-3 pt-3 border-t border-slate-700">
+                <ToggleGroup
+                  type="single"
+                  value={generalEditScope === "Buy" ? "buy" : "sell"}
+                  onValueChange={(val) => {
+                    if (!val) return;
+                    if (val === "buy") setGeneralEditScope("Buy");
+                    else if (val === "sell") setGeneralEditScope("Sell");
+                  }}
+                  className="flex gap-2 w-full"
+                >
+                  <ToggleGroupItem
+                    value="buy"
+                    className={cn(
+                      "flex-1 h-9 px-4 text-sm font-medium",
+                      "data-[state=on]:bg-emerald-500/20 data-[state=on]:text-emerald-400 data-[state=on]:border-emerald-500/30",
+                      "border border-slate-600 text-slate-400 hover:text-emerald-400"
+                    )}
+                  >
+                    Buy
+                  </ToggleGroupItem>
+                  <ToggleGroupItem
+                    value="sell"
+                    className={cn(
+                      "flex-1 h-9 px-4 text-sm font-medium",
+                      "data-[state=on]:bg-rose-500/20 data-[state=on]:text-rose-400 data-[state=on]:border-rose-500/30",
+                      "border border-slate-600 text-slate-400 hover:text-rose-400"
+                    )}
+                  >
+                    Sell
+                  </ToggleGroupItem>
+                </ToggleGroup>
+              </div>
+            </div>
+          )}
+          
+          {/* No selection warning for risk management */}
+          {validCategory === "risk_management" && !hasSelection && (
+            <div className="mt-3 p-4 rounded-lg bg-slate-800/30 border border-dashed border-slate-700">
+              <div className="flex items-center gap-2 text-slate-400">
+                <AlertTriangle className="w-4 h-4" />
+                <span className="text-sm">Select engine, group, or logic from sidebar</span>
+              </div>
+            </div>
+          )}
+          
+          {/* Buy/Sell toggle for Core - showing separate Buy/Sell magic numbers */}
+          {validCategory === "general" && (
+            <div className="mt-3">
+              {renderModeSelectors(true)}
+            </div>
+          )}
+          
+          <div>
+            {(() => {
+              const fields = getRealCategoryFields(validCategory);
+              switch (validCategory) {
+                case "time": return renderTimeFilter(fields);
+                case "risk_management": return renderRiskManagement(fields);
+                case "compounding": return renderCompounding(fields);
+                case "restart_policy": return renderRestartPolicy(fields);
+                case "news": return renderNewsFilter(fields);
+                case "license": return renderLicense(fields);
+                case "general": return renderGeneralGlobal(fields);
+                default:
+                  return (
+                    <div className="grid grid-cols-2 gap-4">
+                      {fields.map((field) => (
+                        field.type === "header" ? (
+                          <div key={field.id} className="col-span-2 mt-6 mb-2 pb-1 border-b border-white/10 flex items-center gap-2">
+                            <div className="w-1 h-4 bg-primary/50 rounded-full" />
+                            <h3 className="text-sm font-semibold text-primary/90 tracking-wide uppercase">{field.label}</h3>
+                          </div>
+                        ) : (
+                          <ConfigField
+                            key={field.id}
+                            label={field.label}
+                            value={field.value}
+                            type={field.type as any}
+                            unit={(field as any).unit}
+                            description={field.description}
+                            options={(field as any).options}
+                          />
+                        )
+                      ))}
+                    </div>
+                  );
+              }
+              })()}
+          </div>
+        </div>
+      );
+    }
+
     const fields = getRealCategoryFields(selectedCategory);
 
     const content = (() => {
@@ -815,8 +1338,6 @@ export function GeneralCategories({
         case "news": return renderNewsFilter(fields);
         case "license": return renderLicense(fields);
         case "general": return renderGeneralGlobal(fields);
-        case "ui": return renderUISettings(fields);
-        case "logs": return renderLogs(fields);
         default:
           return (
             <div className="grid grid-cols-2 gap-4">
@@ -845,7 +1366,7 @@ export function GeneralCategories({
 
     return (
       <div className="space-y-3">
-        {renderModeSelectors()}
+        {renderModeSelectors(selectedCategory ? generalCategoriesList.find(c => c.id === selectedCategory)?.hasBuySell ?? true : true)}
         {content}
       </div>
     );
@@ -872,7 +1393,7 @@ export function GeneralCategories({
         </div>
       </div>
 
-      {renderModeSelectors()}
+      {renderModeSelectors(true)}
 
       {generalCategoriesList.map((category) => {
         const Icon = category.icon;

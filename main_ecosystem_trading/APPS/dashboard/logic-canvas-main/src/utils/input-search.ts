@@ -39,6 +39,8 @@ const FIELD_ALIASES: Record<string, string[]> = {
   "use_sl": ["use sl", "enable sl", "sl enabled"],
   "tp_mode": ["tp mode", "take profit mode"],
   "sl_mode": ["sl mode", "stop loss mode"],
+  "continue_tp_hit": ["continue tp", "continue tp hit", "continue trading tp", "tp continue"],
+  "continue_sl_hit": ["continue sl", "continue sl hit", "continue trading sl", "sl continue"],
   "start_level": ["start level", "startlevel", "level", "start"],
   "last_lot": ["last lot", "lastlot", "max lot", "maxlot"],
   "close_targets": ["close targets", "targets", "close targets"],

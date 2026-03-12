@@ -63,6 +63,12 @@ const FIELD_ALIASES: Record<string, string> = {
   "use tp": "use_tp",
   "use_sl": "use_sl",
   "use sl": "use_sl",
+  "continue_tp_hit": "continue_tp_hit",
+  "continue tp hit": "continue_tp_hit",
+  "continue tp": "continue_tp_hit",
+  "continue_sl_hit": "continue_sl_hit",
+  "continue sl hit": "continue_sl_hit",
+  "continue sl": "continue_sl_hit",
   // Logic-specific
   "start_level": "start_level",
   "start level": "start_level",

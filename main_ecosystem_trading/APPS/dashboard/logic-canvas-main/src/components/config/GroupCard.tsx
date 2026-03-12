@@ -23,6 +23,7 @@ interface GroupCardProps {
     targetLogicId?: string,
   ) => void;
   config: MTConfig | null;
+  configLoadId?: number;
 }
 
 const allLogics = ["POWER", "REPOWER", "SCALPER", "STOPPER", "STO", "SCA", "RPO"];
@@ -37,6 +38,7 @@ export function GroupCard({
   platform,
   onUpdateLogic,
   config,
+  configLoadId,
 }: GroupCardProps) {
   const logics = selectedLogics.length > 0
     ? allLogics.filter((l) => selectedLogics.includes(l))
@@ -187,6 +189,14 @@ export function GroupCard({
                     (l: any) => resolveLogicDirection(l) === "buy",
                   ) || matchingLogics[0];
 
+                console.log(`[GroupCard] Rendering LogicModule:`, {
+                  group,
+                  logic,
+                  engine,
+                  foundLogicConfigId: foundLogicConfig?.logic_id,
+                  matchingLogicsCount: matchingLogics.length,
+                });
+
                 return (
                   <LogicModule
                     key={`${group}-${logic}`}
@@ -200,7 +210,16 @@ export function GroupCard({
                     engineData={engineData}
                     selectedFields={selectedFields}
                     mode={mode}
+                    configLoadId={configLoadId}
                     onUpdate={(field, value, direction, targetLogicId) => {
+                      console.log(`[GroupCard] onUpdate:`, {
+                        field,
+                        value,
+                        direction,
+                        targetLogicId,
+                        logic,
+                        group,
+                      });
                       let processedValue = value;
                       if (typeof value === "string" && (value === "ON" || value === "OFF")) {
                         processedValue = value === "ON";

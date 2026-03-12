@@ -26,6 +26,7 @@ interface EngineCardProps {
   ) => void;
   mode?: 1 | 2;
   platform?: Platform;
+  configLoadId?: number;
 }
 
 const platformIndicatorClass = "bg-platform-mt4";
@@ -41,6 +42,7 @@ export function EngineCard({
   onUpdateLogic,
   mode = 1,
   platform,
+  configLoadId,
 }: EngineCardProps) {
   const [expanded, setExpanded] = useState(engine === "Engine A");
   const [expandedLogics, setExpandedLogics] = useState<string[]>(["POWER"]);
@@ -184,6 +186,7 @@ export function EngineCard({
                         engineData={engineData}
                         selectedFields={selectedFields || []}
                         mode={mode}
+                        configLoadId={configLoadId}
                         onUpdate={(field, value, direction, targetLogicId) => {
                           let processedValue = value;
                           if (

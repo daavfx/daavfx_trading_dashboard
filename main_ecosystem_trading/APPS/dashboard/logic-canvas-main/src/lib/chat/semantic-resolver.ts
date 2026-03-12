@@ -30,6 +30,8 @@ export const SEMANTIC_MAPPINGS: Record<string, FieldSemanticMapping> = {
   // Boolean fields
   use_tp: { off: 0, disabled: 0, false: 0, no: 0, on: 1, enabled: 1, true: 1, yes: 1 },
   use_sl: { off: 0, disabled: 0, false: 0, no: 0, on: 1, enabled: 1, true: 1, yes: 1 },
+  continue_tp_hit: { off: 0, disabled: 0, false: 0, no: 0, on: 1, enabled: 1, true: 1, yes: 1 },
+  continue_sl_hit: { off: 0, disabled: 0, false: 0, no: 0, on: 1, enabled: 1, true: 1, yes: 1 },
   use_trailing: { off: 0, disabled: 0, false: 0, no: 0, on: 1, enabled: 1, true: 1, yes: 1 },
   use_martingale: { off: 0, disabled: 0, false: 0, no: 0, on: 1, enabled: 1, true: 1, yes: 1 },
   active: { off: 0, disabled: 0, false: 0, no: 0, on: 1, enabled: 1, true: 1, yes: 1 },

@@ -1,6 +1,5 @@
 import type { SettingsState } from "@/contexts/SettingsContext";
 import type { MTConfig } from "@/types/mt-config";
-import { hydrateMTConfigDefaults } from "@/utils/hydrate-mt-config-defaults";
 
 export const getUseDirectPriceGrid = (settings: SettingsState): boolean => {
   const symbol = (settings.unitSymbol || "").trim().toUpperCase();
@@ -207,14 +206,6 @@ function canonicalizeLogicObject(logic: Record<string, any>): Record<string, any
 }
 
 export const canonicalizeConfigForBackend = (config: MTConfig): MTConfig => {
-  const hydrated = hydrateMTConfigDefaults(config);
-  const cloned = JSON.parse(JSON.stringify(hydrated)) as MTConfig;
-  for (const engine of cloned.engines || []) {
-    for (const group of engine.groups || []) {
-      group.logics = (group.logics || []).map((logic) =>
-        canonicalizeLogicObject(logic as unknown as Record<string, any>) as typeof logic,
-      );
-    }
-  }
-  return cloned;
+  // Single source of truth: do not mutate or hydrate on export.
+  return JSON.parse(JSON.stringify(config)) as MTConfig;
 };

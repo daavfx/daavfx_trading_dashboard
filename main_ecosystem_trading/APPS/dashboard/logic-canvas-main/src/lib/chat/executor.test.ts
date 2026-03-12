@@ -49,6 +49,8 @@ function createTestConfig(): MTConfig {
         use_sl: false,
         sl_mode: "TPSL_Points" as any,
         sl_value: 0,
+        continue_tp_hit: true,
+        continue_sl_hit: true,
         reverse_enabled: false,
         hedge_enabled: false,
         reverse_scale: 100,

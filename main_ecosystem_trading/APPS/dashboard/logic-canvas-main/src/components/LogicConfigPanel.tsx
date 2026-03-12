@@ -43,7 +43,7 @@ interface LogicConfig {
   trigger_type?: string;
   trigger_bars?: number;
   trigger_seconds?: number;
-  trigger_pips?: number;
+  trigger_points?: number;
   partial_close?: boolean;
   partial_mode?: string;
   partial_profit_threshold?: number;
@@ -64,6 +64,8 @@ interface LogicConfig {
   use_sl?: boolean;
   sl_mode?: string;
   sl_value?: number;
+  continue_tp_hit?: boolean;
+  continue_sl_hit?: boolean;
   // Reverse Reference - ONLY FIELD ADDED FOR REVERSE
   reverse_reference?: string;
   // Grid behavior
@@ -294,6 +296,9 @@ const CounterTrendAndReverseUI = ({
   );
   const [partialLevelsVisible, setPartialLevelsVisible] = useState(1);
   const [showAdvancedFields, setShowAdvancedFields] = useState(false);
+  const isOn = (val: any) => val === true || val === "ON" || val === 1;
+  const tpslActive = isOn(localConfig.use_tp) || isOn(localConfig.use_sl);
+  const exitMode = tpslActive ? "TPSL" : "Trail";
 
   return (
     <div className="space-y-4">
@@ -379,6 +384,48 @@ const CounterTrendAndReverseUI = ({
               Both Sides
             </ToggleGroupItem>
           </ToggleGroup>
+        </div>
+
+        <div className="p-3 bg-muted/30 rounded-lg border border-border/50">
+          <div className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-2">
+            <Shield className="w-3 h-3" />
+            Exit Mode
+          </div>
+          <div className="flex flex-row gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                if (tpslActive) {
+                  handleChange("use_tp", false);
+                  handleChange("use_sl", false);
+                }
+              }}
+              className={cn(
+                "flex-1 h-8 px-3 text-xs rounded-md border transition-colors",
+                exitMode === "Trail"
+                  ? "bg-violet-500/20 text-violet-500 border-violet-500/30"
+                  : "bg-background border-border hover:bg-accent",
+              )}
+            >
+              Trail
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (!tpslActive) {
+                  handleChange("use_tp", true);
+                }
+              }}
+              className={cn(
+                "flex-1 h-8 px-3 text-xs rounded-md border transition-colors",
+                exitMode === "TPSL"
+                  ? "bg-amber-500/20 text-amber-500 border-amber-500/30"
+                  : "bg-background border-border hover:bg-accent",
+              )}
+            >
+              TP/SL
+            </button>
+          </div>
         </div>
 
         {/* Trading Mode Removed - Parent controls mode. UI is identical. */}
@@ -507,12 +554,12 @@ const CounterTrendAndReverseUI = ({
               className="bg-background/50"
             />
           </LabeledField>
-          <LabeledField label="Trigger Pips" hint="pips">
+          <LabeledField label="Trigger Points" hint="pts">
             <Input
               type="number"
-              value={localConfig.trigger_pips || 0}
+              value={localConfig.trigger_points || 0}
               onChange={(e) =>
-                handleChange("trigger_pips", parseFloat(e.target.value))
+                handleChange("trigger_points", parseFloat(e.target.value))
               }
               className="bg-background/50"
             />
@@ -605,150 +652,152 @@ const CounterTrendAndReverseUI = ({
         </LabeledField>
       </CategoryCard>
 
-      {/* Trail Category */}
-      <CategoryCard title="Trail" icon={ChevronRight} color="purple">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <LabeledField label="Trail Value" hint="FX: 50 pips">
-            <Input
-              type="number"
-              value={localConfig.trail_value || 50}
-              onChange={(e) =>
-                handleChange("trail_value", parseInt(e.target.value))
-              }
-              className="bg-background/50"
-            />
-          </LabeledField>
-          <LabeledField label="Trail Start" hint="FX: 20 pips">
-            <Input
-              type="number"
-              value={localConfig.trail_start || 20}
-              onChange={(e) =>
-                handleChange("trail_start", parseInt(e.target.value))
-              }
-              className="bg-background/50"
-            />
-          </LabeledField>
-          <LabeledField label="Trail Step" hint="FX: 10 pips">
-            <Input
-              type="number"
-              value={localConfig.trail_step || 10}
-              onChange={(e) =>
-                handleChange("trail_step", parseInt(e.target.value))
-              }
-              className="bg-background/50"
-            />
-          </LabeledField>
-          <LabeledField label="Trail Method">
-            <Select
-              value={localConfig.trail_method || "Points"}
-              onValueChange={(val) => handleChange("trail_method", val)}
-            >
-              <SelectTrigger className="bg-background/50">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {TRAIL_METHODS.map((opt) => (
-                  <SelectItem key={opt} value={opt}>
-                    {opt}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </LabeledField>
-        </div>
-        <div className="grid grid-cols-1 gap-4 mt-4">
-          <LabeledField label="Trail Step Method">
-            <Select
-              value={localConfig.trail_step_method || "Step_Points"}
-              onValueChange={(val) => handleChange("trail_step_method", val)}
-            >
-              <SelectTrigger className="bg-background/50">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {TRAIL_STEP_METHODS.map((opt) => (
-                  <SelectItem key={opt} value={opt}>
-                    {opt}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </LabeledField>
-        </div>
-      </CategoryCard>
-
-      {/* Trail Advanced Category */}
-      <CategoryCard
-        title="Trail Advanced"
-        icon={Settings2}
-        color="fuchsia"
-        rightContent={
-          <div className="flex items-center gap-2">
-            <span className="text-[9px] text-muted-foreground">Levels:</span>
-            <select
-              className="text-[10px] bg-background/80 border border-border/50 rounded px-1.5 py-0.5 cursor-pointer hover:border-primary/50 transition-colors"
-              value={trailLevelsVisible}
-              onChange={(e) => {
-                const val = parseInt(e.target.value);
-                setTrailLevelsVisible(val);
-                handleChange("trail_levels", val);
-              }}
-            >
-              {[1, 2, 3, 4, 5, 6, 7].map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-            <button
-              onClick={() => setShowAdvancedFields(!showAdvancedFields)}
-              className={cn(
-                "text-[9px] flex items-center gap-1 px-1.5 py-0.5 rounded border transition-colors",
-                showAdvancedFields
-                  ? "bg-primary/10 border-primary/30 text-primary"
-                  : "bg-muted/50 border-border/50 text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {showAdvancedFields ? (
-                <Eye className="w-3 h-3" />
-              ) : (
-                <EyeOff className="w-3 h-3" />
-              )}
-              Balance
-            </button>
+      {!tpslActive && (
+        <CategoryCard title="Trail" icon={ChevronRight} color="purple">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <LabeledField label="Trail Value" hint="FX: 50 pips">
+              <Input
+                type="number"
+                value={localConfig.trail_value || 50}
+                onChange={(e) =>
+                  handleChange("trail_value", parseInt(e.target.value))
+                }
+                className="bg-background/50"
+              />
+            </LabeledField>
+            <LabeledField label="Trail Start" hint="FX: 20 pips">
+              <Input
+                type="number"
+                value={localConfig.trail_start || 20}
+                onChange={(e) =>
+                  handleChange("trail_start", parseInt(e.target.value))
+                }
+                className="bg-background/50"
+              />
+            </LabeledField>
+            <LabeledField label="Trail Step" hint="FX: 10 pips">
+              <Input
+                type="number"
+                value={localConfig.trail_step || 10}
+                onChange={(e) =>
+                  handleChange("trail_step", parseInt(e.target.value))
+                }
+                className="bg-background/50"
+              />
+            </LabeledField>
+            <LabeledField label="Trail Method">
+              <Select
+                value={localConfig.trail_method || "Points"}
+                onValueChange={(val) => handleChange("trail_method", val)}
+              >
+                <SelectTrigger className="bg-background/50">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TRAIL_METHODS.map((opt) => (
+                    <SelectItem key={opt} value={opt}>
+                      {opt}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </LabeledField>
           </div>
-        }
-      >
-        <div className="grid grid-cols-2 gap-4">
-          <LabeledField label="Trail Step Mode">
-            <Select
-              value={localConfig.trail_step_mode || "TrailStepMode_Auto"}
-              onValueChange={(val) => handleChange("trail_step_mode", val)}
-            >
-              <SelectTrigger className="bg-background/50">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {TRAIL_STEP_MODES.map((opt) => (
-                  <SelectItem key={opt} value={opt}>
-                    {opt}
-                  </SelectItem>
+          <div className="grid grid-cols-1 gap-4 mt-4">
+            <LabeledField label="Trail Step Method">
+              <Select
+                value={localConfig.trail_step_method || "Step_Points"}
+                onValueChange={(val) => handleChange("trail_step_method", val)}
+              >
+                <SelectTrigger className="bg-background/50">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TRAIL_STEP_METHODS.map((opt) => (
+                    <SelectItem key={opt} value={opt}>
+                      {opt}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </LabeledField>
+          </div>
+        </CategoryCard>
+      )}
+
+      {!tpslActive && (
+        <CategoryCard
+          title="Trail Advanced"
+          icon={Settings2}
+          color="fuchsia"
+          rightContent={
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] text-muted-foreground">Levels:</span>
+              <select
+                className="text-[10px] bg-background/80 border border-border/50 rounded px-1.5 py-0.5 cursor-pointer hover:border-primary/50 transition-colors"
+                value={trailLevelsVisible}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value);
+                  setTrailLevelsVisible(val);
+                  handleChange("trail_levels", val);
+                }}
+              >
+                {[1, 2, 3, 4, 5, 6, 7].map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
                 ))}
-              </SelectContent>
-            </Select>
-          </LabeledField>
-          <LabeledField label="Trail Step Cycle">
-            <Input
-              type="number"
-              value={localConfig.trail_step_cycle || 1}
-              onChange={(e) =>
-                handleChange("trail_step_cycle", parseInt(e.target.value))
-              }
-              className="bg-background/50"
-            />
-          </LabeledField>
-        </div>
-      </CategoryCard>
+              </select>
+              <button
+                onClick={() => setShowAdvancedFields(!showAdvancedFields)}
+                className={cn(
+                  "text-[9px] flex items-center gap-1 px-1.5 py-0.5 rounded border transition-colors",
+                  showAdvancedFields
+                    ? "bg-primary/10 border-primary/30 text-primary"
+                    : "bg-muted/50 border-border/50 text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {showAdvancedFields ? (
+                  <Eye className="w-3 h-3" />
+                ) : (
+                  <EyeOff className="w-3 h-3" />
+                )}
+                Balance
+              </button>
+            </div>
+          }
+        >
+          <div className="grid grid-cols-2 gap-4">
+            <LabeledField label="Trail Step Mode">
+              <Select
+                value={localConfig.trail_step_mode || "TrailStepMode_Auto"}
+                onValueChange={(val) => handleChange("trail_step_mode", val)}
+              >
+                <SelectTrigger className="bg-background/50">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TRAIL_STEP_MODES.map((opt) => (
+                    <SelectItem key={opt} value={opt}>
+                      {opt}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </LabeledField>
+            <LabeledField label="Trail Step Cycle">
+              <Input
+                type="number"
+                value={localConfig.trail_step_cycle || 1}
+                onChange={(e) =>
+                  handleChange("trail_step_cycle", parseInt(e.target.value))
+                }
+                className="bg-background/50"
+              />
+            </LabeledField>
+          </div>
+        </CategoryCard>
+      )}
 
       {/* Close Partial Category */}
       <CategoryCard
@@ -819,81 +868,77 @@ const CounterTrendAndReverseUI = ({
         </div>
       </CategoryCard>
 
-      {/* TPSL Category */}
-      <CategoryCard title="TPSL" icon={Shield} color="amber">
-        <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
-          <div className="flex items-center justify-between pt-5">
-            <Label className="text-[11px] font-medium text-muted-foreground">
-              Use TP
-            </Label>
-            <Switch
-              checked={localConfig.use_tp ?? false}
-              onCheckedChange={(checked) => handleChange("use_tp", checked)}
-            />
+      {tpslActive && (
+        <CategoryCard title="TPSL" icon={Shield} color="amber">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="flex items-center justify-between pt-5">
+              <Label className="text-[11px] font-medium text-muted-foreground">
+                Use TP
+              </Label>
+              <Switch
+                checked={isOn(localConfig.use_tp)}
+                onCheckedChange={(checked) => handleChange("use_tp", checked)}
+              />
+            </div>
+            <LabeledField label="TP Value">
+              <Input
+                type="number"
+                value={localConfig.tp_value || 0}
+                onChange={(e) =>
+                  handleChange("tp_value", parseFloat(e.target.value))
+                }
+                className="bg-background/50"
+                disabled={!isOn(localConfig.use_tp)}
+              />
+            </LabeledField>
+            <div className="flex items-center justify-between pt-5">
+              <Label className="text-[11px] font-medium text-muted-foreground">
+                Use SL
+              </Label>
+              <Switch
+                checked={isOn(localConfig.use_sl)}
+                onCheckedChange={(checked) => handleChange("use_sl", checked)}
+              />
+            </div>
+            <LabeledField label="SL Value">
+              <Input
+                type="number"
+                value={localConfig.sl_value || 0}
+                onChange={(e) =>
+                  handleChange("sl_value", parseFloat(e.target.value))
+                }
+                className="bg-background/50"
+                disabled={!isOn(localConfig.use_sl)}
+              />
+            </LabeledField>
+            <div className="flex items-center justify-between pt-5">
+              <Label className="text-[11px] font-medium text-muted-foreground">
+                Continue Trading TP Hit
+              </Label>
+              <Switch
+                checked={isOn(localConfig.continue_tp_hit)}
+                onCheckedChange={(checked) =>
+                  handleChange("continue_tp_hit", checked)
+                }
+              />
+            </div>
+            <div className="flex items-center justify-between pt-5">
+              <Label className="text-[11px] font-medium text-muted-foreground">
+                Continue Trading SL Hit
+              </Label>
+              <Switch
+                checked={isOn(localConfig.continue_sl_hit)}
+                onCheckedChange={(checked) =>
+                  handleChange("continue_sl_hit", checked)
+                }
+              />
+            </div>
           </div>
-          <LabeledField label="TP Mode">
-            <Select
-              value={localConfig.tp_mode || "TPSL_Points"}
-              onValueChange={(val) => handleChange("tp_mode", val)}
-            >
-              <SelectTrigger className="bg-background/50">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="TPSL_Points">Points</SelectItem>
-                <SelectItem value="TPSL_Percent">Percent</SelectItem>
-              </SelectContent>
-            </Select>
-          </LabeledField>
-          <LabeledField label="TP Value">
-            <Input
-              type="number"
-              value={localConfig.tp_value || 0}
-              onChange={(e) =>
-                handleChange("tp_value", parseFloat(e.target.value))
-              }
-              className="bg-background/50"
-            />
-          </LabeledField>
-          <div className="flex items-center justify-between pt-5">
-            <Label className="text-[11px] font-medium text-muted-foreground">
-              Use SL
-            </Label>
-            <Switch
-              checked={localConfig.use_sl ?? false}
-              onCheckedChange={(checked) => handleChange("use_sl", checked)}
-            />
-          </div>
-          <LabeledField label="SL Mode">
-            <Select
-              value={localConfig.sl_mode || "TPSL_Points"}
-              onValueChange={(val) => handleChange("sl_mode", val)}
-            >
-              <SelectTrigger className="bg-background/50">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="TPSL_Points">Points</SelectItem>
-                <SelectItem value="TPSL_Percent">Percent</SelectItem>
-              </SelectContent>
-            </Select>
-          </LabeledField>
-          <LabeledField label="SL Value">
-            <Input
-              type="number"
-              value={localConfig.sl_value || 0}
-              onChange={(e) =>
-                handleChange("sl_value", parseFloat(e.target.value))
-              }
-              className="bg-background/50"
-            />
-          </LabeledField>
-        </div>
-        <p className="mt-3 text-[10px] text-muted-foreground/80">
-          Trail and TP/SL can run together. The first trigger hit closes.
-          For dummy broker protection, keep TP/SL ON with far values.
-        </p>
-      </CategoryCard>
+          <p className="mt-3 text-[10px] text-muted-foreground/80">
+            TP/SL is points-only and overrides trails for this logic direction.
+          </p>
+        </CategoryCard>
+      )}
     </div>
   );
 };
@@ -916,9 +961,18 @@ export const LogicConfigPanel = ({
   }, [config]);
 
   const handleChange = (field: string, value: any) => {
-    const newConfig = { ...localConfig, [field]: value };
+    const updates: Record<string, any> = { [field]: value };
+    if (field === "use_tp" || field === "tp_value") {
+      updates.tp_mode = "TPSL_Points";
+    }
+    if (field === "use_sl" || field === "sl_value") {
+      updates.sl_mode = "TPSL_Points";
+    }
+    const newConfig = { ...localConfig, ...updates };
     setLocalConfig(newConfig);
     onChange(field, value);
+    if (updates.tp_mode) onChange("tp_mode", updates.tp_mode);
+    if (updates.sl_mode) onChange("sl_mode", updates.sl_mode);
   };
 
   // HEDGE MODE - Minimal UI

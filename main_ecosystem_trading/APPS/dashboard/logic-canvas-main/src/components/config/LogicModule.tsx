@@ -49,6 +49,7 @@ interface LogicModuleProps {
     targetLogicId?: string,
   ) => void;
   mode?: 1 | 2;
+  configLoadId?: number;
 }
 
 const logicMeta: Record<
@@ -305,6 +306,7 @@ export function LogicModule({
   selectedFields = [],
   onUpdate,
   mode = 1,
+  configLoadId,
 }: LogicModuleProps) {
   const engineSafe = engine || "";
   const nameSafe = name || "";
@@ -362,19 +364,24 @@ export function LogicModule({
   // Initialize field values only once using useRef to store initial values
   const initialFieldsRef = useRef<any[]>([]);
 
-const logicConfigKey = logicConfig?.logic_id || 'no-config';
+  const logicConfigKey = logicConfig?.logic_id || 'no-config';
   const initializedRef = useRef<string | null>(null);
+  const prevLogicConfigKeyRef = useRef<string | null>(null);
+  // Track user-modified values to preserve them across logic switches
+  const userModifiedRef = useRef<Record<string, Record<string, any>>>({});
 
   const updateSideValues = (
     side: "buy" | "sell",
     updater: SideValues | ((prev: SideValues) => SideValues),
   ) => {
+    console.log(`[LogicModule] updateSideValues called:`, { side, activeDirection });
     setFieldValuesBySide((prev) => {
       const prevSide = prev[side] || {};
       const nextSide =
         typeof updater === "function"
           ? (updater as (prev: SideValues) => SideValues)(prevSide)
           : { ...prevSide, ...updater };
+      console.log(`[LogicModule] updateSideValues setting:`, { side, keys: Object.keys(nextSide) });
       return { ...prev, [side]: nextSide };
     });
   };
@@ -383,43 +390,6 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
     updater: SideValues | ((prev: SideValues) => SideValues),
   ) => {
     updateSideValues(activeDirection, updater);
-  };
-
-  const normalizeModeState = (
-    source: SideValues,
-  ): SideValues => {
-    const mode = isEngineAPower
-      ? "Counter Trend"
-      : normalizeTradingModeValue(source["trading_mode"]);
-    const next = { ...source, trading_mode: mode };
-
-    if (mode === "Hedge") {
-      next["hedge_enabled"] = "ON";
-      next["reverse_enabled"] = "OFF";
-      next["hedge_reference"] = next["hedge_reference"] || "Logic_None";
-      next["hedge_scale"] = next["hedge_scale"] ?? 50;
-      next["reverse_reference"] = "Logic_None";
-      next["reverse_scale"] = 100;
-      return next;
-    }
-
-    if (mode === "Reverse") {
-      next["reverse_enabled"] = "ON";
-      next["hedge_enabled"] = "OFF";
-      next["reverse_reference"] = next["reverse_reference"] || "Logic_None";
-      next["reverse_scale"] = next["reverse_scale"] ?? 100;
-      next["hedge_reference"] = "Logic_None";
-      next["hedge_scale"] = 50;
-      return next;
-    }
-
-    next["reverse_enabled"] = "OFF";
-    next["hedge_enabled"] = "OFF";
-    next["reverse_reference"] = "Logic_None";
-    next["hedge_reference"] = "Logic_None";
-    next["reverse_scale"] = 100;
-    next["hedge_scale"] = 50;
-    return next;
   };
 
   const resolveLogicDirection = (logic: any): "buy" | "sell" | null => {
@@ -483,17 +453,32 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
   };
   
   useEffect(() => {
-    // Skip if already initialized with same config (prevents reset on field changes)
-    if (
-      initializedRef.current === logicConfigKey &&
-      (Object.keys(fieldValuesBySide.buy || {}).length > 0 ||
-        Object.keys(fieldValuesBySide.sell || {}).length > 0)
-    ) {
+    console.log(`[LogicModule] useEffect triggered:`, {
+      logicConfigKey,
+      nameSafe,
+      engineSafe,
+      hasBuyValues: Object.keys(fieldValuesBySide.buy || {}).length,
+      hasSellValues: Object.keys(fieldValuesBySide.sell || {}).length,
+      logicConfigId: logicConfig?.logic_id,
+      initialized: initializedRef.current,
+      prevKey: prevLogicConfigKeyRef.current,
+    });
+
+    const isFirstInit = initializedRef.current === null;
+    const shouldReinit = configLoadId !== undefined && configLoadId !== initializedRef.current;
+    
+    if (isFirstInit) {
+      console.log(`[LogicModule] FIRST INITIALIZATION from logicConfig:`, logicConfig?.logic_id);
+      initializedRef.current = configLoadId ?? logicConfigKey;
+      prevLogicConfigKeyRef.current = logicConfigKey;
+    } else if (shouldReinit) {
+      console.log(`[LogicModule] REINITIALIZING due to config load:`, logicConfig?.logic_id);
+      initializedRef.current = configLoadId ?? logicConfigKey;
+    } else {
+      // Preserve user-typed values when switching groups/logics
+      console.log(`[LogicModule] SKIPPING reinit - preserving user values`);
       return;
     }
-
-    // Re-initialize when logicConfig changes (e.g., when loading a new setfile)
-    initializedRef.current = logicConfigKey;
 
     const isGroup1 =
       group === "Group 1" ||
@@ -513,11 +498,6 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
 
       if (field.type === "toggle" && typeof val === "boolean")
         val = val ? "ON" : "OFF";
-      if (val === undefined) {
-        val = field.default;
-        if (field.type === "toggle" && typeof val === "boolean")
-          val = val ? "ON" : "OFF";
-      }
 
       return { ...field, value: val };
     });
@@ -535,6 +515,9 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
       const directionalRow = findDirectionalLogic(side);
       const sourceLogic = directionalRow || logicConfig || null;
       const values: Record<string, any> = {};
+      const missingFields: string[] = [];
+      const directionalOverrides: string[] = [];
+      const suffix = side === "buy" ? "_b" : "_s";
 
       newInitialFields.forEach((f) => {
         values[f.id] = f.value;
@@ -547,9 +530,25 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
 
       newInitialFields.forEach((field) => {
         const source = sourceLogic as Record<string, any>;
+        const directionalKey = `${field.id}${suffix}`;
         let rawValue: any;
-        rawValue = source[field.id];
-        if (rawValue === undefined) return;
+
+        if (Object.prototype.hasOwnProperty.call(source, directionalKey)) {
+          rawValue = source[directionalKey];
+          if (rawValue !== undefined) {
+            directionalOverrides.push(directionalKey);
+          }
+        }
+
+        if (rawValue === undefined) {
+          rawValue = source[field.id];
+        }
+
+        if (rawValue === undefined) {
+          missingFields.push(field.id);
+          return;
+        }
+
         values[field.id] =
           field.type === "toggle" && typeof rawValue === "boolean"
             ? rawValue
@@ -558,22 +557,39 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
             : rawValue;
       });
 
+      if (missingFields.length > 0 || directionalOverrides.length > 0) {
+        console.log(`[LogicModule] buildSideValues detail`, {
+          side,
+          logicId: sourceLogic?.logic_id,
+          missingFields,
+          directionalOverrides,
+        });
+      }
+
       return values;
     };
 
-    const buyValues = normalizeModeState(buildSideValues("buy"));
-    const sellValues = normalizeModeState(buildSideValues("sell"));
+    const buyValues = buildSideValues("buy");
+    const sellValues = buildSideValues("sell");
+
+    console.log(`[LogicModule] Setting values:`, {
+      buyKeys: Object.keys(buyValues),
+      sellKeys: Object.keys(sellValues),
+      sampleBuy: { grid: buyValues.grid, initial_lot: buyValues.initial_lot },
+      sampleSell: { grid: sellValues.grid, initial_lot: sellValues.initial_lot },
+    });
 
     setActiveDirection(defaultDirection);
     setFieldValuesBySide({ buy: buyValues, sell: sellValues });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [logicConfig, logicConfigKey, groups, nameSafe]);
+  }, [logicConfig, logicConfigKey, groups, nameSafe, configLoadId]);
 
   if (!engineSafe || !nameSafe) {
     return null;
   }
 
   const handleFieldChange = (id: string, value: any) => {
+    console.log(`[LogicModule] handleFieldChange:`, { id, value, activeDirection });
     const updates: Record<string, any> = { [id]: value };
 
     // Side effects for Trading Mode
@@ -602,6 +618,14 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
       }
     }
 
+    if (id === "use_tp" || id === "tp_value") {
+      updates["tp_mode"] = "TPSL_Points";
+    }
+
+    if (id === "use_sl" || id === "sl_value") {
+      updates["sl_mode"] = "TPSL_Points";
+    }
+
     // Always update local UI state for the visible field
     updateActiveSideValues((prev) => ({ ...prev, ...updates }));
 
@@ -620,6 +644,9 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
   const tradingMode = isEngineAPower
     ? "Counter Trend"
     : normalizeTradingModeValue(fieldValues["trading_mode"]);
+  const isOn = (val: any) => val === "ON" || val === true || val === 1;
+  const tpslActive = isOn(fieldValues["use_tp"]) || isOn(fieldValues["use_sl"]);
+  const exitMode = tpslActive ? "TPSL" : "Trail";
 
   // Filter and Construct Fields
   let displayFields = initialFieldsRef.current.map((f) => ({
@@ -630,6 +657,17 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
   displayFields = displayFields.filter((f) => {
     // Always hide the legacy toggle fields (controlled by Trading Mode selector)
     if (f.id === "reverse_enabled" || f.id === "hedge_enabled") return false;
+
+    // Hide reverse_reference unless in Reverse mode
+    if (f.id === "reverse_reference" && tradingMode !== "Reverse") return false;
+
+    if (f.id === "tp_mode" || f.id === "sl_mode") return false;
+
+    if (tpslActive) {
+      if (f.category === "Trail" || f.category === "Trail Advanced") return false;
+    } else {
+      if (f.category === "TPSL") return false;
+    }
 
     // Trading Mode Filtering
     if (f.category === "Reverse/Hedge") {
@@ -801,13 +839,19 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
                       fieldValues["use_sl"] === true,
                     sl_mode: fieldValues["sl_mode"] || "TPSL_Points",
                     sl_value: parseFloat(fieldValues["sl_value"]) || 0.0,
+                    continue_tp_hit:
+                      fieldValues["continue_tp_hit"] === "ON" ||
+                      fieldValues["continue_tp_hit"] === true,
+                    continue_sl_hit:
+                      fieldValues["continue_sl_hit"] === "ON" ||
+                      fieldValues["continue_sl_hit"] === true,
                     trigger_type:
-                      fieldValues["trigger_type"] || "0 Trigger_Immediate",
+                      fieldValues["trigger_type"] || "Trigger_Immediate",
                     trigger_bars: parseInt(fieldValues["trigger_bars"]) || 0,
                     trigger_seconds:
-                      parseInt(fieldValues["trigger_minutes"]) || 0,
-                    trigger_pips:
-                      parseFloat(fieldValues["trigger_pips"]) || 0.0,
+                      parseInt(fieldValues["trigger_seconds"]) || 0,
+                    trigger_points:
+                      parseFloat(fieldValues["trigger_points"]) || 0.0,
                     grid_behavior:
                       fieldValues["grid_behavior"] || "Counter Trend",
                     trading_mode: tradingMode,
@@ -856,15 +900,20 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
                       use_sl: "use_sl",
                       sl_mode: "sl_mode",
                       sl_value: "sl_value",
+                      continue_tp_hit: "continue_tp_hit",
+                      continue_sl_hit: "continue_sl_hit",
                       trigger_type: "trigger_type",
                       trigger_bars: "trigger_bars",
-                      trigger_seconds: "trigger_minutes",
-                      trigger_pips: "trigger_pips",
+                      trigger_seconds: "trigger_seconds",
+                      trigger_points: "trigger_points",
+                      opcount_ref: "opcount_ref",
+                      start_op_count: "start_op_count",
                       grid_behavior: "grid_behavior",
                       partial_close: "close_partial",
                       partial_mode: "close_partial_mode",
                       partial_profit_threshold: "close_partial_profit_threshold",
                       start_level: "start_level",
+                      start_level_ref: "start_level_ref",
                     };
 
                     const mappedField = fieldMapping[field] || field;
@@ -927,10 +976,15 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
                         use_sl: "OFF",
                         sl_mode: "TPSL_Points",
                         sl_value: "200",
-                        trigger_type: "0 Trigger_Immediate",
+                        continue_tp_hit: "ON",
+                        continue_sl_hit: "ON",
+                        trigger_type: "Trigger_Immediate",
                         trigger_bars: "0",
-                        trigger_minutes: "0",
-                        trigger_pips: "0",
+                        trigger_seconds: "0",
+                        trigger_points: "0",
+                        opcount_ref: "EngineA_POWER_Buy",
+                        start_op_count: "0",
+                        start_level_ref: "EngineA_POWER_Buy",
                         grid_behavior: "CounterTrend",
                         hedge_reference: "Logic_None",
                         hedge_scale: "50",
@@ -962,9 +1016,10 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
                 />
               )}
 
-              {/* Show standard category-based UI for Counter Trend and Reverse */}
-              {tradingMode !== "Hedge" &&
-                categories.map((category) => {
+              {/* Show standard category-based UI for Counter Trend and Reverse - 2 columns */}
+              {tradingMode !== "Hedge" && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {categories.map((category) => {
                   const categoryFields = filteredFields.filter(
                     (f) => (f.category || "General") === category,
                   );
@@ -979,6 +1034,18 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
                   const isClosePartial = category === "Close Partial";
                   const isTriggers = category === "Triggers";
                   const isLogic = category === "Logic";
+                  const isCore = category === "Core";
+                  const isLots = category === "Lots";
+                  const isRestart = category === "Restart";
+                  const isPowerEngineA = engineSafe.includes("Engine A") && nameSafe.toUpperCase() === "POWER";
+
+                  // Get current trigger type from field values
+                  const rawTriggerType = fieldValues["trigger_type"] || "Trigger_Immediate";
+                  // Strip prefix if present (e.g., "0 Trigger_Immediate" -> "Trigger_Immediate")
+                  const currentTriggerType = rawTriggerType.replace(/^\d+\s+/, "");
+
+                  // Get current direction (Buy/Sell) from trading_mode field
+                  const currentDirection = fieldValues["trading_direction"] || fieldValues["trading_mode"] || "";
 
                   // Trail Advanced: Filter by level and advancedOnly
                   const isTrailAdvanced = category === "Trail Advanced";
@@ -1001,7 +1068,74 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
                           }
                           return level <= partialLevelsVisible;
                         })
-                      : categoryFields;
+                      : isCore
+                        ? categoryFields.filter((f) => {
+                            // Hide start_level for Power Engine A
+                            if (f.id === "start_level") {
+                              return !isPowerEngineA;
+                            }
+                            // Hide start_level_ref for Power Engine A
+                            if (f.id === "start_level_ref") {
+                              return !isPowerEngineA;
+                            }
+                            // Hide reverse_reference for Power Engine A (doesn't use trading modes)
+                            if (f.id === "reverse_reference") {
+                              return !isPowerEngineA;
+                            }
+                            // Filter start_level_ref based on direction (Buy/Sell)
+                            if (f.id === "start_level_ref") {
+                              const isBuyDirection = currentDirection.toLowerCase().includes("buy") || currentDirection === "Buy";
+                              // Filter options: show only matching direction + exclude self
+                              return true; // Let the dropdown handle filtering in the UI
+                            }
+                            return true;
+                          })
+                      : isTriggers
+                        ? categoryFields.filter((f) => {
+                            // Always show trigger_type dropdown
+                            if (f.id === "trigger_type") return true;
+                            // Hide start_level for Power Engine A (both buy and sell)
+                            if (f.id === "start_level") {
+                              return !isPowerEngineA;
+                            }
+                            // Show the extra trigger field only if its type is selected
+                            if (currentTriggerType === "Trigger_AfterBars" && f.id === "trigger_bars") return true;
+                            if (currentTriggerType === "Trigger_AfterSeconds" && f.id === "trigger_seconds") return true;
+                            if (currentTriggerType === "Trigger_AfterPips" && f.id === "trigger_points") return true;
+                            if (currentTriggerType === "Trigger_OpCount" && f.id === "opcount_ref") return true;
+                            if (currentTriggerType === "Trigger_OpCount" && f.id === "start_op_count") return true;
+                            // TimeFilter and NewsFilter use global settings - no extra fields needed
+                            if (currentTriggerType === "Trigger_TimeFilter" || currentTriggerType === "Trigger_NewsFilter") return true;
+                            return false;
+                          })
+                        : isLots
+                          ? categoryFields.filter((f) => {
+                              // Hide reset_lot_on_restart for Power Engine A (always resets lot)
+                              if (f.id === "reset_lot_on_restart") {
+                                return !isPowerEngineA;
+                              }
+                              return true;
+                            })
+                        : isRestart
+                          ? categoryFields.filter((f) => {
+                              // Power Engine A: show restart_policy_power, close_non_power_on_power_close, hold_timeout_seconds
+                              // Non-Power: show restart_policy_non_power, hold_timeout_seconds
+                              // Only show for Group 1
+                              const isGroup1 = group === "Group 1" || group === 1 || (groups && groups.some(g => g === "Group 1" || g === 1));
+                              if (!isGroup1) return false;
+                              
+                              if (isPowerEngineA) {
+                                // Hide non-power restart fields
+                                if (f.id === "restart_policy_non_power") return false;
+                                return true;
+                              } else {
+                                // Hide power restart fields
+                                if (f.id === "restart_policy_power") return false;
+                                if (f.id === "close_non_power_on_power_close") return false;
+                                return true;
+                              }
+                            })
+                        : categoryFields;
 
                   // Skip if no fields to display
                   if (displayFields.length === 0) return null;
@@ -1010,30 +1144,29 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
                     <div
                       key={category}
                       className={cn(
-                        "rounded-xl border p-3.5 shadow-sm relative overflow-hidden group transition-all duration-300",
-                        "hover:shadow-lg hover:-translate-y-0.5",
+                        "rounded-lg border p-2 shadow-sm relative overflow-hidden group transition-all duration-200",
                         style.bg,
                         style.border,
-                        `border-l-[3px] ${style.color.replace("text-", "border-")}`,
+                        `border-l-[2px] ${style.color.replace("text-", "border-")}`,
                       )}
                     >
-                      {/* Glassmorphism gradient overlay - animated on hover */}
-                      <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent opacity-50 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                      {/* Subtle gradient overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-transparent opacity-30 group-hover:opacity-60 transition-opacity duration-300 pointer-events-none" />
 
-                      <div className="flex items-center gap-2.5 mb-3.5 relative z-10">
+                      <div className="flex items-center gap-1.5 mb-2 relative z-10">
                         <div
                           className={cn(
-                            "p-1.5 rounded-lg border shadow-sm backdrop-blur-md transition-all duration-300 group-hover:scale-110",
+                            "p-1 rounded border shadow-sm backdrop-blur-sm transition-all duration-200",
                             style.bg.replace("/5", "/20"),
                             style.border,
                             style.color,
                           )}
                         >
-                          <Icon className="w-3.5 h-3.5" />
+                          <Icon className="w-3 h-3" />
                         </div>
                         <div
                           className={cn(
-                            "text-[11px] uppercase tracking-wider font-bold text-foreground/80 group-hover:text-foreground transition-colors",
+                            "text-[10px] uppercase tracking-wider font-semibold text-foreground/80 group-hover:text-foreground transition-colors",
                             style.color,
                           )}
                         >
@@ -1117,15 +1250,15 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
                         )}
                       </div>
 
-                      <div className="grid grid-cols-3 gap-x-4 gap-y-3 relative z-10">
-                        {/* Custom Trading Direction Control for Mode Selectors */}
+                      <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-3 gap-y-2 relative z-10">
+                        {/* Custom Trading Direction & Exit Mode for Mode Selectors */}
 {category === "Mode Selectors" && (
-                          <div className="col-span-3 mb-2 p-3 bg-muted/30 rounded-lg border border-border/50">
-                            <div className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-2">
-                              <ArrowLeftRight className="w-3 h-3" />
-                              Trading Direction
+                          <div className="col-span-2 lg:col-span-3 mb-1">
+                            {/* Trading Direction */}
+                            <div className="flex items-center gap-1 mb-1">
+                              <span className="text-[9px] text-muted-foreground/70 uppercase tracking-wider">Direction</span>
                             </div>
-                            <div className="flex flex-row gap-2">
+                            <div className="flex flex-row gap-1 mb-2">
                               <button
                                 type="button"
                                 onClick={() => {
@@ -1137,10 +1270,10 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
                                   setActiveDirection("buy");
                                 }}
                                 className={cn(
-                                  "flex-1 h-8 px-3 text-xs rounded-md border transition-colors",
+                                  "flex-1 h-6 px-2 text-[10px] rounded-md border transition-all duration-200",
                                   activeDirection === "buy"
-                                    ? "bg-emerald-500/20 text-emerald-500 border-emerald-500/30"
-                                    : "bg-background border-border hover:bg-accent"
+                                    ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/40 font-medium"
+                                    : "bg-slate-800/50 border-slate-700 text-slate-400 hover:bg-slate-700/50 hover:text-slate-300"
                                 )}
                               >
                                 Buy
@@ -1156,13 +1289,53 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
                                   setActiveDirection("sell");
                                 }}
                                 className={cn(
-                                  "flex-1 h-8 px-3 text-xs rounded-md border transition-colors",
+                                  "flex-1 h-6 px-2 text-[10px] rounded-md border transition-all duration-200",
                                   activeDirection === "sell"
-                                    ? "bg-rose-500/20 text-rose-500 border-rose-500/30"
-                                    : "bg-background border-border hover:bg-accent"
+                                    ? "bg-rose-500/15 text-rose-400 border-rose-500/40 font-medium"
+                                    : "bg-slate-800/50 border-slate-700 text-slate-400 hover:bg-slate-700/50 hover:text-slate-300"
                                 )}
                               >
                                 Sell
+                              </button>
+                            </div>
+                            
+                            {/* Exit Mode */}
+                            <div className="flex items-center gap-1 mb-1">
+                              <span className="text-[9px] text-muted-foreground/70 uppercase tracking-wider">Exit</span>
+                            </div>
+                            <div className="flex flex-row gap-1">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (tpslActive) {
+                                    handleFieldChange("use_tp", "OFF");
+                                    handleFieldChange("use_sl", "OFF");
+                                  }
+                                }}
+                                className={cn(
+                                  "flex-1 h-6 px-2 text-[10px] rounded-md border transition-all duration-200",
+                                  exitMode === "Trail"
+                                    ? "bg-violet-500/15 text-violet-400 border-violet-500/40 font-medium"
+                                    : "bg-slate-800/50 border-slate-700 text-slate-400 hover:bg-slate-700/50 hover:text-slate-300",
+                                )}
+                              >
+                                Trail
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (!tpslActive) {
+                                    handleFieldChange("use_tp", "ON");
+                                  }
+                                }}
+                                className={cn(
+                                  "flex-1 h-6 px-2 text-[10px] rounded-md border transition-all duration-200",
+                                  exitMode === "TPSL"
+                                    ? "bg-amber-500/15 text-amber-400 border-amber-500/40 font-medium"
+                                    : "bg-slate-800/50 border-slate-700 text-slate-400 hover:bg-slate-700/50 hover:text-slate-300",
+                                )}
+                              >
+                                TP/SL
                               </button>
                             </div>
                           </div>
@@ -1201,6 +1374,8 @@ const logicConfigKey = logicConfig?.logic_id || 'no-config';
                     </div>
                   );
                 })}
+                </div>
+              )}
             </div>
           </motion.div>
         )}

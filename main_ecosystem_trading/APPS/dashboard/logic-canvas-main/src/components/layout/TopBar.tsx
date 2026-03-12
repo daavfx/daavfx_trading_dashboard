@@ -38,8 +38,6 @@ interface TopBarProps {
   onViewModeChange: (mode: ViewMode) => void;
   lastSavedLabel?: string;
   currentConfig: any;
-  magicNumber?: number;
-  onMagicNumberChange?: (value: number) => void;
   platform?: Platform;
   onPlatformChange?: (p: Platform) => void;
   onLoadConfig?: (config: MTConfig) => void;
@@ -63,8 +61,6 @@ export function TopBar({
   onViewModeChange,
   lastSavedLabel,
   currentConfig,
-  magicNumber,
-  onMagicNumberChange,
   platform,
   onPlatformChange,
   onLoadConfig,
@@ -219,27 +215,6 @@ export function TopBar({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-      </div>
-
-      {/* Global Controls: Magic Number */}
-      <div className="flex items-center gap-4">
-        {/* Magic Number */}
-        <div className="flex items-center gap-2 px-4 py-1.5 rounded-full border-[0.5px] bg-background/30 border-border/30">
-          <div className="flex items-center gap-1.5 text-primary">
-            <Hash className="w-3.5 h-3.5" />
-            <span className="text-[10px] font-medium uppercase tracking-wider">Magic</span>
-          </div>
-          <Input
-            type="number"
-            value={magicNumber ?? ""}
-            onChange={(e) => {
-              const val = parseInt(e.target.value) || 0;
-              onMagicNumberChange?.(val);
-            }}
-            className="h-7 w-20 text-xs font-mono bg-background border-border/60 focus:border-primary/50"
-            placeholder="777"
-          />
-        </div>
       </div>
 
       {/* Search */}

@@ -105,13 +105,15 @@ export interface LogicConfig {
   // === PARTIAL CLOSE - 4 LEVELS (4 × 8 = 32 fields) ===
   partials: PartialCloseConfig[]; // Array of 4
   
-  // === TP/SL SETTINGS (6 fields) ===
+  // === TP/SL SETTINGS (8 fields) ===
   useTP: boolean;
   takeProfit: number;
   tpMode: TPSLMode;
   useSL: boolean;
   stopLoss: number;
   slMode: TPSLMode;
+  continueTPHit: boolean;
+  continueSLHit: boolean;
   
   // === BREAK-EVEN SETTINGS (4 fields) ===
   breakEvenMode: BreakevenMode;
@@ -250,6 +252,12 @@ export interface GlobalConfig {
   showTrailLines: boolean;
   colorBuy: string;
   colorSell: string;
+  
+  // Restart Policy (aggregated from per-logic Group 1 settings)
+  restartPolicyPower: string;
+  restartPolicyNonPower: string;
+  closeNonPowerOnPowerClose: boolean;
+  holdTimeoutSeconds: number;
   
   // License
   licenseKey: string;
