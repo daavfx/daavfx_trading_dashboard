@@ -407,27 +407,29 @@ export function GridBatchEditor({
                />
                <svg className="absolute left-2 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
              </div>
-             {/* Buy/Sell Filter - Compact */}
-             <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-neutral-900/40 border border-neutral-700/50 shrink-0">
+             {/* Buy/Sell Filter - Full Width */}
+             <div className="flex items-center gap-0.5 px-2 py-1 rounded bg-neutral-900/40 border border-neutral-700/50 shrink-0">
                <button
                  onClick={() => handleSideChange("buy")}
-                 className={`px-2 py-0.5 text-[10px] font-medium rounded transition-all ${
+                 className={`px-3 py-1 text-[10px] font-medium rounded transition-all flex items-center gap-1 ${
                    selectedSides === "buy" || selectedSides === "both"
-                     ? "bg-emerald-500/20 text-emerald-400"
-                     : "text-neutral-500 hover:text-neutral-300"
+                     ? "bg-emerald-500/30 text-emerald-400 border border-emerald-500/30"
+                     : "text-neutral-400 hover:text-neutral-300 hover:bg-neutral-800"
                  }`}
                >
-                 B
+                 <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"/></svg>
+                 Buy
                </button>
                <button
                  onClick={() => handleSideChange("sell")}
-                 className={`px-2 py-0.5 text-[10px] font-medium rounded transition-all ${
+                 className={`px-3 py-1 text-[10px] font-medium rounded transition-all flex items-center gap-1 ${
                    selectedSides === "sell" || selectedSides === "both"
-                     ? "bg-rose-500/20 text-rose-400"
-                     : "text-neutral-500 hover:text-neutral-300"
+                     ? "bg-rose-500/30 text-rose-400 border border-rose-500/30"
+                     : "text-neutral-400 hover:text-neutral-300 hover:bg-neutral-800"
                  }`}
                >
-                 S
+                 <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"/></svg>
+                 Sell
                </button>
              </div>
            </div>
