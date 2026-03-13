@@ -31,16 +31,44 @@ interface GridBatchEditorProps {
 }
 
 const availableInputs = [
+  // Core
+  { id: "start_level", label: "Start Level", type: "number", category: "Core" },
+  { id: "start_level_ref", label: "Start Level Ref", type: "number", category: "Core" },
+  { id: "enabled", label: "Enabled", type: "toggle", category: "Core" },
+  { id: "trigger_type", label: "Trigger Type", type: "select", category: "Core" },
+  // Lots
+  { id: "initial_lot", label: "Initial Lot", type: "number", category: "Lots" },
+  { id: "last_lot", label: "Last Lot", type: "number", category: "Lots" },
+  { id: "multiplier", label: "Multiplier", type: "number", category: "Lots" },
+  { id: "lot_decimal", label: "Lot Decimal", type: "number", category: "Lots" },
+  { id: "max_lot", label: "Max Lot", type: "number", category: "Lots" },
+  // Grid
   { id: "grid_level", label: "Grid Level", type: "number", category: "Grid" },
-  { id: "lot_size", label: "Lot Size", type: "number", category: "Lots" },
-  { id: "take_profit", label: "Take Profit", type: "number", category: "TP/SL" },
-  { id: "stop_loss", label: "Stop Loss", type: "number", category: "TP/SL" },
-  { id: "multiplier", label: "Multiplier", type: "number", category: "Grid" },
-  { id: "trail_start", label: "Trail Start", type: "number", category: "Trail" },
-  { id: "trail_step", label: "Trail Step", type: "number", category: "Trail" },
-  { id: "max_orders", label: "Max Orders", type: "number", category: "Orders" },
   { id: "distance", label: "Distance", type: "number", category: "Grid" },
   { id: "pip_step", label: "Pip Step", type: "number", category: "Grid" },
+  { id: "max_orders", label: "Max Orders", type: "number", category: "Grid" },
+  { id: "grid_method", label: "Grid Method", type: "select", category: "Grid" },
+  // Trail
+  { id: "trail_enabled", label: "Trail Enabled", type: "toggle", category: "Trail" },
+  { id: "trail_start", label: "Trail Start", type: "number", category: "Trail" },
+  { id: "trail_step", label: "Trail Step", type: "number", category: "Trail" },
+  { id: "trail_method", label: "Trail Method", type: "select", category: "Trail" },
+  // TP/SL
+  { id: "take_profit", label: "Take Profit", type: "number", category: "TP/SL" },
+  { id: "stop_loss", label: "Stop Loss", type: "number", category: "TP/SL" },
+  { id: "use_tp", label: "Use TP", type: "toggle", category: "TP/SL" },
+  { id: "use_sl", label: "Use SL", type: "toggle", category: "TP/SL" },
+  // Close Partial
+  { id: "close_partial_enabled", label: "Close Partial Enabled", type: "toggle", category: "Close Partial" },
+  { id: "close_partial_levels", label: "Close Partial Levels", type: "number", category: "Close Partial" },
+  { id: "partial_mode", label: "Partial Mode", type: "select", category: "Close Partial" },
+  // Safety
+  { id: "max_spread", label: "Max Spread", type: "number", category: "Safety" },
+  { id: "max_slippage", label: "Max Slippage", type: "number", category: "Safety" },
+  { id: "magic_number", label: "Magic Number", type: "number", category: "Safety" },
+  // Restart
+  { id: "restart_enabled", label: "Restart Enabled", type: "toggle", category: "Restart" },
+  { id: "restart_timeout", label: "Restart Timeout", type: "number", category: "Restart" },
 ];
 
 const FORMULA_PRESETS = [
@@ -363,12 +391,38 @@ export function GridBatchEditor({
         <div className="col-span-4 space-y-3">
           <div className="text-xs text-muted-foreground mb-2">1. Select Input</div>
           
-          <Input
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Search inputs..."
-            className="h-8 text-xs"
-          />
+          {/* Search and Side Filter Row */}
+          <div className="flex items-center gap-2">
+            <Input
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Search inputs..."
+              className="h-8 text-xs flex-1"
+            />
+            {/* Buy/Sell Filter - Compact */}
+            <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-neutral-900/40 border border-neutral-700/50">
+              <button
+                onClick={() => handleSideChange("buy")}
+                className={`px-2 py-0.5 text-[10px] font-medium rounded transition-all ${
+                  selectedSides === "buy" || selectedSides === "both"
+                    ? "bg-emerald-500/20 text-emerald-400"
+                    : "text-neutral-500 hover:text-neutral-300"
+                }`}
+              >
+                B
+              </button>
+              <button
+                onClick={() => handleSideChange("sell")}
+                className={`px-2 py-0.5 text-[10px] font-medium rounded transition-all ${
+                  selectedSides === "sell" || selectedSides === "both"
+                    ? "bg-rose-500/20 text-rose-400"
+                    : "text-neutral-500 hover:text-neutral-300"
+                }`}
+              >
+                S
+              </button>
+            </div>
+          </div>
 
           <div className="border border-border/40 rounded bg-card/20 max-h-[300px] overflow-y-auto">
             {Object.entries(groupedInputs).map(([category, inputs]) => (
