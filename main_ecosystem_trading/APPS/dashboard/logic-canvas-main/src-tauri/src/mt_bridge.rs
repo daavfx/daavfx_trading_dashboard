@@ -5863,6 +5863,11 @@ fn parse_parameter_name(name: &str) -> Option<ParsedParameter> {
         return None;
     }
 
+    // Special case: GroupPowerStart parameters are handled separately
+    if name.contains("GroupPowerStart") {
+        return None;
+    }
+
     let rest = &name[7..]; // Skip "gInput_"
 
     // Split by underscores to analyze the structure
@@ -5922,7 +5927,7 @@ fn parse_parameter_name(name: &str) -> Option<ParsedParameter> {
     };
 
     // Map logic abbreviation to full name
-    // Setfile uses single-letter codes: C=SCA, O=STO, P=Power, R=Repower, S=Scalper, T=Stopper, X=RPO
+    // Setfile uses single-letter codes: C=SCA, O=STO, P=Power, R=Repower, S=Scalper, T=Stopper/ST, X=RPO
     let logic_name = match logic_abbr {
         "C" => "SCA",
         "O" => "STO",
@@ -5930,6 +5935,7 @@ fn parse_parameter_name(name: &str) -> Option<ParsedParameter> {
         "R" => "Repower",
         "S" => "Scalper",
         "T" => "Stopper",
+        "ST" => "Stopper",  // Support both T and ST for Stopper
         "X" => "RPO",
         // Also support full names if ever used
         "STO" => "STO",
