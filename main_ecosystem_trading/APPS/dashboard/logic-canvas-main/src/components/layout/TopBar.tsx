@@ -316,7 +316,7 @@ export function TopBar({
           >
             <div className="max-h-64 overflow-y-auto p-1">
               {searchResults.slice(0, 12).map((item, idx) => (
-                <button
+                <div
                   key={`${item.type}-${item.id}-${idx}`}
                   onMouseDown={(e) => {
                     e.preventDefault();
@@ -356,7 +356,7 @@ export function TopBar({
                       />
                     </button>
                   )}
-                </button>
+                </div>
               ))}
             </div>
           </div>
