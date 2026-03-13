@@ -18,9 +18,35 @@ export const withUseDirectPriceGrid = (config: MTConfig, settings: SettingsState
 };
 
 export const normalizeConfigForExport = (config: any): any => {
-  // Single source of truth: do not coerce values at export time.
-  // Export should serialize exactly what is in state.
-  return config;
+  // Clamp numeric values to i32 range before sending to Rust backend
+  const MAX_I32 = 2147483647; // 2^31 - 1
+  const MIN_I32 = -2147483648; // -2^31
+  
+  const clampValue = (val: any): any => {
+    if (typeof val === 'number' && !Number.isNaN(val) && !Number.isFinite(val)) {
+      // Handle Infinity
+      return val > 0 ? MAX_I32 : MIN_I32;
+    }
+    if (typeof val === 'number' && Number.isInteger(val)) {
+      if (val > MAX_I32) return MAX_I32;
+      if (val < MIN_I32) return MIN_I32;
+    }
+    return val;
+  };
+  
+  const clampObject = (obj: any): any => {
+    if (obj === null || obj === undefined) return obj;
+    if (Array.isArray(obj)) return obj.map(clampObject);
+    if (typeof obj !== 'object') return clampValue(obj);
+    
+    const result: any = {};
+    for (const key of Object.keys(obj)) {
+      result[key] = clampObject(obj[key]);
+    }
+    return result;
+  };
+  
+  return clampObject(config);
 };
 
 const LOGIC_KEY_ALIASES: Record<string, string> = {

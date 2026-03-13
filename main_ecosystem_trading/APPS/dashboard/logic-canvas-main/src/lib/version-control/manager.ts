@@ -45,24 +45,21 @@ export class VersionControlManager {
     }
   }
 
-  // Persist to localStorage
+  // Persist to sessionStorage (cleared on tab close, no quota issues)
   private saveToStorage(): void {
     try {
       const data = JSON.stringify(this.state);
-      localStorage.setItem(STORAGE_KEY, data);
+      sessionStorage.setItem(STORAGE_KEY, data);
     } catch (e) {
-      if (e instanceof DOMException && e.name === 'QuotaExceededError') {
-        console.warn('[VersionControl] Storage quota exceeded, clearing old snapshots...');
-        // Keep only the last 5 snapshots when quota is exceeded
-        if (this.state.snapshots.length > 5) {
-          this.state.snapshots = this.state.snapshots.slice(-5);
-          try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
-          } catch (e2) {
-            console.error('[VersionControl] Still cannot save after clearing, disabling storage');
-            // Clear all but current snapshot
-            this.state.snapshots = this.state.snapshots.slice(-1);
-          }
+      console.warn('[VersionControl] Storage failed, clearing old snapshots...');
+      // Keep only the last 5 snapshots when quota is exceeded
+      if (this.state.snapshots.length > 5) {
+        this.state.snapshots = this.state.snapshots.slice(-5);
+        try {
+          sessionStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+        } catch (e2) {
+          console.error('[VersionControl] Still cannot save after clearing, disabling storage');
+          this.state.snapshots = this.state.snapshots.slice(-1);
         }
       } else {
         console.warn('[VersionControl] Failed to save to storage:', e);
@@ -70,10 +67,10 @@ export class VersionControlManager {
     }
   }
 
-  // Load from localStorage
+  // Load from sessionStorage
   private loadFromStorage(): VersionControlState | null {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
+      const saved = sessionStorage.getItem(STORAGE_KEY);
       if (saved) {
         return JSON.parse(saved);
       }
