@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronRight,
@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ConfigField } from "./ConfigField";
+import { MultiSelectLogicDropdown } from "./MultiSelectLogicDropdown";
 import {
   Tooltip,
   TooltipContent,
@@ -357,7 +358,7 @@ export function LogicModule({
   const suffixMap: Record<string, string> = {
     POWER: "Power",
     REPOWER: "Repower",
-    SCALPER: "Scalp",
+    SCALPER: "Scalper",
     STOPPER: "Stopper",
     STO: "STO",
     SCA: "SCA",
@@ -655,18 +656,41 @@ export function LogicModule({
     // Always update local UI state for the visible field
     updateActiveSideValues((prev) => ({ ...prev, ...updates }));
 
-    // Apply edit only to currently selected side.
-    const editDirection: "buy" | "sell" = activeDirection;
-    const targetLogicId = getTargetLogicId(editDirection);
+     // Apply edit only to currently selected side.
+     const editDirection: "buy" | "sell" = activeDirection;
+     const targetLogicId = getTargetLogicId(editDirection);
 
-    // Propagate only the base field ID upward and let parent
-    // handle mapping to buy/sell specific storage using direction hint
-    Object.entries(updates).forEach(([fieldId, fieldValue]) => {
-      onUpdate?.(fieldId, fieldValue, editDirection, targetLogicId);
-    });
-  };
+     // Propagate only the base field ID upward and let parent
+     // handle mapping to buy/sell specific storage using direction hint
+     Object.entries(updates).forEach(([fieldId, fieldValue]) => {
+       onUpdate?.(fieldId, fieldValue, editDirection, targetLogicId);
+     });
+   };
 
-  // Current Mode - Trail Only
+   // Close Targets Multi-Select - calculate default value and handler
+   const closeTargetsDefault = useMemo(() => {
+     const fieldKey = activeDirection === "buy" ? "Buy_CloseTargets" : "Sell_CloseTargets";
+     const current = fieldValues[fieldKey] || "";
+     // Use logicSuffix which is properly mapped (e.g., "Scalper" not "Scalp")
+     const eng = engineLetter || "A";
+     const nm = logicSuffix || "Power";
+     const defaultVal = `Logic_${eng}_${nm}`;
+     // If current has values, use them; otherwise default to current logic only
+     if (current) {
+       const parts = current.split(",").filter(Boolean);
+       return parts.length > 0 ? parts : [defaultVal];
+     }
+     // Default to ONLY the current logic being edited
+     return [defaultVal];
+   }, [activeDirection, fieldValues, engineLetter, logicSuffix]);
+
+   const handleCloseTargetsChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+     const fieldKey = activeDirection === "buy" ? "Buy_CloseTargets" : "Sell_CloseTargets";
+     const selected = Array.from(e.target.selectedOptions).map(o => o.value);
+     handleFieldChange(fieldKey, selected.join(","));
+   };
+
+   // Current Mode - Trail Only
   const tradingMode = isEngineAPower
     ? "Counter Trend"
     : normalizeTradingModeValue(fieldValues["trading_mode"]);
@@ -1445,6 +1469,20 @@ export function LogicModule({
                               }}
                             />
                           ))}
+
+                         {/* Close Targets Multi-Select - show when trail_method = AVG_Percent */}
+                         {isTrail && fieldValues["trail_method"] === "AVG_Percent" && (
+                           <div className="col-span-2">
+                             <label className="text-[10px] text-neutral-400 block mb-1">
+                               {activeDirection === "buy" ? "Buy" : "Sell"} Close Targets
+                             </label>
+                             <MultiSelectLogicDropdown
+                               value={fieldValues[activeDirection === "buy" ? "Buy_CloseTargets" : "Sell_CloseTargets"] || ""}
+                               onChange={(val) => handleFieldChange(activeDirection === "buy" ? "Buy_CloseTargets" : "Sell_CloseTargets", val)}
+                               currentLogicId={currentLogicId}
+                             />
+                           </div>
+                         )}
                       </div>
                     </div>
                   );
