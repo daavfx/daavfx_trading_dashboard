@@ -132,24 +132,18 @@ export function GeneralCategories({
         return;
     }
 
-    if (categoryId === "general" && fieldId === "trading_direction") {
-        if (value === "Buy Only") {
-            newConfig.allow_buy = true;
-            newConfig.allow_sell = false;
-        } else if (value === "Sell Only") {
-            newConfig.allow_buy = false;
-            newConfig.allow_sell = true;
-        } else {
-            newConfig.allow_buy = false;
-            newConfig.allow_sell = false;
-        }
+    if (categoryId === "general" && (fieldId === "allow_buy" || fieldId === "allow_sell")) {
+        // Handle allow_buy and allow_sell as direct boolean toggles
+        const boolValue = value === "ON" || value === true || value === 1 || value === "true";
+        newConfig[fieldId] = boolValue;
+        onConfigChange(newConfig);
+        return;
     } else if (categoryId === "general" && fieldId === "magic_number") {
-        // Route magic_number to _buy or _sell based on current toggle
-        if (generalEditScope === "Buy") {
-            newConfig.magic_number_buy = typeof value === "string" ? parseInt(value, 10) : value;
-        } else {
-            newConfig.magic_number_sell = typeof value === "string" ? parseInt(value, 10) : value;
-        }
+        // Set magic_number as a single general value (applies to both Buy and Sell)
+        newConfig.magic_number = typeof value === "string" ? parseInt(value, 10) : value;
+        // Also update both variants for backward compatibility
+        newConfig.magic_number_buy = newConfig.magic_number;
+        newConfig.magic_number_sell = newConfig.magic_number;
     } else if (categoryId === "risk_management") {
         const setRisk = (key: "risk_management" | "risk_management_b" | "risk_management_s") => {
           if (!newConfig[key]) newConfig[key] = {};
@@ -381,31 +375,33 @@ export function GeneralCategories({
               onChange: createHandler(field.id)
             }));
             
-        // Show magic number based on Buy/Sell toggle
+        // Show magic number as a single general input (applies to both Buy and Sell)
         fields.unshift({
           id: "magic_number",
-          label: generalEditScope === "Buy" ? "Magic Number (Buy)" : "Magic Number (Sell)",
-          value: generalEditScope === "Buy" ? generalConfig.magic_number_buy : generalConfig.magic_number_sell,
+          label: "Magic Number",
+          value: generalConfig.magic_number_buy ?? generalConfig.magic_number ?? 777,
           type: "number" as const,
-          description: generalEditScope === "Buy" ? "Terminal-facing magic number for Buy cycles" : "Terminal-facing magic number for Sell cycles",
+          description: "Terminal-facing magic number for trade identification",
           onChange: createHandler("magic_number"),
         });
 
-        // Compute direction
-        let direction = "Disabled";
-        if (generalConfig.allow_buy && generalConfig.allow_sell) direction = "Buy Only";
-        else if (generalConfig.allow_buy) direction = "Buy Only";
-        else if (generalConfig.allow_sell) direction = "Sell Only";
-        
+        // Add separate Buy/Sell enable toggles at the top
         fields.unshift({
-            id: "trading_direction",
-            label: "Trading Direction",
-            value: direction,
-            type: "segmented" as any,
-            description: "Control whether the EA can open Buy or Sell trades",
-            options: ["Buy Only", "Sell Only", "Disabled"],
-            onChange: createHandler("trading_direction")
-        } as any);
+            id: "allow_sell",
+            label: "Sell Enabled",
+            value: generalConfig.allow_sell ? "ON" : "OFF",
+            type: "toggle" as const,
+            description: "Enable EA to open SELL orders",
+            onChange: createHandler("allow_sell")
+        });
+        fields.unshift({
+            id: "allow_buy",
+            label: "Buy Enabled",
+            value: generalConfig.allow_buy ? "ON" : "OFF",
+            type: "toggle" as const,
+            description: "Enable EA to open BUY orders",
+            onChange: createHandler("allow_buy")
+        });
 
         // Add UI Settings and Logs as headers
         fields.push({
