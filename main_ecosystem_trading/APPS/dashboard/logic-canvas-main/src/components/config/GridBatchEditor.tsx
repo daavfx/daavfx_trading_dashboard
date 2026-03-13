@@ -274,6 +274,13 @@ export function GridBatchEditor({
     // console.log("Copy to next input");
   };
 
+  // Add Buy/Sell toggle state
+  const [selectedSides, setSelectedSides] = useState<"buy" | "sell" | "both">("both");
+
+  const handleSideChange = (side: "buy" | "sell" | "both") => {
+    setSelectedSides(side);
+  };
+
   if (rows.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -298,7 +305,50 @@ export function GridBatchEditor({
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          {/* Selected Items Display */}
+          <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+            {selectedEngines.length > 0 && (
+              <span className="px-1.5 py-0.5 bg-blue-500/10 text-blue-400 rounded border border-blue-500/20">
+                {selectedEngines.length} Engine{selectedEngines.length > 1 ? 's' : ''}
+              </span>
+            )}
+            {selectedGroups.length > 0 && (
+              <span className="px-1.5 py-0.5 bg-purple-500/10 text-purple-400 rounded border border-purple-500/20">
+                {selectedGroups.length} Group{selectedGroups.length > 1 ? 's' : ''}
+              </span>
+            )}
+            {selectedLogics.length > 0 && (
+              <span className="px-1.5 py-0.5 bg-amber-500/10 text-amber-400 rounded border border-amber-500/20">
+                {selectedLogics.length} Logic{selectedLogics.length > 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
+          
+          {/* Buy/Sell Toggle */}
+          <div className="flex items-center gap-1 px-1 py-0.5 rounded bg-neutral-900/40 border border-neutral-700/50">
+            <button
+              onClick={() => handleSideChange("buy")}
+              className={`px-2 py-1 text-[10px] font-medium rounded transition-all ${
+                selectedSides === "buy" || selectedSides === "both"
+                  ? "bg-emerald-500/20 text-emerald-400"
+                  : "text-neutral-500 hover:text-neutral-300"
+              }`}
+            >
+              Buy
+            </button>
+            <button
+              onClick={() => handleSideChange("sell")}
+              className={`px-2 py-1 text-[10px] font-medium rounded transition-all ${
+                selectedSides === "sell" || selectedSides === "both"
+                  ? "bg-rose-500/20 text-rose-400"
+                  : "text-neutral-500 hover:text-neutral-300"
+              }`}
+            >
+              Sell
+            </button>
+          </div>
+          
           {previewMode && (
             <span className="text-[10px] px-2 py-1 bg-amber-500/10 text-amber-400 rounded border border-amber-500/20">
               Preview Mode
