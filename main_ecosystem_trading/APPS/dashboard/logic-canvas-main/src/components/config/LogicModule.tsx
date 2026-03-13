@@ -510,6 +510,11 @@ export function LogicModule({
       const configKey = field.id as keyof LogicConfig;
       let val = config[configKey];
 
+      // Fall back to default if value is not set in config
+      if (val === undefined || val === null) {
+        val = field.default;
+      }
+
       if (field.type === "toggle" && typeof val === "boolean")
         val = val ? "ON" : "OFF";
 
@@ -556,6 +561,11 @@ export function LogicModule({
 
         if (rawValue === undefined) {
           rawValue = source[field.id];
+        }
+
+        // Fall back to default if still undefined
+        if (rawValue === undefined) {
+          rawValue = field.default;
         }
 
         if (rawValue === undefined) {
@@ -741,6 +751,8 @@ export function LogicModule({
   const categoriesSet = new Set(
     filteredFields.map((f) => f.category || "General"),
   );
+  // Always include Mode Selectors category for Buy/Sell toggle
+  categoriesSet.add("Mode Selectors");
   const categories = CATEGORY_ORDER.filter((cat) =>
     categoriesSet.has(cat as any),
   );
