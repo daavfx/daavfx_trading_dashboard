@@ -324,6 +324,7 @@ pub struct TimePrioritySettings {
 pub struct SessionConfig {
     #[serde(default)]
     pub session_number: i32,
+    #[serde(default)]
     pub enabled: bool,
     pub day: i32,
     pub start_hour: i32,
@@ -346,6 +347,7 @@ pub struct SessionConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct NewsFilterConfig {
+    #[serde(default)]
     pub enabled: bool,
     pub api_key: String,
     pub api_url: String,
@@ -416,6 +418,7 @@ impl MTConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroupConfig {
     pub group_number: u8, // 1-20 (all groups supported)
+    #[serde(default)]
     pub enabled: bool,
 
     // ===== GROUP TRIGGER (Groups 2-20 only) =====
@@ -454,6 +457,9 @@ fn default_strategy_trail() -> String {
 fn default_mode_counter_trend() -> String {
     "Counter Trend".to_string()
 }
+fn default_tpsl_points() -> String {
+    "TPSL_Points".to_string()
+}
 fn default_close_partial_cycle() -> i32 {
     1
 }
@@ -469,6 +475,7 @@ pub struct LogicConfig {
     // METADATA (3 fields)
     pub logic_name: String,
     pub logic_id: String,
+    #[serde(default)]
     pub enabled: bool,
 
     // ===== BASE PARAMS (8 fields) =====
@@ -534,11 +541,75 @@ pub struct LogicConfig {
     pub group_order_count_reference_b: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub group_order_count_reference_s: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub start_level_ref: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub start_level_ref_b: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub start_level_ref_s: Option<String>,
     pub reset_lot_on_restart: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reset_lot_on_restart_b: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reset_lot_on_restart_s: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub restart_policy_power: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub restart_policy_non_power: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub close_non_power_on_power_close: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hold_timeout_seconds: Option<i32>,
+
+    // ===== TPSL SETTINGS (6 fields + Buy/Sell variants) =====
+    #[serde(default)]
+    pub use_tp: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub use_tp_b: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub use_tp_s: Option<bool>,
+    #[serde(default = "default_tpsl_points")]
+    pub tp_mode: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tp_mode_b: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tp_mode_s: Option<String>,
+    #[serde(default)]
+    pub tp_value: f64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tp_value_b: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tp_value_s: Option<f64>,
+    #[serde(default)]
+    pub use_sl: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub use_sl_b: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub use_sl_s: Option<bool>,
+    #[serde(default = "default_tpsl_points")]
+    pub sl_mode: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sl_mode_b: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sl_mode_s: Option<String>,
+    #[serde(default)]
+    pub sl_value: f64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sl_value_b: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sl_value_s: Option<f64>,
+    #[serde(default = "default_true")]
+    pub continue_tp_hit: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub continue_tp_hit_b: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub continue_tp_hit_s: Option<bool>,
+    #[serde(default = "default_true")]
+    pub continue_sl_hit: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub continue_sl_hit_b: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub continue_sl_hit_s: Option<bool>,
 
     // ===== MODE SELECTORS (Dashboard Only / Mapped) =====
     #[serde(default = "default_strategy_trail")]
@@ -972,6 +1043,24 @@ pub struct LogicConfig {
     pub trigger_pips_b: Option<f64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub trigger_pips_s: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trigger_points: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trigger_points_b: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trigger_points_s: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub opcount_ref: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub opcount_ref_b: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub opcount_ref_s: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub start_op_count: Option<i32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub start_op_count_b: Option<i32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub start_op_count_s: Option<i32>,
 }
 
 fn default_scale() -> f64 {
@@ -2111,6 +2200,145 @@ pub fn export_set_file(
                     if logic.reset_lot_on_restart { 1 } else { 0 }
                 ));
 
+                lines.push(format!(
+                    "gInput_UseTP_{}={}",
+                    suffix,
+                    if logic.use_tp { 1 } else { 0 }
+                ));
+                lines.push(format!(
+                    "gInput_TPMode_{}={}",
+                    suffix,
+                    encode_tpsl_mode(&logic.tp_mode)
+                ));
+                lines.push(format!(
+                    "gInput_TPValue_{}={:.1}",
+                    suffix,
+                    logic.tp_value
+                ));
+                if let Some(v) = logic.use_tp_b {
+                    lines.push(format!(
+                        "gInput_UseTP_{}_B={}",
+                        suffix,
+                        if v { 1 } else { 0 }
+                    ));
+                }
+                if let Some(v) = logic.use_tp_s {
+                    lines.push(format!(
+                        "gInput_UseTP_{}_S={}",
+                        suffix,
+                        if v { 1 } else { 0 }
+                    ));
+                }
+                if let Some(ref v) = logic.tp_mode_b {
+                    lines.push(format!(
+                        "gInput_TPMode_{}_B={}",
+                        suffix,
+                        encode_tpsl_mode(v)
+                    ));
+                }
+                if let Some(ref v) = logic.tp_mode_s {
+                    lines.push(format!(
+                        "gInput_TPMode_{}_S={}",
+                        suffix,
+                        encode_tpsl_mode(v)
+                    ));
+                }
+                if let Some(v) = logic.tp_value_b {
+                    lines.push(format!("gInput_TPValue_{}_B={:.1}", suffix, v));
+                }
+                if let Some(v) = logic.tp_value_s {
+                    lines.push(format!("gInput_TPValue_{}_S={:.1}", suffix, v));
+                }
+
+                lines.push(format!(
+                    "gInput_UseSL_{}={}",
+                    suffix,
+                    if logic.use_sl { 1 } else { 0 }
+                ));
+                lines.push(format!(
+                    "gInput_SLMode_{}={}",
+                    suffix,
+                    encode_tpsl_mode(&logic.sl_mode)
+                ));
+                lines.push(format!(
+                    "gInput_SLValue_{}={:.1}",
+                    suffix,
+                    logic.sl_value
+                ));
+                if let Some(v) = logic.use_sl_b {
+                    lines.push(format!(
+                        "gInput_UseSL_{}_B={}",
+                        suffix,
+                        if v { 1 } else { 0 }
+                    ));
+                }
+                if let Some(v) = logic.use_sl_s {
+                    lines.push(format!(
+                        "gInput_UseSL_{}_S={}",
+                        suffix,
+                        if v { 1 } else { 0 }
+                    ));
+                }
+                if let Some(ref v) = logic.sl_mode_b {
+                    lines.push(format!(
+                        "gInput_SLMode_{}_B={}",
+                        suffix,
+                        encode_tpsl_mode(v)
+                    ));
+                }
+                if let Some(ref v) = logic.sl_mode_s {
+                    lines.push(format!(
+                        "gInput_SLMode_{}_S={}",
+                        suffix,
+                        encode_tpsl_mode(v)
+                    ));
+                }
+                if let Some(v) = logic.sl_value_b {
+                    lines.push(format!("gInput_SLValue_{}_B={:.1}", suffix, v));
+                }
+                if let Some(v) = logic.sl_value_s {
+                    lines.push(format!("gInput_SLValue_{}_S={:.1}", suffix, v));
+                }
+
+                lines.push(format!(
+                    "gInput_ContinueTPHit_{}={}",
+                    suffix,
+                    if logic.continue_tp_hit { 1 } else { 0 }
+                ));
+                if let Some(v) = logic.continue_tp_hit_b {
+                    lines.push(format!(
+                        "gInput_ContinueTPHit_{}_B={}",
+                        suffix,
+                        if v { 1 } else { 0 }
+                    ));
+                }
+                if let Some(v) = logic.continue_tp_hit_s {
+                    lines.push(format!(
+                        "gInput_ContinueTPHit_{}_S={}",
+                        suffix,
+                        if v { 1 } else { 0 }
+                    ));
+                }
+                lines.push(format!(
+                    "gInput_ContinueSLHit_{}={}",
+                    suffix,
+                    if logic.continue_sl_hit { 1 } else { 0 }
+                ));
+                if let Some(v) = logic.continue_sl_hit_b {
+                    lines.push(format!(
+                        "gInput_ContinueSLHit_{}_B={}",
+                        suffix,
+                        if v { 1 } else { 0 }
+                    ));
+                }
+                if let Some(v) = logic.continue_sl_hit_s {
+                    lines.push(format!(
+                        "gInput_ContinueSLHit_{}_S={}",
+                        suffix,
+                        if v { 1 } else { 0 }
+                    ));
+                }
+
                 // Reverse/Hedge per-logic (V17.04+ full structure)
                 lines.push(format!(
                     "gInput_G{}_{}_ReverseEnabled={}",
@@ -2246,6 +2474,22 @@ pub fn export_set_file(
                 if let Some(tp) = logic.trigger_pips {
                     lines.push(format!("gInput_TriggerPips_{}={:.1}", suffix, tp));
                 }
+                if let Some(tp) = logic.trigger_points {
+                    lines.push(format!("gInput_TriggerPoints_{}={:.1}", suffix, tp));
+                }
+                if let Some(soc) = logic.start_op_count {
+                    lines.push(format!("gInput_StartOpCount_{}={}", suffix, soc));
+                }
+                if let Some(ocr) = &logic.opcount_ref {
+                    if !ocr.is_empty() {
+                        lines.push(format!("gInput_OpCountRef_{}={}", suffix, ocr));
+                    }
+                }
+                if let Some(slr) = &logic.start_level_ref {
+                    if !slr.is_empty() {
+                        lines.push(format!("gInput_StartLevelRef_{}={}", suffix, slr));
+                    }
+                }
 
                 lines.push(String::new());
             }
@@ -2354,7 +2598,7 @@ pub fn export_massive_v19_setfile(
     lines.push(format!("; Format: gInput_{{Group}}_{{Engine}}{{Logic}}_{{Direction}}_{{Param}}"));
     lines.push(format!("; Total Logic Inputs: {}", V19_TOTAL_LOGIC_INPUTS));
     lines.push(format!(
-        "; Contract: 630 logic-directions, ~45,480 logic inputs total, Group 1 Power=74 fields, other Group 1 rows=75, Groups 2-15=72"
+        "; Contract: 630 logic-directions, ~49,260 logic inputs total, Group 1 Power=80 fields, other Group 1 rows=81, Groups 2-15=78"
     ));
     lines.push(String::new());
 
@@ -3161,6 +3405,50 @@ pub fn export_massive_v19_setfile(
                         key_trigger_pips,
                         trigger_pips_fallback
                     ));
+                    let key_trigger_points =
+                        format!("gInput_{}_{}_{}_TriggerPoints", group_num, v19_suffix, direction);
+                    let trigger_points_fallback = logic
+                        .trigger_points
+                        .map(|v| format!("{:.1}", v))
+                        .unwrap_or_else(|| "".to_string());
+                    lines.push(format!(
+                        "{}={}",
+                        key_trigger_points,
+                        trigger_points_fallback
+                    ));
+                    let key_start_op_count =
+                        format!("gInput_{}_{}_{}_StartOpCount", group_num, v19_suffix, direction);
+                    let start_op_count_fallback = logic
+                        .start_op_count
+                        .map(|v| v.to_string())
+                        .unwrap_or_else(|| "".to_string());
+                    lines.push(format!(
+                        "{}={}",
+                        key_start_op_count,
+                        start_op_count_fallback
+                    ));
+                    let key_opcount_ref =
+                        format!("gInput_{}_{}_{}_OpCountRef", group_num, v19_suffix, direction);
+                    let opcount_ref_fallback = logic
+                        .opcount_ref
+                        .clone()
+                        .unwrap_or_else(|| "".to_string());
+                    lines.push(format!(
+                        "{}={}",
+                        key_opcount_ref,
+                        opcount_ref_fallback
+                    ));
+                    let key_start_level_ref =
+                        format!("gInput_{}_{}_{}_StartLevelRef", group_num, v19_suffix, direction);
+                    let start_level_ref_fallback = logic
+                        .start_level_ref
+                        .clone()
+                        .unwrap_or_else(|| "".to_string());
+                    lines.push(format!(
+                        "{}={}",
+                        key_start_level_ref,
+                        start_level_ref_fallback
+                    ));
 
                     let order_count_reference_export = if group_num == 1 {
                         logic.order_count_reference.clone()
@@ -3210,6 +3498,105 @@ pub fn export_massive_v19_setfile(
                         v19_suffix,
                         direction,
                         if logic.reset_lot_on_restart { 1 } else { 0 }
+                    ));
+
+                    let dir_use_tp = if *direction == "Buy" {
+                        logic.use_tp_b.unwrap_or(logic.use_tp)
+                    } else {
+                        logic.use_tp_s.unwrap_or(logic.use_tp)
+                    };
+                    let dir_tp_mode = if *direction == "Buy" {
+                        logic.tp_mode_b.clone().unwrap_or_else(|| logic.tp_mode.clone())
+                    } else {
+                        logic.tp_mode_s.clone().unwrap_or_else(|| logic.tp_mode.clone())
+                    };
+                    let dir_tp_value = if *direction == "Buy" {
+                        logic.tp_value_b.unwrap_or(logic.tp_value)
+                    } else {
+                        logic.tp_value_s.unwrap_or(logic.tp_value)
+                    };
+                    let dir_use_sl = if *direction == "Buy" {
+                        logic.use_sl_b.unwrap_or(logic.use_sl)
+                    } else {
+                        logic.use_sl_s.unwrap_or(logic.use_sl)
+                    };
+                    let dir_sl_mode = if *direction == "Buy" {
+                        logic.sl_mode_b.clone().unwrap_or_else(|| logic.sl_mode.clone())
+                    } else {
+                        logic.sl_mode_s.clone().unwrap_or_else(|| logic.sl_mode.clone())
+                    };
+                    let dir_sl_value = if *direction == "Buy" {
+                        logic.sl_value_b.unwrap_or(logic.sl_value)
+                    } else {
+                        logic.sl_value_s.unwrap_or(logic.sl_value)
+                    };
+
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_UseTP={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        if dir_use_tp { 1 } else { 0 }
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_TPMode={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        encode_tpsl_mode(&dir_tp_mode)
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_TPValue={:.1}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        dir_tp_value
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_UseSL={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        if dir_use_sl { 1 } else { 0 }
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_SLMode={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        encode_tpsl_mode(&dir_sl_mode)
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_SLValue={:.1}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        dir_sl_value
+                    ));
+
+                    let dir_continue_tp_hit = if *direction == "Buy" {
+                        logic.continue_tp_hit_b.unwrap_or(logic.continue_tp_hit)
+                    } else {
+                        logic.continue_tp_hit_s.unwrap_or(logic.continue_tp_hit)
+                    };
+                    let dir_continue_sl_hit = if *direction == "Buy" {
+                        logic.continue_sl_hit_b.unwrap_or(logic.continue_sl_hit)
+                    } else {
+                        logic.continue_sl_hit_s.unwrap_or(logic.continue_sl_hit)
+                    };
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_ContinueTPHit={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        if dir_continue_tp_hit { 1 } else { 0 }
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_ContinueSLHit={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        if dir_continue_sl_hit { 1 } else { 0 }
                     ));
 
                     let partial_enabled = [Some(logic.close_partial), logic.close_partial_2, logic.close_partial_3, logic.close_partial_4];
@@ -4918,10 +5305,16 @@ fn normalize_trigger_type(raw: &str) -> String {
         "Trigger_Immediate" => "0".to_string(),
         "Trigger_AfterBars" => "1".to_string(),
         "Trigger_AfterSeconds" => "2".to_string(),
-        "Trigger_AfterPips" => "3".to_string(),
+        "Trigger_AfterPoints" => "3".to_string(),
+        "Trigger_OpCount" => "7".to_string(),
         "Trigger_TimeFilter" => "4".to_string(),
         "Trigger_NewsFilter" => "5".to_string(),
         "Trigger_PowerAOppositeCount" => "6".to_string(),
+        // Legacy mappings (with numeric prefixes)
+        "0 Trigger_Immediate" => "0".to_string(),
+        "1 Trigger_AfterBars" => "1".to_string(),
+        "2 Trigger_AfterSeconds" => "2".to_string(),
+        "3 Trigger_AfterPips" => "3".to_string(),
         _ => "0".to_string(),
     }
 }
@@ -4950,6 +5343,14 @@ fn encode_trigger_mode(raw: &str) -> i32 {
     match normalize_trigger_mode(raw).as_str() {
         "TriggerMode_FirstTick" => 1,
         "TriggerMode_WaitBar" => 2,
+        _ => 0,
+    }
+}
+
+fn encode_tpsl_mode(raw: &str) -> i32 {
+    match raw {
+        "TPSL_Price" => 1,
+        "TPSL_Percent" => 2,
         _ => 0,
     }
 }
@@ -6211,9 +6612,62 @@ fn build_logic_config(
     }
     let group_order_count_reference_b = get_dir_string(&["GroupOrderCountRef", "GroupOrderCountReference", "GroupOrderCountReferenceLogic"], "Buy");
     let group_order_count_reference_s = get_dir_string(&["GroupOrderCountRef", "GroupOrderCountReference", "GroupOrderCountReferenceLogic"], "Sell");
+    let start_level_ref_val = get_param_multi(&["StartLevelRef"], "");
+    let start_level_ref = if start_level_ref_val.is_empty() { None } else { Some(start_level_ref_val) };
+    let start_level_ref_b = get_dir_string(&["StartLevelRef"], "Buy");
+    let start_level_ref_s = get_dir_string(&["StartLevelRef"], "Sell");
     let reset_lot_on_restart = get_param_bool_multi(&["ResetLotOnRestart"]);
     let reset_lot_on_restart_b = get_dir_bool(&["ResetLotOnRestart"], "Buy");
     let reset_lot_on_restart_s = get_dir_bool(&["ResetLotOnRestart"], "Sell");
+    let restart_policy_power = get_string(values, "gInput_RestartPolicy_PowerA", "Restart_Default");
+    let restart_policy_non_power = get_string(values, "gInput_RestartPolicy_NonPower", "Restart_Default");
+    let close_non_power_on_power_close = get_bool(values, "gInput_CloseNonPowerOnPowerClose");
+    let hold_timeout_seconds = get_i32(values, "gInput_HoldTimeoutBars", 0);
+
+    // TPSL (points-only)
+    let use_tp = get_param_bool_multi(&["UseTP", "UseTp"]);
+    let use_tp_b = get_dir_bool(&["UseTP", "UseTp"], "Buy");
+    let use_tp_s = get_dir_bool(&["UseTP", "UseTp"], "Sell");
+    let tp_mode_raw = get_param_multi(&["TPMode", "TP_Mode"], "");
+    let tp_mode = decode_tpsl_mode_numeric(&tp_mode_raw);
+    let tp_mode_b = get_dir_string(&["TPMode", "TP_Mode"], "Buy")
+        .map(|v| decode_tpsl_mode_numeric(&v));
+    let tp_mode_s = get_dir_string(&["TPMode", "TP_Mode"], "Sell")
+        .map(|v| decode_tpsl_mode_numeric(&v));
+    let tp_value = get_param_f64_multi(&["TPValue", "TP_Value"], 0.0);
+    let tp_value_b = get_dir_f64(&["TPValue", "TP_Value"], "Buy");
+    let tp_value_s = get_dir_f64(&["TPValue", "TP_Value"], "Sell");
+
+    let use_sl = get_param_bool_multi(&["UseSL", "UseSl"]);
+    let use_sl_b = get_dir_bool(&["UseSL", "UseSl"], "Buy");
+    let use_sl_s = get_dir_bool(&["UseSL", "UseSl"], "Sell");
+    let sl_mode_raw = get_param_multi(&["SLMode", "SL_Mode"], "");
+    let sl_mode = decode_tpsl_mode_numeric(&sl_mode_raw);
+    let sl_mode_b = get_dir_string(&["SLMode", "SL_Mode"], "Buy")
+        .map(|v| decode_tpsl_mode_numeric(&v));
+    let sl_mode_s = get_dir_string(&["SLMode", "SL_Mode"], "Sell")
+        .map(|v| decode_tpsl_mode_numeric(&v));
+    let sl_value = get_param_f64_multi(&["SLValue", "SL_Value"], 0.0);
+    let sl_value_b = get_dir_f64(&["SLValue", "SL_Value"], "Buy");
+    let sl_value_s = get_dir_f64(&["SLValue", "SL_Value"], "Sell");
+    let continue_tp_hit = get_param_bool_multi(&[
+        "ContinueTPHit",
+        "ContinueTPAfterHit",
+        "ContinueTradingTPHit",
+    ]);
+    let continue_tp_hit_b =
+        get_dir_bool(&["ContinueTPHit", "ContinueTPAfterHit", "ContinueTradingTPHit"], "Buy");
+    let continue_tp_hit_s =
+        get_dir_bool(&["ContinueTPHit", "ContinueTPAfterHit", "ContinueTradingTPHit"], "Sell");
+    let continue_sl_hit = get_param_bool_multi(&[
+        "ContinueSLHit",
+        "ContinueSLAfterHit",
+        "ContinueTradingSLHit",
+    ]);
+    let continue_sl_hit_b =
+        get_dir_bool(&["ContinueSLHit", "ContinueSLAfterHit", "ContinueTradingSLHit"], "Buy");
+    let continue_sl_hit_s =
+        get_dir_bool(&["ContinueSLHit", "ContinueSLAfterHit", "ContinueTradingSLHit"], "Sell");
 
     // Parse mode selectors
     let strategy_type = get_param_multi(&["StrategyType"], "Trail");
@@ -6475,6 +6929,18 @@ fn build_logic_config(
     let trigger_pips = if trigger_pips_val.is_empty() { None } else { trigger_pips_val.parse().ok() };
     let trigger_pips_b = get_dir_f64(&["TriggerPips"], "Buy");
     let trigger_pips_s = get_dir_f64(&["TriggerPips"], "Sell");
+    let trigger_points_val = get_param_multi(&["TriggerPoints"], "");
+    let trigger_points = if trigger_points_val.is_empty() { None } else { trigger_points_val.parse().ok() };
+    let trigger_points_b = get_dir_f64(&["TriggerPoints"], "Buy");
+    let trigger_points_s = get_dir_f64(&["TriggerPoints"], "Sell");
+    let opcount_ref_val = get_param_multi(&["OpCountRef"], "");
+    let opcount_ref = if opcount_ref_val.is_empty() { None } else { Some(opcount_ref_val) };
+    let opcount_ref_b = get_dir_string(&["OpCountRef"], "Buy");
+    let opcount_ref_s = get_dir_string(&["OpCountRef"], "Sell");
+    let start_op_count_val = get_param_multi(&["StartOpCount"], "");
+    let start_op_count = if start_op_count_val.is_empty() { None } else { start_op_count_val.parse().ok() };
+    let start_op_count_b = get_dir_i32(&["StartOpCount"], "Buy");
+    let start_op_count_s = get_dir_i32(&["StartOpCount"], "Sell");
 
     // Check if logic is enabled with multiple name variants
     let enabled = get_param_bool_multi(&["Start", "Enabled"]);
@@ -6529,9 +6995,40 @@ fn build_logic_config(
         group_order_count_reference,
         group_order_count_reference_b,
         group_order_count_reference_s,
+        start_level_ref,
+        start_level_ref_b,
+        start_level_ref_s,
         reset_lot_on_restart,
         reset_lot_on_restart_b,
         reset_lot_on_restart_s,
+        restart_policy_power: Some(restart_policy_power),
+        restart_policy_non_power: Some(restart_policy_non_power),
+        close_non_power_on_power_close: Some(close_non_power_on_power_close),
+        hold_timeout_seconds: Some(hold_timeout_seconds),
+        use_tp,
+        use_tp_b,
+        use_tp_s,
+        tp_mode,
+        tp_mode_b,
+        tp_mode_s,
+        tp_value,
+        tp_value_b,
+        tp_value_s,
+        use_sl,
+        use_sl_b,
+        use_sl_s,
+        sl_mode,
+        sl_mode_b,
+        sl_mode_s,
+        sl_value,
+        sl_value_b,
+        sl_value_s,
+        continue_tp_hit,
+        continue_tp_hit_b,
+        continue_tp_hit_s,
+        continue_sl_hit,
+        continue_sl_hit_b,
+        continue_sl_hit_s,
         strategy_type,
         strategy_type_b,
         strategy_type_s,
@@ -6738,6 +7235,15 @@ fn build_logic_config(
         trigger_pips,
         trigger_pips_b,
         trigger_pips_s,
+        trigger_points,
+        trigger_points_b,
+        trigger_points_s,
+        opcount_ref,
+        opcount_ref_b,
+        opcount_ref_s,
+        start_op_count,
+        start_op_count_b,
+        start_op_count_s,
     })
 }
 
@@ -6809,9 +7315,40 @@ fn create_default_logic(logic_name: &str) -> LogicConfig {
         group_order_count_reference: None,
         group_order_count_reference_b: None,
         group_order_count_reference_s: None,
+        start_level_ref: None,
+        start_level_ref_b: None,
+        start_level_ref_s: None,
         reset_lot_on_restart: false,
         reset_lot_on_restart_b: None,
         reset_lot_on_restart_s: None,
+        restart_policy_power: Some("Restart_Default".to_string()),
+        restart_policy_non_power: Some("Restart_Default".to_string()),
+        close_non_power_on_power_close: Some(false),
+        hold_timeout_seconds: Some(0),
+        use_tp: false,
+        use_tp_b: None,
+        use_tp_s: None,
+        tp_mode: "TPSL_Points".to_string(),
+        tp_mode_b: None,
+        tp_mode_s: None,
+        tp_value: 0.0,
+        tp_value_b: None,
+        tp_value_s: None,
+        use_sl: false,
+        use_sl_b: None,
+        use_sl_s: None,
+        sl_mode: "TPSL_Points".to_string(),
+        sl_mode_b: None,
+        sl_mode_s: None,
+        sl_value: 0.0,
+        sl_value_b: None,
+        sl_value_s: None,
+        continue_tp_hit: true,
+        continue_tp_hit_b: None,
+        continue_tp_hit_s: None,
+        continue_sl_hit: true,
+        continue_sl_hit_b: None,
+        continue_sl_hit_s: None,
         strategy_type: "Trail".to_string(),
         strategy_type_b: None,
         strategy_type_s: None,
@@ -7018,6 +7555,15 @@ fn create_default_logic(logic_name: &str) -> LogicConfig {
         trigger_pips: None,
         trigger_pips_b: None,
         trigger_pips_s: None,
+        trigger_points: None,
+        trigger_points_b: None,
+        trigger_points_s: None,
+        opcount_ref: None,
+        opcount_ref_b: None,
+        opcount_ref_s: None,
+        start_op_count: None,
+        start_op_count_b: None,
+        start_op_count_s: None,
     }
 }
 
@@ -7966,9 +8512,40 @@ fn create_default_logic_config(logic_name: &str) -> LogicConfig {
         group_order_count_reference: None,
         group_order_count_reference_b: None,
         group_order_count_reference_s: None,
+        start_level_ref: None,
+        start_level_ref_b: None,
+        start_level_ref_s: None,
         reset_lot_on_restart: false,
         reset_lot_on_restart_b: None,
         reset_lot_on_restart_s: None,
+        restart_policy_power: Some("Restart_Default".to_string()),
+        restart_policy_non_power: Some("Restart_Default".to_string()),
+        close_non_power_on_power_close: Some(false),
+        hold_timeout_seconds: Some(0),
+        use_tp: false,
+        use_tp_b: None,
+        use_tp_s: None,
+        tp_mode: "TPSL_Points".to_string(),
+        tp_mode_b: None,
+        tp_mode_s: None,
+        tp_value: 0.0,
+        tp_value_b: None,
+        tp_value_s: None,
+        use_sl: false,
+        use_sl_b: None,
+        use_sl_s: None,
+        sl_mode: "TPSL_Points".to_string(),
+        sl_mode_b: None,
+        sl_mode_s: None,
+        sl_value: 0.0,
+        sl_value_b: None,
+        sl_value_s: None,
+        continue_tp_hit: true,
+        continue_tp_hit_b: None,
+        continue_tp_hit_s: None,
+        continue_sl_hit: true,
+        continue_sl_hit_b: None,
+        continue_sl_hit_s: None,
         strategy_type: "Trail".to_string(),
         strategy_type_b: None,
         strategy_type_s: None,
@@ -8186,6 +8763,15 @@ fn create_default_logic_config(logic_name: &str) -> LogicConfig {
         trigger_pips: None,
         trigger_pips_b: None,
         trigger_pips_s: None,
+        trigger_points: None,
+        trigger_points_b: None,
+        trigger_points_s: None,
+        opcount_ref: None,
+        opcount_ref_b: None,
+        opcount_ref_s: None,
+        start_op_count: None,
+        start_op_count_b: None,
+        start_op_count_s: None,
     }
 }
 
@@ -8258,6 +8844,8 @@ fn apply_param_to_config(
                     "TriggerBars" => logic.trigger_bars = Some(value as i32),
                     "TriggerMinutes" | "TriggerSeconds" => logic.trigger_seconds = Some(value as i32),
                     "TriggerPips" => logic.trigger_pips = Some(value),
+                    "TriggerPoints" => logic.trigger_points = Some(value),
+                    "StartOpCount" => logic.start_op_count = Some(value as i32),
                     _ => {
                         // Try to match extended parameters
                         if param_name.starts_with("TrailStep") {
@@ -8297,15 +8885,15 @@ const V19_MAX_LOGICS: usize = 7;
 #[allow(dead_code)]
 const V19_MAX_DIRECTIONS: usize = 2;
 #[allow(dead_code)]
-const V19_FIELDS_PER_LOGIC_GROUP1: usize = 75;
+const V19_FIELDS_PER_LOGIC_GROUP1: usize = 81;
 #[allow(dead_code)]
-const V19_FIELDS_PER_LOGIC_OTHER_GROUPS: usize = 72;
+const V19_FIELDS_PER_LOGIC_OTHER_GROUPS: usize = 78;
 #[allow(dead_code)]
 const V19_FIELDS_PER_LOGIC_GROUP1_LEGACY: usize = 87;
 #[allow(dead_code)]
 const V19_FIELDS_PER_LOGIC_OTHER_GROUPS_LEGACY: usize = 84;
 #[allow(dead_code)]
-const V19_FIELDS_PER_LOGIC_GROUP1_POWER: usize = 74;
+const V19_FIELDS_PER_LOGIC_GROUP1_POWER: usize = 80;
 #[allow(dead_code)]
 const V19_FIELDS_PER_LOGIC_OTHER_GROUPS_LEGACY_MAX: usize = 87;
 #[allow(dead_code)]
@@ -8317,7 +8905,7 @@ const V19_NON_GROUP1_LOGIC_DIRECTIONS: usize = V19_TOTAL_LOGIC_DIRECTIONS - V19_
 #[allow(dead_code)]
 const V19_TOTAL_LOGIC_INPUTS: usize = (V19_MAX_ENGINES * V19_MAX_DIRECTIONS) * V19_FIELDS_PER_LOGIC_GROUP1_POWER
     + (V19_GROUP1_LOGIC_DIRECTIONS - (V19_MAX_ENGINES * V19_MAX_DIRECTIONS)) * V19_FIELDS_PER_LOGIC_GROUP1
-    + V19_NON_GROUP1_LOGIC_DIRECTIONS * V19_FIELDS_PER_LOGIC_OTHER_GROUPS; // 45,480
+    + V19_NON_GROUP1_LOGIC_DIRECTIONS * V19_FIELDS_PER_LOGIC_OTHER_GROUPS; // 49,260
 #[allow(dead_code)]
 const V19_MIN_TOTAL_INPUTS: usize = 45000;
 
@@ -8473,9 +9061,14 @@ pub fn parse_v19_setfile(content: &str) -> V19ParsedSetfile {
             } else {
                 V19_FIELDS_PER_LOGIC_GROUP1
             };
-            if *count != expected_current && *count != V19_FIELDS_PER_LOGIC_GROUP1 && *count != V19_FIELDS_PER_LOGIC_GROUP1_LEGACY {
+            if *count != expected_current
+                && *count != V19_FIELDS_PER_LOGIC_GROUP1
+                && *count != V19_FIELDS_PER_LOGIC_GROUP1_LEGACY
+                && *count != 74
+                && *count != 75
+            {
                 errors.push(format!(
-                    "Logic-direction {} has {} fields (expected one of {}, {}, {}).",
+                    "Logic-direction {} has {} fields (expected one of {}, {}, {}, 74, 75).",
                     k,
                     count,
                     expected_current,
@@ -8486,11 +9079,12 @@ pub fn parse_v19_setfile(content: &str) -> V19ParsedSetfile {
         } else {
             if *count != V19_FIELDS_PER_LOGIC_OTHER_GROUPS
                 && *count != V19_FIELDS_PER_LOGIC_OTHER_GROUPS_LEGACY
+                && *count != 72
                 && *count != 85
                 && *count != 86
                 && *count != V19_FIELDS_PER_LOGIC_OTHER_GROUPS_LEGACY_MAX {
                 errors.push(format!(
-                    "Logic-direction {} has {} fields (expected one of 72, 84, 85, 86, 87).",
+                    "Logic-direction {} has {} fields (expected one of 72, 78, 84, 85, 86, 87).",
                     k, count
                 ));
             }
@@ -8770,6 +9364,27 @@ fn decode_partial_balance_numeric(raw: &str) -> String {
     }
 }
 
+fn normalize_tpsl_mode(raw: &str) -> String {
+    let mode = raw.trim().to_ascii_lowercase();
+    if mode.is_empty() {
+        return "TPSL_Points".to_string();
+    }
+    if mode == "0" || mode.contains("points") || mode.contains("pips") {
+        return "TPSL_Points".to_string();
+    }
+    if mode == "1" || mode.contains("price") {
+        return "TPSL_Points".to_string();
+    }
+    if mode == "2" || mode.contains("percent") {
+        return "TPSL_Points".to_string();
+    }
+    "TPSL_Points".to_string()
+}
+
+fn decode_tpsl_mode_numeric(raw: &str) -> String {
+    normalize_tpsl_mode(raw)
+}
+
 fn decode_trail_method_numeric(raw: &str) -> String {
     match raw.trim() {
         "0" => "Points".to_string(),
@@ -8831,6 +9446,20 @@ fn normalize_logic_mode_and_flags(logic: &mut LogicConfig, engine_id: &str) {
     logic.trail_method = decode_trail_method_numeric(&logic.trail_method);
     logic.trail_step_method = decode_trail_step_method_numeric(&logic.trail_step_method);
     logic.trail_step_mode = decode_trail_step_mode_numeric(&logic.trail_step_mode);
+    logic.tp_mode = normalize_tpsl_mode(&logic.tp_mode);
+    logic.sl_mode = normalize_tpsl_mode(&logic.sl_mode);
+    if let Some(curr) = logic.tp_mode_b.clone() {
+        logic.tp_mode_b = Some(normalize_tpsl_mode(&curr));
+    }
+    if let Some(curr) = logic.tp_mode_s.clone() {
+        logic.tp_mode_s = Some(normalize_tpsl_mode(&curr));
+    }
+    if let Some(curr) = logic.sl_mode_b.clone() {
+        logic.sl_mode_b = Some(normalize_tpsl_mode(&curr));
+    }
+    if let Some(curr) = logic.sl_mode_s.clone() {
+        logic.sl_mode_s = Some(normalize_tpsl_mode(&curr));
+    }
     if logic.trigger_seconds.is_none() && logic.trigger_minutes.is_some() {
         logic.trigger_seconds = logic.trigger_minutes;
     }
@@ -8964,6 +9593,22 @@ fn set_dir_opt_f64(is_buy: bool, field_b: &mut Option<f64>, field_s: &mut Option
     }
 }
 
+fn set_dir_opt_bool(is_buy: bool, field_b: &mut Option<bool>, field_s: &mut Option<bool>, val: bool) {
+    if is_buy {
+        *field_b = Some(val);
+    } else {
+        *field_s = Some(val);
+    }
+}
+
+fn set_dir_opt_string(is_buy: bool, field_b: &mut Option<String>, field_s: &mut Option<String>, val: String) {
+    if is_buy {
+        *field_b = Some(val);
+    } else {
+        *field_s = Some(val);
+    }
+}
+
 fn apply_v19_param_to_logic(logic: &mut LogicConfig, is_buy: bool, param: &str, raw: &str) {
     let p = param.to_ascii_lowercase();
     let raw_trimmed = raw.trim();
@@ -9087,6 +9732,48 @@ fn apply_v19_param_to_logic(logic: &mut LogicConfig, is_buy: bool, param: &str, 
             }
         }
         "resetlotonrestart" => logic.reset_lot_on_restart = parse_bool_val(raw),
+        "usetp" => {
+            let val = parse_bool_val(raw);
+            logic.use_tp = val;
+            set_dir_opt_bool(is_buy, &mut logic.use_tp_b, &mut logic.use_tp_s, val);
+        }
+        "tpmode" => {
+            let mode = normalize_tpsl_mode(raw);
+            logic.tp_mode = mode.clone();
+            set_dir_opt_string(is_buy, &mut logic.tp_mode_b, &mut logic.tp_mode_s, mode);
+        }
+        "tpvalue" => {
+            if let Ok(v) = raw_trimmed.parse::<f64>() {
+                logic.tp_value = v;
+                set_dir_opt_f64(is_buy, &mut logic.tp_value_b, &mut logic.tp_value_s, v);
+            }
+        }
+        "usesl" => {
+            let val = parse_bool_val(raw);
+            logic.use_sl = val;
+            set_dir_opt_bool(is_buy, &mut logic.use_sl_b, &mut logic.use_sl_s, val);
+        }
+        "slmode" => {
+            let mode = normalize_tpsl_mode(raw);
+            logic.sl_mode = mode.clone();
+            set_dir_opt_string(is_buy, &mut logic.sl_mode_b, &mut logic.sl_mode_s, mode);
+        }
+        "slvalue" => {
+            if let Ok(v) = raw_trimmed.parse::<f64>() {
+                logic.sl_value = v;
+                set_dir_opt_f64(is_buy, &mut logic.sl_value_b, &mut logic.sl_value_s, v);
+            }
+        }
+        "continuetphit" => {
+            let val = parse_bool_val(raw);
+            logic.continue_tp_hit = val;
+            set_dir_opt_bool(is_buy, &mut logic.continue_tp_hit_b, &mut logic.continue_tp_hit_s, val);
+        }
+        "continueslhit" => {
+            let val = parse_bool_val(raw);
+            logic.continue_sl_hit = val;
+            set_dir_opt_bool(is_buy, &mut logic.continue_sl_hit_b, &mut logic.continue_sl_hit_s, val);
+        }
         "closepartial" => logic.close_partial = parse_bool_val(raw),
         // Deprecated in active contract: ignored on import.
         "closepartialcycle" => {}
