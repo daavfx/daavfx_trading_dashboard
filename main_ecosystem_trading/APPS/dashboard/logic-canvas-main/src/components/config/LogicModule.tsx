@@ -1167,8 +1167,8 @@ export function LogicModule({
                   // Skip Trail Advanced category if not enabled
                   if (category === "Trail Advanced" && !trailAdvancedEnabled) return null;
 
-                  // Skip if no fields to display
-                  if (displayFields.length === 0) return null;
+                  // Skip if no fields to display (except Mode Selectors which always renders for Buy/Sell toggle)
+                  if (displayFields.length === 0 && category !== "Mode Selectors") return null;
 
                   return (
                     <div
