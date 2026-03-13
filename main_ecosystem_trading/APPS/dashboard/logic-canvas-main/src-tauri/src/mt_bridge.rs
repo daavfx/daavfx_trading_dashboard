@@ -9057,9 +9057,10 @@ pub fn parse_v19_setfile(content: &str) -> V19ParsedSetfile {
                 && *count != V19_FIELDS_PER_LOGIC_GROUP1_LEGACY
                 && *count != 74
                 && *count != 75
+                && *count != 86
             {
                 errors.push(format!(
-                    "Logic-direction {} has {} fields (expected one of {}, {}, {}, 74, 75).",
+                    "Logic-direction {} has {} fields (expected one of {}, {}, {}, 74, 75, 86).",
                     k,
                     count,
                     expected_current,
