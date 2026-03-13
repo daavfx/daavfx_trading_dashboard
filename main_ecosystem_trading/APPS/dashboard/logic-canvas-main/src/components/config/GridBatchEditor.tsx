@@ -391,38 +391,41 @@ export function GridBatchEditor({
         <div className="col-span-4 space-y-3">
           <div className="text-xs text-muted-foreground mb-2">1. Select Input</div>
           
-          {/* Search and Side Filter Row */}
-          <div className="flex items-center gap-2">
-            <Input
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Search inputs..."
-              className="h-8 text-xs flex-1"
-            />
-            {/* Buy/Sell Filter - Compact */}
-            <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-neutral-900/40 border border-neutral-700/50">
-              <button
-                onClick={() => handleSideChange("buy")}
-                className={`px-2 py-0.5 text-[10px] font-medium rounded transition-all ${
-                  selectedSides === "buy" || selectedSides === "both"
-                    ? "bg-emerald-500/20 text-emerald-400"
-                    : "text-neutral-500 hover:text-neutral-300"
-                }`}
-              >
-                B
-              </button>
-              <button
-                onClick={() => handleSideChange("sell")}
-                className={`px-2 py-0.5 text-[10px] font-medium rounded transition-all ${
-                  selectedSides === "sell" || selectedSides === "both"
-                    ? "bg-rose-500/20 text-rose-400"
-                    : "text-neutral-500 hover:text-neutral-300"
-                }`}
-              >
-                S
-              </button>
-            </div>
-          </div>
+           {/* Search and Side Filter Row */}
+           <div className="flex items-center gap-2">
+             <div className="relative w-full">
+               <Input
+                 value={searchInput}
+                 onChange={(e) => setSearchInput(e.target.value)}
+                 placeholder="Search inputs..."
+                 className="h-8 text-xs w-full pl-8"
+               />
+               <svg className="absolute left-2 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+             </div>
+             {/* Buy/Sell Filter - Compact */}
+             <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-neutral-900/40 border border-neutral-700/50 shrink-0">
+               <button
+                 onClick={() => handleSideChange("buy")}
+                 className={`px-2 py-0.5 text-[10px] font-medium rounded transition-all ${
+                   selectedSides === "buy" || selectedSides === "both"
+                     ? "bg-emerald-500/20 text-emerald-400"
+                     : "text-neutral-500 hover:text-neutral-300"
+                 }`}
+               >
+                 B
+               </button>
+               <button
+                 onClick={() => handleSideChange("sell")}
+                 className={`px-2 py-0.5 text-[10px] font-medium rounded transition-all ${
+                   selectedSides === "sell" || selectedSides === "both"
+                     ? "bg-rose-500/20 text-rose-400"
+                     : "text-neutral-500 hover:text-neutral-300"
+                 }`}
+               >
+                 S
+               </button>
+             </div>
+           </div>
 
           <div className="border border-border/40 rounded bg-card/20 max-h-[300px] overflow-y-auto">
             {Object.entries(groupedInputs).map(([category, inputs]) => (
