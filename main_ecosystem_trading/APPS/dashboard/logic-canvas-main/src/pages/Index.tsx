@@ -454,6 +454,18 @@ function Index() {
       hasPrev: !!config,
       enginesCount: newConfig?.engines?.length,
     });
+    
+    // Debug: Log Engine A Group 1 Power values
+    const engineA = newConfig?.engines?.find(e => e.engine_id === "A");
+    const group1 = engineA?.groups?.find(g => g.group_number === 1);
+    const powerLogic = group1?.logics?.find(l => l.logic_name === "Power");
+    console.log(`[Index] handleSaveConfig: Engine A Group 1 Power:`, {
+      groupPowerStart: group1?.group_power_start,
+      powerEnabled: powerLogic?.enabled,
+      powerInitialLot: powerLogic?.initial_lot,
+      powerMultiplier: powerLogic?.multiplier,
+    });
+    
     const prev = config;
     if (prev && !skipUndoRecordRef.current) {
       const changeCount = countConfigChanges(prev, newConfig);
@@ -828,6 +840,8 @@ function Index() {
         currentConfig={config}
         onLoadConfig={(c) => {
           handleSaveConfig(c);
+          setConfigLoadId((id) => id + 1);
+          console.log("[Index] onLoadConfig: Incremented configLoadId for imported config");
           setHasStarted(true);
           if (c?.engines?.length) {
             setSelectedEngines(["Engine A"]);
@@ -999,6 +1013,8 @@ function Index() {
                   <VaultPage
                     onLoadConfig={(config) => {
                       handleSaveConfig(config);
+                      setConfigLoadId((id) => id + 1);
+                      console.log("[Index] VaultPage onLoadConfig: Incremented configLoadId");
                       setHasStarted(true);
                       setSelectedEngines(["Engine A"]);
                       setSelectedGroups(["Group 1"]);

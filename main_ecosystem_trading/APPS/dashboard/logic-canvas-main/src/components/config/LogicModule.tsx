@@ -467,20 +467,22 @@ export function LogicModule({
   };
   
   useEffect(() => {
+    const isFirstInit = initializedRef.current === null;
+    const shouldReinit = configLoadId !== undefined && configLoadId !== initializedRef.current;
+    
     console.log(`[LogicModule] useEffect triggered:`, {
       logicConfigKey,
       nameSafe,
       engineSafe,
-      hasBuyValues: Object.keys(fieldValuesBySide.buy || {}).length,
-      hasSellValues: Object.keys(fieldValuesBySide.sell || {}).length,
       logicConfigId: logicConfig?.logic_id,
+      configLoadId,
       initialized: initializedRef.current,
-      prevKey: prevLogicConfigKeyRef.current,
+      shouldReinit,
+      isFirstInit,
+      initialLot: logicConfig?.initial_lot,
+      multiplier: logicConfig?.multiplier,
     });
 
-    const isFirstInit = initializedRef.current === null;
-    const shouldReinit = configLoadId !== undefined && configLoadId !== initializedRef.current;
-    
     if (isFirstInit) {
       console.log(`[LogicModule] FIRST INITIALIZATION from logicConfig:`, logicConfig?.logic_id);
       initializedRef.current = configLoadId ?? logicConfigKey;
@@ -490,7 +492,7 @@ export function LogicModule({
       initializedRef.current = configLoadId ?? logicConfigKey;
     } else {
       // Preserve user-typed values when switching groups/logics
-      console.log(`[LogicModule] SKIPPING reinit - preserving user values`);
+      console.log(`[LogicModule] SKIPPING reinit - preserving user values. configLoadId=`, configLoadId, "initializedRef=", initializedRef.current);
       return;
     }
 
