@@ -186,84 +186,97 @@ const CATEGORY_ORDER = [
 
 const categoryStyles: Record<
   string,
-  { color: string; bg: string; border: string; icon: any }
+  { color: string; bg: string; border: string; glow: string; icon: any }
 > = {
   "Mode Selectors": {
     color: "text-sky-400",
     bg: "bg-transparent",
-    border: "border-sky-500/15",
+    border: "border-t-2 border-sky-500/40",
+    glow: "shadow-[0_8px_32px_rgba(14,165,233,0.1)]",
     icon: Settings2,
   },
   Core: {
     color: "text-blue-400",
-    bg: "bg-transparent",
-    border: "border-blue-500/15",
+    bg: "bg-[rgba(15,15,15,0.6)]",
+    border: "border-t-2 border-blue-500/40",
+    glow: "shadow-[0_8px_32px_rgba(59,130,246,0.1)]",
     icon: Layers,
   },
   Lots: {
     color: "text-amber-400",
-    bg: "bg-transparent",
-    border: "border-amber-500/15",
+    bg: "bg-[rgba(15,15,15,0.6)]",
+    border: "border-t-2 border-amber-500/40",
+    glow: "shadow-[0_8px_32px_rgba(245,158,11,0.1)]",
     icon: Box,
   },
   Grid: {
     color: "text-amber-400",
-    bg: "bg-transparent",
-    border: "border-amber-500/15",
+    bg: "bg-[rgba(15,15,15,0.6)]",
+    border: "border-t-2 border-amber-500/40",
+    glow: "shadow-[0_8px_32px_rgba(245,158,11,0.1)]",
     icon: ArrowLeftRight,
   },
   Trail: {
     color: "text-purple-400",
-    bg: "bg-transparent",
-    border: "border-purple-500/15",
+    bg: "bg-[rgba(15,15,15,0.6)]",
+    border: "border-t-2 border-purple-500/40",
+    glow: "shadow-[0_8px_32px_rgba(168,85,247,0.15)]",
     icon: ChevronRight,
   },
   "Trail Advanced": {
     color: "text-fuchsia-400",
-    bg: "bg-transparent",
-    border: "border-fuchsia-500/15",
+    bg: "bg-[rgba(15,15,15,0.6)]",
+    border: "border-t-2 border-fuchsia-500/40",
+    glow: "shadow-[0_8px_32px_rgba(232,121,249,0.1)]",
     icon: Settings2,
   },
   Logic: {
     color: "text-emerald-400",
-    bg: "bg-transparent",
-    border: "border-emerald-500/15",
+    bg: "bg-[rgba(15,15,15,0.6)]",
+    border: "border-t-2 border-emerald-500/40",
+    glow: "shadow-[0_8px_32px_rgba(16,185,129,0.1)]",
     icon: Zap,
   },
   TPSL: {
     color: "text-amber-400",
-    bg: "bg-transparent",
-    border: "border-amber-500/15",
+    bg: "bg-[rgba(15,15,15,0.6)]",
+    border: "border-t-2 border-amber-500/40",
+    glow: "shadow-[0_8px_32px_rgba(245,158,11,0.1)]",
     icon: Shield,
   },
   "Reverse/Hedge": {
     color: "text-orange-400",
-    bg: "bg-transparent",
-    border: "border-orange-500/15",
+    bg: "bg-[rgba(15,15,15,0.6)]",
+    border: "border-t-2 border-orange-500/40",
+    glow: "shadow-[0_8px_32px_rgba(249,115,22,0.1)]",
     icon: ArrowLeftRight,
   },
   "Close Partial": {
     color: "text-cyan-400",
-    bg: "bg-transparent",
-    border: "border-cyan-500/15",
+    bg: "bg-[rgba(15,15,15,0.6)]",
+    border: "border-t-2 border-cyan-500/40",
+    glow: "shadow-[0_8px_32px_rgba(6,182,212,0.15)]",
     icon: RefreshCw,
   },
   Triggers: {
     color: "text-rose-400",
-    bg: "bg-transparent",
-    border: "border-rose-500/15",
+    bg: "bg-[rgba(15,15,15,0.6)]",
+    border: "border-t-2 border-rose-500/40",
+    glow: "shadow-[0_8px_32px_rgba(244,63,94,0.1)]",
     icon: Shield,
   },
   Safety: {
     color: "text-red-400",
-    bg: "bg-transparent",
-    border: "border-red-500/15",
+    bg: "bg-[rgba(15,15,15,0.6)]",
+    border: "border-t-2 border-red-500/40",
+    glow: "shadow-[0_8px_32px_rgba(239,68,68,0.1)]",
     icon: Shield,
   },
   Restart: {
     color: "text-teal-400",
-    bg: "bg-transparent",
-    border: "border-teal-500/15",
+    bg: "bg-[rgba(15,15,15,0.6)]",
+    border: "border-t-2 border-teal-500/40",
+    glow: "shadow-[0_8px_32px_rgba(20,184,166,0.15)]",
     icon: RefreshCw,
   },
 };
@@ -1020,7 +1033,7 @@ export function LogicModule({
 
               {/* Show standard category-based UI for Counter Trend and Reverse - 2 columns */}
               {tradingMode !== "Hedge" && (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 p-1">
                   {categories
                     .filter((cat) => {
                       // Hide Close Partial when in TPSL mode
@@ -1033,13 +1046,14 @@ export function LogicModule({
                   );
                   const style = categoryStyles[category] || {
                     color: "text-muted-foreground",
-                    bg: "bg-muted/5",
-                    border: "border-border/50",
+                    bg: "bg-[rgba(15,15,15,0.6)]",
+                    border: "border-t-2 border-neutral-500/30",
+                    glow: "shadow-[0_8px_32px_rgba(0,0,0,0.2)]",
                     icon: ChevronRight,
                   };
                   const Icon = style.icon;
 
-                  // Determine column span for layout optimization
+                  // Determine column span for layout optimization - wider sections get more space
                   const isWideSection = category === "Mode Selectors" || category === "Core" || category === "Lots" || category === "Trail";
                   const colSpanClass = isWideSection ? "lg:col-span-2" : "";
 
@@ -1160,11 +1174,13 @@ export function LogicModule({
                     <div
                       key={category}
                       className={cn(
-                        "rounded-lg bg-transparent",
-                        // Subtle border with category color
+                        "rounded-lg backdrop-blur-md",
+                        // Glass panel background
+                        style.bg,
+                        // Top border accent
                         style.border,
-                        // Tiny glow aura
-                        "shadow-[0_0_15px_rgba(0,0,0,0.3)]",
+                        // Unique glow per category
+                        style.glow,
                         // Column span for wide sections
                         colSpanClass,
                       )}
