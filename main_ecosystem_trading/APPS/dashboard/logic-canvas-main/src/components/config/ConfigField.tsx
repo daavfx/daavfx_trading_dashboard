@@ -55,6 +55,8 @@ export function ConfigField({
     onChange?.(newValue);
   };
 
+  const isLongLabel = label.length > 14;
+
   const renderValue = () => {
     if (type === "segmented" && options) {
       return (
@@ -181,6 +183,29 @@ export function ConfigField({
     );
   };
 
+  if (isLongLabel) {
+    return (
+      <div className="group flex flex-col gap-1 py-1.5 px-2 rounded bg-neutral-900/20 hover:bg-neutral-800/40 transition-all duration-200 min-h-[2.5rem]">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="text-[9px] font-medium text-neutral-300 group-hover:text-neutral-200 transition-colors whitespace-nowrap shrink-0">
+            {label}
+          </span>
+          {description && (
+            <EnhancedTooltip
+              fieldId={fieldId || label.toLowerCase().replace(/\s+/g, "_")}
+              description={description}
+            >
+              <div className="p-0.5 rounded-full hover:bg-neutral-800 transition-colors flex-shrink-0">
+                <Info className="w-2.5 h-2.5 text-neutral-500 cursor-help group-hover:text-neutral-400 transition-colors" />
+              </div>
+            </EnhancedTooltip>
+          )}
+        </div>
+        <div className="w-full">{renderValue()}</div>
+      </div>
+    );
+  }
+
   return (
     <div className="group flex items-center justify-between gap-2 py-1.5 px-2 rounded bg-neutral-900/20 hover:bg-neutral-800/40 transition-all duration-200 min-h-[2rem]">
       <div className="flex items-center gap-1.5 min-w-0">
@@ -196,11 +221,6 @@ export function ConfigField({
               <Info className="w-2.5 h-2.5 text-neutral-500 cursor-help group-hover:text-neutral-400 transition-colors" />
             </div>
           </EnhancedTooltip>
-        )}
-        {hint && (
-          <span className="text-[8px] font-mono text-neutral-500 truncate hidden lg:inline">
-            {hint}
-          </span>
         )}
       </div>
       {renderValue()}
