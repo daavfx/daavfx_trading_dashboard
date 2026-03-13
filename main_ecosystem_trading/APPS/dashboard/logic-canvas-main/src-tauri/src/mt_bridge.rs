@@ -393,8 +393,6 @@ pub struct NewsFilterConfig {
     pub visual_indicator: bool,
     #[serde(default)]
     pub alert_before_news: bool,
-    #[serde(default)]
-    pub calendar_file: Option<String>,
 }
 
 fn default_3600() -> i32 { 3600 }
@@ -1733,7 +1731,8 @@ pub fn export_set_file(
         "gInput_AlertMinutesBefore={}",
         config.general.news_filter.alert_minutes
     ));
-    if let Some(cf) = config.general.news_filter.calendar_file.as_deref() {
+    let cf = &config.general.news_filter.calendar_file;
+    if !cf.is_empty() {
         lines.push(format!("gInput_NewsCalendarFile={}", cf));
     }
     lines.push(String::new());
@@ -2802,10 +2801,7 @@ pub fn export_massive_v19_setfile(
     lines.push(format!("gInput_AlertBeforeNews={}", if nf.alert_before_news { 1 } else { 0 }));
     lines.push(format!("gInput_AlertMinutesBefore={}", nf.alert_minutes));
     let key_news_calendar = "gInput_NewsCalendarFile".to_string();
-    let news_calendar_fallback = nf
-        .calendar_file
-        .clone()
-        .unwrap_or_else(|| "".to_string());
+    let news_calendar_fallback = nf.calendar_file.clone();
     lines.push(format!("{}={}", key_news_calendar, news_calendar_fallback));
     
     // ===== NEWS FILTER BUY/SELL =====
@@ -2823,7 +2819,7 @@ pub fn export_massive_v19_setfile(
         lines.push(format!("gInput_NewsVisualIndicator_Buy={}", if nf_b.visual_indicator { 1 } else { 0 }));
         lines.push(format!("gInput_AlertBeforeNews_Buy={}", if nf_b.alert_before_news { 1 } else { 0 }));
         lines.push(format!("gInput_AlertMinutesBefore_Buy={}", nf_b.alert_minutes));
-        let news_calendar_b = nf_b.calendar_file.clone().unwrap_or_else(|| "".to_string());
+        let news_calendar_b = nf_b.calendar_file.clone();
         lines.push(format!("gInput_NewsCalendarFile_Buy={}", news_calendar_b));
     }
     if let Some(nf_s) = &config.general.news_filter_s {
@@ -2840,7 +2836,7 @@ pub fn export_massive_v19_setfile(
         lines.push(format!("gInput_NewsVisualIndicator_Sell={}", if nf_s.visual_indicator { 1 } else { 0 }));
         lines.push(format!("gInput_AlertBeforeNews_Sell={}", if nf_s.alert_before_news { 1 } else { 0 }));
         lines.push(format!("gInput_AlertMinutesBefore_Sell={}", nf_s.alert_minutes));
-        let news_calendar_s = nf_s.calendar_file.clone().unwrap_or_else(|| "".to_string());
+        let news_calendar_s = nf_s.calendar_file.clone();
         lines.push(format!("gInput_NewsCalendarFile_Sell={}", news_calendar_s));
     }
     
@@ -5656,14 +5652,7 @@ fn build_config_from_values(
             include_reports: get_bool_with_default(values, "gInput_IncludeReports", true),
             visual_indicator: get_bool_with_default(values, "gInput_NewsVisualIndicator", true),
             alert_before_news: get_bool_with_default(values, "gInput_AlertBeforeNews", false),
-            calendar_file: {
-                let s = get_string(values, "gInput_NewsCalendarFile", "");
-                if s.is_empty() {
-                    None
-                } else {
-                    Some(s)
-                }
-            },
+            calendar_file: get_string(values, "gInput_NewsCalendarFile", ""),
         },
         // ===== RISK MANAGEMENT BUY/SELL =====
         risk_management_b: if values.contains_key("gInput_RiskManagementEnabled_Buy") {
@@ -5721,10 +5710,7 @@ fn build_config_from_values(
                 include_reports: get_bool(values, "gInput_IncludeReports_Buy"),
                 visual_indicator: get_bool(values, "gInput_NewsVisualIndicator_Buy"),
                 alert_before_news: get_bool(values, "gInput_AlertBeforeNews_Buy"),
-                calendar_file: {
-                    let s = get_string(values, "gInput_NewsCalendarFile_Buy", "");
-                    if s.is_empty() { None } else { Some(s) }
-                },
+                calendar_file: get_string(values, "gInput_NewsCalendarFile_Buy", ""),
             })
         } else { None },
         news_filter_s: if values.contains_key("gInput_NewsFilterEnabled_Sell") {
@@ -5751,10 +5737,7 @@ fn build_config_from_values(
                 include_reports: get_bool(values, "gInput_IncludeReports_Sell"),
                 visual_indicator: get_bool(values, "gInput_NewsVisualIndicator_Sell"),
                 alert_before_news: get_bool(values, "gInput_AlertBeforeNews_Sell"),
-                calendar_file: {
-                    let s = get_string(values, "gInput_NewsCalendarFile_Sell", "");
-                    if s.is_empty() { None } else { Some(s) }
-                },
+                calendar_file: get_string(values, "gInput_NewsCalendarFile_Sell", ""),
             })
         } else { None },
         // ===== TIME FILTERS BUY/SELL =====
@@ -8471,7 +8454,7 @@ fn create_default_mt_config() -> MTConfig {
                 include_reports: true,
                 visual_indicator: true,
                 alert_before_news: false,
-                calendar_file: Some("DAAVFX_NEWS.csv".to_string()),
+                calendar_file: "DAAVFX_NEWS.csv".to_string(),
             },
         },
         engines: Vec::new(),
@@ -10097,10 +10080,7 @@ fn apply_v19_global_keys(config: &mut MTConfig, inputs: &HashMap<String, String>
     nf.include_reports = get_bool_with_default(inputs, "gInput_IncludeReports", nf.include_reports);
     nf.visual_indicator = get_bool_with_default(inputs, "gInput_NewsVisualIndicator", nf.visual_indicator);
     nf.alert_before_news = get_bool_with_default(inputs, "gInput_AlertBeforeNews", nf.alert_before_news);
-    let cf = get_string(inputs, "gInput_NewsCalendarFile", "");
-    if !cf.is_empty() {
-        nf.calendar_file = Some(cf);
-    }
+    nf.calendar_file = get_string(inputs, "gInput_NewsCalendarFile", "");
 
     // Group thresholds (groups 2-15):
     // NEW: Support separate Buy/Sell values: gInput_GroupPowerStart_{P|BP|CP}{N}_{Buy|Sell}
