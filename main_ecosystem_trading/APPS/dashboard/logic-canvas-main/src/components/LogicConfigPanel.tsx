@@ -53,6 +53,11 @@ interface LogicConfig {
   reset_lot_on_restart?: boolean;
   order_count_reference?: string;
   close_targets?: string;
+  // Close Targets Reference (for AVG_Percent trail method)
+  close_targets_ref_engine?: string;
+  close_targets_ref_logic?: string;
+  close_targets_ref_direction?: string;
+  close_targets_ref_group?: number;
   // Trail Advanced
   trail_levels?: number;
   trail_step_mode?: string;
@@ -702,6 +707,65 @@ const CounterTrendAndReverseUI = ({
                 </SelectContent>
               </Select>
             </LabeledField>
+            
+            {/* Close Targets Reference - only show for AVG_Percent */}
+            {localConfig.trail_method === "AVG_Percent" && (
+              <>
+                <div className="col-span-2 mt-2">
+                  <Label className="text-xs text-muted-foreground">
+                    Close Targets Reference
+                  </Label>
+                </div>
+                <LabeledField label="Engine">
+                  <Select
+                    value={localConfig.close_targets_ref_engine || "A"}
+                    onValueChange={(val) => handleChange("close_targets_ref_engine", val)}
+                  >
+                    <SelectTrigger className="bg-background/50">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="A">Engine A</SelectItem>
+                      <SelectItem value="B">Engine B</SelectItem>
+                      <SelectItem value="C">Engine C</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </LabeledField>
+                <LabeledField label="Logic">
+                  <Select
+                    value={localConfig.close_targets_ref_logic || localConfig.logic_name || "Power"}
+                    onValueChange={(val) => handleChange("close_targets_ref_logic", val)}
+                  >
+                    <SelectTrigger className="bg-background/50">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Power">Power</SelectItem>
+                      <SelectItem value="Repower">Repower</SelectItem>
+                      <SelectItem value="Scalper">Scalper</SelectItem>
+                      <SelectItem value="Stopper">Stopper</SelectItem>
+                      <SelectItem value="STO">STO</SelectItem>
+                      <SelectItem value="SCA">SCA</SelectItem>
+                      <SelectItem value="RPO">RPO</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </LabeledField>
+                <LabeledField label="Direction">
+                  <Select
+                    value={localConfig.close_targets_ref_direction || "Buy"}
+                    onValueChange={(val) => handleChange("close_targets_ref_direction", val)}
+                  >
+                    <SelectTrigger className="bg-background/50">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Buy">Buy</SelectItem>
+                      <SelectItem value="Sell">Sell</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </LabeledField>
+              </>
+            )}
           </div>
           <div className="grid grid-cols-1 gap-4 mt-4">
             <LabeledField label="Trail Step Method">

@@ -909,6 +909,10 @@ export function LogicModule({
                           0,
                       ) || 0,
                     start_level: parseInt(fieldValues["start_level"]) || 0,
+                    // Close Targets Reference (for AVG_Percent)
+                    close_targets_ref_engine: fieldValues["close_targets_ref_engine"] || engineLetter || "A",
+                    close_targets_ref_logic: fieldValues["close_targets_ref_logic"] || name,
+                    close_targets_ref_direction: fieldValues["close_targets_ref_direction"] || activeDirection === "buy" ? "Buy" : "Sell",
                   }}
                   onChange={(field, value) => {
                     // Map LogicConfigPanel fields to canonical MT config keys.
@@ -943,6 +947,9 @@ export function LogicModule({
                       partial_profit_threshold: "close_partial_profit_threshold",
                       start_level: "start_level",
                       start_level_ref: "start_level_ref",
+                      close_targets_ref_engine: "close_targets_ref_engine",
+                      close_targets_ref_logic: "close_targets_ref_logic",
+                      close_targets_ref_direction: "close_targets_ref_direction",
                     };
 
                     const mappedField = fieldMapping[field] || field;
