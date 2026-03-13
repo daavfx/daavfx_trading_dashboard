@@ -349,11 +349,17 @@ pub struct SessionConfig {
 pub struct NewsFilterConfig {
     #[serde(default)]
     pub enabled: bool,
+    #[serde(default)]
     pub api_key: String,
+    #[serde(default)]
     pub api_url: String,
+    #[serde(default)]
     pub countries: String,
+    #[serde(default)]
     pub impact_level: i32,
+    #[serde(default)]
     pub minutes_before: i32,
+    #[serde(default)]
     pub minutes_after: i32,
     #[serde(default = "default_true")]
     pub stop_ea: bool,
@@ -361,6 +367,8 @@ pub struct NewsFilterConfig {
     pub close_trades: bool,
     #[serde(default = "default_true")]
     pub auto_restart: bool,
+    #[serde(default)]
+    pub calendar_file: String,
     #[serde(default)]
     pub check_interval: i32,
     #[serde(default)]
