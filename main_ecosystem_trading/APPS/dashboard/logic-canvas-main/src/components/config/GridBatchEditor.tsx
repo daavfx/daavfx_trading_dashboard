@@ -104,19 +104,24 @@ export function GridBatchEditor({
   const { config, saveConfig } = useMTConfig(mtPlatformFixed);
 
   const filteredInputs = useMemo(() => {
-    return availableInputs.filter(
+    const result = availableInputs.filter(
       (input) =>
         input.label.toLowerCase().includes(searchInput.toLowerCase()) ||
         input.category.toLowerCase().includes(searchInput.toLowerCase())
     );
+    console.log('DEBUG: Search input:', searchInput);
+    console.log('DEBUG: Filtered inputs count:', result.length);
+    return result;
   }, [searchInput]);
 
   const groupedInputs = useMemo(() => {
-    return filteredInputs.reduce((acc, input) => {
+    const result = filteredInputs.reduce((acc, input) => {
       if (!acc[input.category]) acc[input.category] = [];
       acc[input.category].push(input);
       return acc;
     }, {} as Record<string, typeof availableInputs>);
+    console.log('DEBUG: Grouped inputs:', Object.keys(result));
+    return result;
   }, [filteredInputs]);
 
   const rows = useMemo(() => {
@@ -436,7 +441,10 @@ export function GridBatchEditor({
                 {inputs.map((input) => (
                   <button
                     key={input.id}
-                    onClick={() => setSelectedInput(input.id)}
+                    onClick={() => {
+                      console.log('DEBUG: Clicked input:', input.id, input.label);
+                      setSelectedInput(input.id);
+                    }}
                     className={cn(
                       "w-full px-3 py-2 text-left text-xs flex items-center justify-between hover:bg-muted/30 transition-colors",
                       selectedInput === input.id && "bg-primary/10 text-primary"
