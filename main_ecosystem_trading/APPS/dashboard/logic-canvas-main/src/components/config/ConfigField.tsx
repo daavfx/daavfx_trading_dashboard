@@ -23,7 +23,7 @@ interface ConfigFieldProps {
   options?: string[];
   onChange?: (value: string | number | boolean) => void;
   currentLogicId?: string;
-  fieldId?: string; // Added field ID for help documentation lookup
+  fieldId?: string;
 }
 
 export function ConfigField({
@@ -55,31 +55,10 @@ export function ConfigField({
     onChange?.(newValue);
   };
 
-  return (
-    <div className="group flex items-center justify-between py-1 px-2 rounded bg-neutral-900/20 hover:bg-neutral-800/40 transition-all duration-200 min-h-[2rem]">
-      <div className="flex items-center gap-2 min-w-0 flex-1">
-        <span className="text-[9px] font-medium text-neutral-300 group-hover:text-neutral-200 transition-colors truncate shrink-0">
-          {label}
-        </span>
-        {description && (
-          <EnhancedTooltip
-            fieldId={fieldId || label.toLowerCase().replace(/\s+/g, "_")}
-            description={description}
-          >
-            <div className="p-0.5 rounded-full hover:bg-neutral-800 transition-colors flex-shrink-0">
-              <Info className="w-2.5 h-2.5 text-neutral-500 cursor-help group-hover:text-neutral-400 transition-colors" />
-            </div>
-          </EnhancedTooltip>
-        )}
-        {hint && (
-          <div className="text-[8px] font-mono text-neutral-500 truncate">
-            {hint}
-          </div>
-        )}
-      </div>
-
-      {type === "segmented" && options ? (
-        <div className="flex p-0.5 rounded bg-neutral-900/50 border border-neutral-800">
+  const renderValue = () => {
+    if (type === "segmented" && options) {
+      return (
+        <div className="flex p-0.5 rounded bg-neutral-900/50 border border-neutral-800 shrink-0">
           {options.map((option) => {
             const isSelected = localValue === option;
             return (
@@ -87,7 +66,7 @@ export function ConfigField({
                 key={option}
                 onClick={() => handleChange(option)}
                 className={cn(
-                  "px-2 py-0.5 text-[9px] font-medium rounded transition-all",
+                  "px-2 py-0.5 text-[9px] font-medium rounded transition-all whitespace-nowrap",
                   isSelected
                     ? "bg-neutral-700 text-neutral-100 shadow-sm"
                     : "text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800",
@@ -98,8 +77,12 @@ export function ConfigField({
             );
           })}
         </div>
-      ) : type === "toggle" ? (
-        <div className="flex items-center gap-2">
+      );
+    }
+
+    if (type === "toggle") {
+      return (
+        <div className="flex items-center gap-2 shrink-0">
           <Switch
             checked={localValue === "ON"}
             onCheckedChange={(checked) => handleChange(checked ? "ON" : "OFF")}
@@ -107,7 +90,7 @@ export function ConfigField({
           />
           <span
             className={cn(
-              "text-[9px] font-mono w-7 text-right transition-colors",
+              "text-[9px] font-mono min-w-[2rem] text-right transition-colors",
               localValue === "ON"
                 ? "text-neutral-300 font-bold"
                 : "text-neutral-600",
@@ -116,14 +99,18 @@ export function ConfigField({
             {localValue === "ON" ? "ON" : "OFF"}
           </span>
         </div>
-      ) : type === "select" && options ? (
+      );
+    }
+
+    if (type === "select" && options) {
+      return (
         <Select
           value={String(localValue)}
           onValueChange={(val) =>
             handleChange(isNumericSelect ? parseInt(val, 10) : val)
           }
         >
-          <SelectTrigger className="h-6 min-w-[4rem] w-auto text-[9px] font-mono bg-transparent border border-amber-600/20 hover:border-amber-500/30 focus:border-amber-400/50 focus:ring-1 focus:ring-amber-500/20 transition-all">
+          <SelectTrigger className="h-6 min-w-[5rem] w-auto text-[9px] font-mono bg-transparent border border-amber-600/20 hover:border-amber-500/30 focus:border-amber-400/50 focus:ring-1 focus:ring-amber-500/20 transition-all shrink-0">
             <SelectValue placeholder={localValue} />
           </SelectTrigger>
           <SelectContent className="bg-neutral-950 border-neutral-800">
@@ -138,16 +125,24 @@ export function ConfigField({
             ))}
           </SelectContent>
         </Select>
-      ) : type === "multiselect" ? (
-        <div className="w-full max-w-[150px]">
+      );
+    }
+
+    if (type === "multiselect") {
+      return (
+        <div className="w-full max-w-[150px] shrink-0">
           <MultiSelectLogicDropdown
             value={localValue as string}
             onChange={(val) => handleChange(val)}
             currentLogicId={currentLogicId}
           />
         </div>
-      ) : type === "number" ? (
-        <div className="flex items-center gap-1">
+      );
+    }
+
+    if (type === "number") {
+      return (
+        <div className="flex items-center gap-1 shrink-0">
           <Input
             type="text"
             value={localValue}
@@ -155,28 +150,60 @@ export function ConfigField({
             className="min-w-[3.5rem] w-auto h-6 text-right font-mono text-[9px] px-1.5 bg-transparent border border-amber-600/20 hover:border-amber-500/30 text-neutral-200 focus:border-amber-400/50 focus:ring-1 focus:ring-amber-500/20 transition-all rounded placeholder:text-neutral-700"
           />
           {unit && (
-            <span className="text-[8px] text-neutral-500 w-5 text-left font-medium">
+            <span className="text-[8px] text-neutral-500 min-w-[2rem] text-left font-medium">
               {unit}
             </span>
           )}
         </div>
-      ) : type === "text" ? (
+      );
+    }
+
+    if (type === "text") {
+      return (
         <Input
           type="text"
           value={localValue}
           onChange={(e) => handleChange(e.target.value)}
-          className="min-w-[4rem] w-auto h-6 text-right font-mono text-[9px] px-1.5 bg-transparent border border-amber-600/20 hover:border-amber-500/30 text-neutral-200 focus:border-amber-400/50 focus:ring-1 focus:ring-amber-500/20 transition-all rounded placeholder:text-neutral-700"
+          className="min-w-[4rem] w-auto h-6 text-right font-mono text-[9px] px-1.5 bg-transparent border border-amber-600/20 hover:border-amber-500/30 text-neutral-200 focus:border-amber-400/50 focus:ring-1 focus:ring-amber-500/20 transition-all rounded placeholder:text-neutral-700 shrink-0"
         />
-      ) : (
-        <span
-          className={cn(
-            "text-[9px] font-mono px-1.5 py-0.5 rounded bg-transparent border border-amber-600/15 text-neutral-400 min-w-[2rem]",
-            value === "-" && "text-neutral-700",
-          )}
-        >
-          {value}
+      );
+    }
+
+    return (
+      <span
+        className={cn(
+          "text-[9px] font-mono px-1.5 py-0.5 rounded bg-transparent border border-amber-600/15 text-neutral-400 min-w-[2rem] shrink-0",
+          value === "-" && "text-neutral-700",
+        )}
+      >
+        {value}
+      </span>
+    );
+  };
+
+  return (
+    <div className="group flex items-center justify-between gap-2 py-1.5 px-2 rounded bg-neutral-900/20 hover:bg-neutral-800/40 transition-all duration-200 min-h-[2rem]">
+      <div className="flex items-center gap-1.5 min-w-0">
+        <span className="text-[9px] font-medium text-neutral-300 group-hover:text-neutral-200 transition-colors whitespace-nowrap shrink-0">
+          {label}
         </span>
-      )}
+        {description && (
+          <EnhancedTooltip
+            fieldId={fieldId || label.toLowerCase().replace(/\s+/g, "_")}
+            description={description}
+          >
+            <div className="p-0.5 rounded-full hover:bg-neutral-800 transition-colors flex-shrink-0">
+              <Info className="w-2.5 h-2.5 text-neutral-500 cursor-help group-hover:text-neutral-400 transition-colors" />
+            </div>
+          </EnhancedTooltip>
+        )}
+        {hint && (
+          <span className="text-[8px] font-mono text-neutral-500 truncate hidden lg:inline">
+            {hint}
+          </span>
+        )}
+      </div>
+      {renderValue()}
     </div>
   );
 }
