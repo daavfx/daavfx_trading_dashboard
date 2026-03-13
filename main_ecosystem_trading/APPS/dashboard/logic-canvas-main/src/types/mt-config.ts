@@ -174,6 +174,9 @@ export interface GeneralConfig {
 }
 
 export interface RiskManagementConfig {
+  // Master enabled flag
+  enabled?: boolean;
+  
   // Spread Filter
   spread_filter_enabled: boolean;
   max_spread_points: number;
@@ -190,6 +193,9 @@ export interface RiskManagementConfig {
 }
 
 export interface TimeFiltersConfig {
+  // Master enabled flag
+  enabled?: boolean;
+  
   priority_settings: {
     news_filter_overrides_session: boolean;
     session_filter_overrides_news: boolean;
