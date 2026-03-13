@@ -1279,7 +1279,7 @@ export function LogicModule({
                         )}
                       </div>
 
-                      <div className="grid grid-cols-1 xl:grid-cols-2 gap-x-4 gap-y-2 relative z-10 px-3 pb-3">
+                      <div className="grid grid-cols-1 xl:grid-cols-2 gap-x-6 gap-y-3 relative z-10 px-3 pb-3">
                         {/* Custom Trading Direction & Exit Mode for Mode Selectors - COMPACT */}
 {category === "Mode Selectors" && (
                           <div className="col-span-2 xl:col-span-4 flex flex-wrap items-center gap-x-4 gap-y-2">

@@ -55,7 +55,23 @@ export function ConfigField({
     onChange?.(newValue);
   };
 
-  const isLongLabel = label.length > 14;
+  const renderLabel = () => (
+    <div className="flex items-center gap-1.5 min-w-0">
+      <span className="text-[9px] font-medium text-neutral-300 group-hover:text-neutral-200 transition-colors whitespace-nowrap shrink-0">
+        {label}
+      </span>
+      {description && (
+        <EnhancedTooltip
+          fieldId={fieldId || label.toLowerCase().replace(/\s+/g, "_")}
+          description={description}
+        >
+          <div className="p-0.5 rounded-full hover:bg-neutral-800 transition-colors flex-shrink-0">
+            <Info className="w-2.5 h-2.5 text-neutral-500 cursor-help group-hover:text-neutral-400 transition-colors" />
+          </div>
+        </EnhancedTooltip>
+      )}
+    </div>
+  );
 
   const renderValue = () => {
     if (type === "segmented" && options) {
@@ -84,22 +100,25 @@ export function ConfigField({
 
     if (type === "toggle") {
       return (
-        <div className="flex items-center gap-2 shrink-0">
-          <Switch
-            checked={localValue === "ON"}
-            onCheckedChange={(checked) => handleChange(checked ? "ON" : "OFF")}
-            className="h-4 w-7 data-[state=checked]:bg-neutral-500"
-          />
-          <span
-            className={cn(
-              "text-[9px] font-mono min-w-[2rem] text-right transition-colors",
-              localValue === "ON"
-                ? "text-neutral-300 font-bold"
-                : "text-neutral-600",
-            )}
-          >
-            {localValue === "ON" ? "ON" : "OFF"}
-          </span>
+        <div className="flex items-center justify-between w-full shrink-0">
+          <span className="text-[8px] text-neutral-500 hidden sm:inline">{hint}</span>
+          <div className="flex items-center gap-2 ml-auto">
+            <Switch
+              checked={localValue === "ON"}
+              onCheckedChange={(checked) => handleChange(checked ? "ON" : "OFF")}
+              className="h-4 w-7 data-[state=checked]:bg-neutral-500"
+            />
+            <span
+              className={cn(
+                "text-[9px] font-mono min-w-[2rem] text-right transition-colors",
+                localValue === "ON"
+                  ? "text-neutral-300 font-bold"
+                  : "text-neutral-600",
+              )}
+            >
+              {localValue === "ON" ? "ON" : "OFF"}
+            </span>
+          </div>
         </div>
       );
     }
@@ -112,7 +131,7 @@ export function ConfigField({
             handleChange(isNumericSelect ? parseInt(val, 10) : val)
           }
         >
-          <SelectTrigger className="h-6 min-w-[5rem] w-auto text-[9px] font-mono bg-transparent border border-amber-600/20 hover:border-amber-500/30 focus:border-amber-400/50 focus:ring-1 focus:ring-amber-500/20 transition-all shrink-0">
+          <SelectTrigger className="h-6 min-w-[5rem] w-full text-[9px] font-mono bg-transparent border border-amber-600/20 hover:border-amber-500/30 focus:border-amber-400/50 focus:ring-1 focus:ring-amber-500/20 transition-all shrink-0">
             <SelectValue placeholder={localValue} />
           </SelectTrigger>
           <SelectContent className="bg-neutral-950 border-neutral-800">
@@ -149,7 +168,7 @@ export function ConfigField({
             type="text"
             value={localValue}
             onChange={(e) => handleChange(e.target.value)}
-            className="min-w-[3.5rem] w-auto h-6 text-right font-mono text-[9px] px-1.5 bg-transparent border border-amber-600/20 hover:border-amber-500/30 text-neutral-200 focus:border-amber-400/50 focus:ring-1 focus:ring-amber-500/20 transition-all rounded placeholder:text-neutral-700"
+            className="min-w-[3.5rem] w-full h-6 text-right font-mono text-[9px] px-1.5 bg-transparent border border-amber-600/20 hover:border-amber-500/30 text-neutral-200 focus:border-amber-400/50 focus:ring-1 focus:ring-amber-500/20 transition-all rounded placeholder:text-neutral-700"
           />
           {unit && (
             <span className="text-[8px] text-neutral-500 min-w-[2rem] text-left font-medium">
@@ -166,7 +185,7 @@ export function ConfigField({
           type="text"
           value={localValue}
           onChange={(e) => handleChange(e.target.value)}
-          className="min-w-[4rem] w-auto h-6 text-right font-mono text-[9px] px-1.5 bg-transparent border border-amber-600/20 hover:border-amber-500/30 text-neutral-200 focus:border-amber-400/50 focus:ring-1 focus:ring-amber-500/20 transition-all rounded placeholder:text-neutral-700 shrink-0"
+          className="min-w-[4rem] w-full h-6 text-right font-mono text-[9px] px-1.5 bg-transparent border border-amber-600/20 hover:border-amber-500/30 text-neutral-200 focus:border-amber-400/50 focus:ring-1 focus:ring-amber-500/20 transition-all rounded placeholder:text-neutral-700 shrink-0"
         />
       );
     }
@@ -183,47 +202,26 @@ export function ConfigField({
     );
   };
 
-  if (isLongLabel) {
+  if (type === "toggle") {
     return (
-      <div className="group flex flex-col gap-1 py-1.5 px-2 rounded bg-neutral-900/20 hover:bg-neutral-800/40 transition-all duration-200 min-h-[2.5rem]">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <span className="text-[9px] font-medium text-neutral-300 group-hover:text-neutral-200 transition-colors whitespace-nowrap shrink-0">
-            {label}
-          </span>
-          {description && (
-            <EnhancedTooltip
-              fieldId={fieldId || label.toLowerCase().replace(/\s+/g, "_")}
-              description={description}
-            >
-              <div className="p-0.5 rounded-full hover:bg-neutral-800 transition-colors flex-shrink-0">
-                <Info className="w-2.5 h-2.5 text-neutral-500 cursor-help group-hover:text-neutral-400 transition-colors" />
-              </div>
-            </EnhancedTooltip>
-          )}
-        </div>
-        <div className="w-full">{renderValue()}</div>
+      <div className="group flex flex-col gap-1.5 py-1.5 px-2 rounded bg-neutral-900/20 hover:bg-neutral-800/40 transition-all duration-200 min-h-[2rem]">
+        {renderLabel()}
+        {renderValue()}
       </div>
     );
   }
 
   return (
-    <div className="group flex items-center justify-between gap-2 py-1.5 px-2 rounded bg-neutral-900/20 hover:bg-neutral-800/40 transition-all duration-200 min-h-[2rem]">
-      <div className="flex items-center gap-1.5 min-w-0">
-        <span className="text-[9px] font-medium text-neutral-300 group-hover:text-neutral-200 transition-colors whitespace-nowrap shrink-0">
-          {label}
-        </span>
-        {description && (
-          <EnhancedTooltip
-            fieldId={fieldId || label.toLowerCase().replace(/\s+/g, "_")}
-            description={description}
-          >
-            <div className="p-0.5 rounded-full hover:bg-neutral-800 transition-colors flex-shrink-0">
-              <Info className="w-2.5 h-2.5 text-neutral-500 cursor-help group-hover:text-neutral-400 transition-colors" />
-            </div>
-          </EnhancedTooltip>
+    <div className="group flex flex-col gap-1.5 py-1.5 px-2 rounded bg-neutral-900/20 hover:bg-neutral-800/40 transition-all duration-200 min-h-[2.5rem]">
+      <div className="flex items-center justify-between gap-2">
+        {renderLabel()}
+        {hint && type !== "toggle" && (
+          <span className="text-[8px] font-mono text-neutral-500 truncate hidden sm:inline">
+            {hint}
+          </span>
         )}
       </div>
-      {renderValue()}
+      <div className="w-full">{renderValue()}</div>
     </div>
   );
 }
