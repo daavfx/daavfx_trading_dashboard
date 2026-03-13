@@ -277,6 +277,18 @@ function Index() {
     return fields;
   }, [searchQuery, selectedFields, favoritesOnly, checkedFavorites, settings.favoriteFields]);
 
+  // Reset selectedFields when search is cleared
+  const prevSearchQueryRef = useRef(searchQuery);
+  useEffect(() => {
+    const prev = prevSearchQueryRef.current;
+    const current = searchQuery;
+    // When search goes from having content to being empty, reset selectedFields
+    if (prev && prev.trim() && (!current || !current.trim())) {
+      setSelectedFields([]);
+    }
+    prevSearchQueryRef.current = current;
+  }, [searchQuery]);
+
   const pushChatCommand = (command: string) => {
     setExternalCommand(command);
     if (externalCommandResetRef.current) {
