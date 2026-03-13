@@ -204,7 +204,7 @@ export function ConfigField({
 
   if (type === "toggle") {
     return (
-      <div className="group flex flex-col gap-1.5 py-1.5 px-2 rounded bg-neutral-900/20 hover:bg-neutral-800/40 transition-all duration-200 min-h-[2rem]">
+      <div className="group flex flex-col gap-1 py-1 px-2 rounded bg-neutral-900/20 hover:bg-neutral-800/40 transition-all duration-200 min-h-[1.75rem]">
         {renderLabel()}
         {renderValue()}
       </div>
@@ -212,7 +212,7 @@ export function ConfigField({
   }
 
   return (
-    <div className="group flex flex-col gap-1.5 py-1.5 px-2 rounded bg-neutral-900/20 hover:bg-neutral-800/40 transition-all duration-200 min-h-[2.5rem]">
+    <div className="group flex flex-col gap-1 py-1 px-2 rounded bg-neutral-900/20 hover:bg-neutral-800/40 transition-all duration-200 min-h-[2rem]">
       <div className="flex items-center justify-between gap-2">
         {renderLabel()}
         {hint && type !== "toggle" && (

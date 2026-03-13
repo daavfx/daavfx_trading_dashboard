@@ -191,79 +191,79 @@ const categoryStyles: Record<
   "Mode Selectors": {
     color: "text-sky-400",
     bg: "bg-transparent",
-    border: "",
+    border: "border-sky-500/15",
     icon: Settings2,
   },
   Core: {
     color: "text-blue-400",
     bg: "bg-transparent",
-    border: "",
+    border: "border-blue-500/15",
     icon: Layers,
   },
   Lots: {
-    color: "text-blue-400",
+    color: "text-amber-400",
     bg: "bg-transparent",
-    border: "",
+    border: "border-amber-500/15",
     icon: Box,
   },
   Grid: {
-    color: "text-indigo-400",
+    color: "text-amber-400",
     bg: "bg-transparent",
-    border: "",
+    border: "border-amber-500/15",
     icon: ArrowLeftRight,
   },
   Trail: {
     color: "text-purple-400",
     bg: "bg-transparent",
-    border: "",
+    border: "border-purple-500/15",
     icon: ChevronRight,
   },
   "Trail Advanced": {
     color: "text-fuchsia-400",
     bg: "bg-transparent",
-    border: "",
+    border: "border-fuchsia-500/15",
     icon: Settings2,
   },
   Logic: {
     color: "text-emerald-400",
     bg: "bg-transparent",
-    border: "",
+    border: "border-emerald-500/15",
     icon: Zap,
   },
   TPSL: {
     color: "text-amber-400",
     bg: "bg-transparent",
-    border: "",
+    border: "border-amber-500/15",
     icon: Shield,
   },
   "Reverse/Hedge": {
     color: "text-orange-400",
     bg: "bg-transparent",
-    border: "",
+    border: "border-orange-500/15",
     icon: ArrowLeftRight,
   },
   "Close Partial": {
     color: "text-cyan-400",
     bg: "bg-transparent",
-    border: "",
+    border: "border-cyan-500/15",
     icon: RefreshCw,
   },
   Triggers: {
     color: "text-rose-400",
     bg: "bg-transparent",
-    border: "",
+    border: "border-rose-500/15",
     icon: Shield,
   },
   Safety: {
     color: "text-red-400",
     bg: "bg-transparent",
-    border: "",
+    border: "border-red-500/15",
     icon: Shield,
   },
   Restart: {
-    color: "text-neutral-400",
+    color: "text-teal-400",
     bg: "bg-transparent",
-    border: "",
+    border: "border-teal-500/15",
     icon: RefreshCw,
   },
 };
@@ -1020,7 +1020,7 @@ export function LogicModule({
 
               {/* Show standard category-based UI for Counter Trend and Reverse - 2 columns */}
               {tradingMode !== "Hedge" && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
                   {categories
                     .filter((cat) => {
                       // Hide Close Partial when in TPSL mode
@@ -1038,6 +1038,10 @@ export function LogicModule({
                     icon: ChevronRight,
                   };
                   const Icon = style.icon;
+
+                  // Determine column span for layout optimization
+                  const isWideSection = category === "Mode Selectors" || category === "Core" || category === "Lots" || category === "Trail";
+                  const colSpanClass = isWideSection ? "lg:col-span-2" : "";
 
                   const isClosePartial = category === "Close Partial";
                   const isTriggers = category === "Triggers";
@@ -1156,13 +1160,13 @@ export function LogicModule({
                     <div
                       key={category}
                       className={cn(
-                        "rounded-lg",
-                        // Glassmorphism: subtle blur + nearly transparent dark background
-                        "bg-neutral-950/40 backdrop-blur-sm",
-                        // Subtle gradient border - gold/orange from top-left fading to transparent
-                        "border border-[linear-gradient(135deg,rgba(245,158,11,0.12)_0%,rgba(245,158,11,0.04)_50%,transparent_100%)]",
-                        // Soft floating shadow
-                        "shadow-[0_8px_30px_rgba(0,0,0,0.4)]",
+                        "rounded-lg bg-transparent",
+                        // Subtle border with category color
+                        style.border,
+                        // Tiny glow aura
+                        "shadow-[0_0_15px_rgba(0,0,0,0.3)]",
+                        // Column span for wide sections
+                        colSpanClass,
                       )}
                     >
                       {/* Category Header - Transparent with subtle gradient accent */}
@@ -1283,7 +1287,7 @@ export function LogicModule({
                         )}
                       </div>
 
-                      <div className="grid grid-cols-1 xl:grid-cols-2 gap-x-6 gap-y-3 relative z-10 px-3 pb-3">
+                      <div className="grid grid-cols-1 xl:grid-cols-2 gap-x-4 gap-y-1 relative z-10 px-3 pb-2">
                         {/* Custom Trading Direction & Exit Mode for Mode Selectors - COMPACT */}
 {category === "Mode Selectors" && (
                           <div className="col-span-2 xl:col-span-4 flex flex-wrap items-center gap-x-4 gap-y-2">
