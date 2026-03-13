@@ -1275,10 +1275,10 @@ export function GeneralCategories({
             </div>
           )}
           
-          {/* Buy/Sell toggle for Core - showing separate Buy/Sell magic numbers */}
+          {/* Buy/Sell toggle hidden for Core - no Buy/Sell distinction */}
           {validCategory === "general" && (
             <div className="mt-3">
-              {renderModeSelectors(true)}
+              {/* Core (general) has no Buy/Sell distinction */}
             </div>
           )}
           
@@ -1389,7 +1389,7 @@ export function GeneralCategories({
         </div>
       </div>
 
-      {renderModeSelectors(true)}
+      {(selectedCategory !== "general") && renderModeSelectors(true)}
 
       {generalCategoriesList.map((category) => {
         const Icon = category.icon;
