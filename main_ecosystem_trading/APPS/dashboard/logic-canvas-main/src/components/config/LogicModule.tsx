@@ -1156,9 +1156,13 @@ export function LogicModule({
                     <div
                       key={category}
                       className={cn(
-                        "rounded-lg bg-transparent",
-                        // Subtle shadow morphism - no visible border, just soft shadow
-                        "shadow-[0_2px_8px_rgba(0,0,0,0.2),0_4px_16px_rgba(0,0,0,0.1)]",
+                        "rounded-lg",
+                        // Glassmorphism: subtle blur + nearly transparent dark background
+                        "bg-neutral-950/40 backdrop-blur-sm",
+                        // Subtle gradient border - gold/orange from top-left fading to transparent
+                        "border border-[linear-gradient(135deg,rgba(245,158,11,0.12)_0%,rgba(245,158,11,0.04)_50%,transparent_100%)]",
+                        // Soft floating shadow
+                        "shadow-[0_8px_30px_rgba(0,0,0,0.4)]",
                       )}
                     >
                       {/* Category Header - Transparent with subtle gradient accent */}
