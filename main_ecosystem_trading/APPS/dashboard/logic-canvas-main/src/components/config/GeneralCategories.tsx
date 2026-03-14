@@ -547,7 +547,10 @@ export function GeneralCategories({
     });
 
     return (
-      <div className="space-y-6">
+      <div
+        className="grid gap-6 items-start content-start auto-rows-min"
+        style={{ gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))" }}
+      >
         <Card className="depth-card shadow-none">
           <CardHeader className="pb-3">
             <CardTitle className="heading-card flex items-center gap-2">
@@ -565,8 +568,8 @@ export function GeneralCategories({
           </CardContent>
         </Card>
 
-        <Tabs defaultValue="session-1" className="w-full">
-          <div className="flex items-center justify-between mb-2">
+        <Tabs defaultValue="session-1" className="w-full min-w-0">
+          <div className="flex items-center justify-between mb-2 min-w-0">
             <h3 className="text-sm font-medium text-muted-foreground">Session Configuration</h3>
             <TabsList className="h-8 bg-muted/30 p-0.5">
               {sessions.map(s => (
@@ -714,17 +717,19 @@ export function GeneralCategories({
       icon, 
       iconColor, 
       children,
+      className,
     }: { 
       id: string; 
       title: string; 
       icon: React.ReactNode; 
       iconColor: string;
       children: React.ReactNode;
+      className?: string;
     }) => {
       const isExpanded = expandedRiskSections.includes(id);
       
       return (
-        <div className="depth-card shadow-none rounded-lg overflow-hidden">
+        <div className={cn("depth-card shadow-none rounded-lg overflow-hidden", className)}>
           <div
             className="py-3 px-4 cursor-pointer select-none hover:bg-muted/20 transition-colors flex items-center justify-between"
             onClick={() => toggleRiskSection(id)}
@@ -784,62 +789,56 @@ export function GeneralCategories({
           </div>
         </div>
 
-        {/* Risk Sections */}
-        {riskSections.map(section => (
-          <CollapsibleSection
-            key={section.id}
-            id={section.id}
-            title={section.title}
-            icon={section.icon}
-            iconColor={section.iconColor}
+        <div
+          className="grid gap-4 items-start content-start auto-rows-min"
+          style={{ gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))" }}
+        >
+          {/* Risk Sections */}
+          {riskSections.map(section => (
+            <CollapsibleSection
+              key={section.id}
+              id={section.id}
+              title={section.title}
+              icon={section.icon}
+              iconColor={section.iconColor}
+            >
+              {section.fields.map(f => (
+                <ConfigField key={`${section.prefix}${f.id}`} {...f} />
+              ))}
+            </CollapsibleSection>
+          ))}
+
+          {/* COMPOUNDING - Simple collapsible without extra Card */}
+          <SimpleCollapsibleSection
+            id="compounding"
+            title="Compounding Strategy"
+            icon={<TrendingUp className="w-4 h-4" />}
+            iconColor="text-muted-foreground"
           >
-            {section.fields.map(f => (
-              <ConfigField key={`${section.prefix}${f.id}`} {...f} />
-            ))}
-          </CollapsibleSection>
-        ))}
+            {renderCompounding(compoundingFields)}
+          </SimpleCollapsibleSection>
 
-        {/* COMPOUNDING - Simple collapsible without extra Card */}
-        <SimpleCollapsibleSection
-          id="compounding"
-          title="Compounding Strategy"
-          icon={<TrendingUp className="w-4 h-4" />}
-          iconColor="text-muted-foreground"
-        >
-          <Card className="depth-card shadow-none">
-            <CardContent className="grid grid-cols-2 gap-4">
-              {renderCompounding(compoundingFields)}
-            </CardContent>
-          </Card>
-        </SimpleCollapsibleSection>
+          {/* NEWS FILTER - Simple collapsible without extra Card */}
+          <SimpleCollapsibleSection
+            id="news"
+            title="News Filter"
+            icon={<Newspaper className="w-4 h-4" />}
+            iconColor="text-muted-foreground"
+          >
+            {renderNewsFilter(newsFields)}
+          </SimpleCollapsibleSection>
 
-        {/* NEWS FILTER - Simple collapsible without extra Card */}
-        <SimpleCollapsibleSection
-          id="news"
-          title="News Filter"
-          icon={<Newspaper className="w-4 h-4" />}
-          iconColor="text-muted-foreground"
-        >
-          <Card className="depth-card shadow-none">
-            <CardContent className="grid grid-cols-2 gap-4">
-              {renderNewsFilter(newsFields)}
-            </CardContent>
-          </Card>
-        </SimpleCollapsibleSection>
-
-        {/* TIME FILTER - Simple collapsible without extra Card */}
-        <SimpleCollapsibleSection
-          id="time"
-          title="Time Filter"
-          icon={<Clock className="w-4 h-4" />}
-          iconColor="text-muted-foreground"
-        >
-          <Card className="depth-card shadow-none">
-            <CardContent className="grid grid-cols-2 gap-4">
-              {renderTimeFilter(timeFields)}
-            </CardContent>
-          </Card>
-        </SimpleCollapsibleSection>
+          {/* TIME FILTER - Simple collapsible without extra Card */}
+          <SimpleCollapsibleSection
+            id="time"
+            title="Time Filter"
+            icon={<Clock className="w-4 h-4" />}
+            iconColor="text-muted-foreground"
+            className="col-span-full"
+          >
+            {renderTimeFilter(timeFields)}
+          </SimpleCollapsibleSection>
+        </div>
       </div>
     );
   };
