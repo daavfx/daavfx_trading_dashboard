@@ -16,7 +16,6 @@ import type {
   PartialCloseConfig,
   TrailMethod,
   TrailStepMethod,
-  TrailStepMode,
   TPSLMode,
   PartialMode,
   PartialBalance,
@@ -40,8 +39,7 @@ function createDefaultTrailStep(step: number = 5): TrailStepConfig {
     step,
     method: "Step_Points",
     cycle: 0,
-    balance: 0,
-    mode: "TrailStepMode_Auto"
+    balance: 0
   };
 }
 
@@ -52,7 +50,6 @@ function createDefaultPartial(): PartialCloseConfig {
     cycle: 0,
     mode: "PartialMode_Mid",
     balance: "PartialBalance_Balanced",
-    trailMode: "TrailStepMode_Auto",
     trigger: "PartialTrigger_Cycle",
     profitThreshold: 0,
     hours: 0
@@ -68,8 +65,7 @@ function createDefaultLogicConfig(logicName: string, groupNum: number, isPower: 
       step: i === 0 ? 5 : 0,
       method: "Step_Points",
       cycle: 0,
-      balance: 0,
-      mode: "TrailStepMode_Auto"
+      balance: 0
     });
   }
 
@@ -190,13 +186,6 @@ function generateLogicConfig(
     const methods: TrailStepMethod[] = ["Step_Points", "Step_Percent"];
     base.trailSteps[i].method = methods[(variationSeed + i) % 2];
     
-    // Vary mode
-    const modes: TrailStepMode[] = [
-      "TrailStepMode_Auto", 
-      "TrailStepMode_Fixed",
-      "TrailStepMode_PerOrder"
-    ];
-    base.trailSteps[i].mode = modes[(variationSeed + i) % modes.length];
   }
   
   // Vary partials (32 fields)

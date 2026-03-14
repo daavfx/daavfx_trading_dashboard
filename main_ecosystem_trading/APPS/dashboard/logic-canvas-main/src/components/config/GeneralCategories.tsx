@@ -138,12 +138,8 @@ export function GeneralCategories({
         newConfig[fieldId] = boolValue;
         onConfigChange(newConfig);
         return;
-    } else if (categoryId === "general" && fieldId === "magic_number") {
-        // Set magic_number as a single general value (applies to both Buy and Sell)
-        newConfig.magic_number = typeof value === "string" ? parseInt(value, 10) : value;
-        // Also update both variants for backward compatibility
-        newConfig.magic_number_buy = newConfig.magic_number;
-        newConfig.magic_number_sell = newConfig.magic_number;
+    } else if (categoryId === "general" && (fieldId === "magic_number_buy" || fieldId === "magic_number_sell")) {
+        newConfig[fieldId] = typeof value === "string" ? parseInt(value, 10) : value;
     } else if (categoryId === "risk_management") {
         const setRisk = (key: "risk_management" | "risk_management_b" | "risk_management_s") => {
           if (!newConfig[key]) newConfig[key] = {};
@@ -361,7 +357,7 @@ export function GeneralCategories({
         }));
         
       case "general":
-        const fields = generalInputs.global_system.fields
+        const baseFields = generalInputs.global_system.fields
             .filter(f => f.id !== "allow_buy" && f.id !== "allow_sell")
             .filter(f => f.id !== "magic_number_buy" && f.id !== "magic_number_sell")
             .filter(f => f.id !== "max_slippage_points")
@@ -374,17 +370,24 @@ export function GeneralCategories({
               description: field.description,
               onChange: createHandler(field.id)
             }));
-            
-        // Show magic number as a single general input (applies to both Buy and Sell)
-        fields.unshift({
-          id: "magic_number",
-          label: "Magic Number",
-          value: generalConfig.magic_number_buy ?? generalConfig.magic_number ?? 777,
-          type: "number" as const,
-          description: "Terminal-facing magic number for trade identification",
-          onChange: createHandler("magic_number"),
-        });
 
+        const magicFields = generalInputs.global_system.fields
+            .filter(f => f.id === "magic_number_buy" || f.id === "magic_number_sell")
+            .map(field => ({
+              id: field.id,
+              label:
+                field.id === "magic_number_buy"
+                  ? "Magic Number (Buy)"
+                  : "Magic Number (Sell)",
+              value: generalConfig[field.id as keyof GeneralConfig] ?? field.default,
+              type: mapType(field.type),
+              unit: (field as any).unit,
+              description: field.description,
+              onChange: createHandler(field.id)
+            }));
+
+        const fields = [...magicFields, ...baseFields];
+            
         // Add separate Buy/Sell enable toggles at the top
         fields.unshift({
             id: "allow_sell",
@@ -973,11 +976,6 @@ export function GeneralCategories({
     const logFields = fields.filter(f => f.id === "enable_logs" || f.id === "logs_header");
     const coreFields = fields.filter(f => f.id !== "theme" && f.id !== "language" && f.id !== "ui_settings_header" && f.id !== "enable_logs" && f.id !== "logs_header" && f.type !== "header");
 
-    // Get scoped magic number based on Buy/Sell toggle
-    const magicNumberValue = generalEditScope === "Buy" 
-      ? fields.find(f => f.id === "magic_number_buy")?.value
-      : fields.find(f => f.id === "magic_number_sell")?.value;
-
     return (
       <div className="space-y-4">
         {/* Core System Parameters */}
@@ -991,25 +989,11 @@ export function GeneralCategories({
           </div>
           <CardContent className="p-4">
              <div className="grid grid-cols-2 gap-3">
-              {coreFields.map(f => {
-                // Override magic_number field to show scoped value
-                if (f.id === "magic_number") {
-                  return (
-                    <div key={f.id} className="p-3 rounded-lg bg-black/20 border border-white/5 hover:bg-black/30 transition-all">
-                      <ConfigField 
-                        {...f} 
-                        label={generalEditScope === "Buy" ? "Magic Number (Buy)" : "Magic Number (Sell)"}
-                        value={magicNumberValue ?? f.value} 
-                      />
-                    </div>
-                  );
-                }
-                return (
-                  <div key={f.id} className="p-3 rounded-lg bg-black/20 border border-white/5 hover:bg-black/30 transition-all">
-                    <ConfigField {...f} />
-                  </div>
-                );
-              })}
+              {coreFields.map(f => (
+                <div key={f.id} className="p-3 rounded-lg bg-black/20 border border-white/5 hover:bg-black/30 transition-all">
+                  <ConfigField {...f} />
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>

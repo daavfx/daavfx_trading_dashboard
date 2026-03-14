@@ -102,13 +102,6 @@ export const FIELD_DESCRIPTIONS: Record<string, {
     example: "Points, Pips, Percent",
     category: "trail"
   },
-  trail_step_mode: {
-    name: "Trail Step Mode",
-    description: "Controls when trail steps activate: Auto (based on profit), or Manual configuration.",
-    unit: "mode",
-    example: "Auto, Manual",
-    category: "trail"
-  },
   trail_step_cycle: {
     name: "Trail Step Cycle",
     description: "Update the trailing stop every N cycles. 1 = every cycle, 2 = every other cycle, etc.",

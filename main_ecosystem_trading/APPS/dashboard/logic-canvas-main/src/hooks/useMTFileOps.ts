@@ -52,6 +52,28 @@ export function useMTFileOps(
 
   const loadConfigOnly = useCallback(
     async (newConfig: MTConfig) => {
+      console.log("[SETFILE] loadConfigOnly: START", {
+        hasEngines: !!newConfig?.engines,
+        engineCount: newConfig?.engines?.length,
+      });
+
+      // Find Engine A Group 1 Power values
+      const engineA = newConfig?.engines?.find(e => e.engine_id === "A");
+      const group1 = engineA?.groups?.find(g => g.group_number === 1);
+      const powerLogic = group1?.logics?.find(l => l.logic_name === "Power");
+      console.log("[SETFILE] loadConfigOnly: Engine A Group 1 Power:", {
+        groupPowerStart: group1?.group_power_start,
+        powerEnabled: powerLogic?.enabled,
+        powerInitialLot: powerLogic?.initial_lot,
+        powerMultiplier: powerLogic?.multiplier,
+        powerGridCount: powerLogic?.grid_count,
+        powerDirections: powerLogic?.directions?.map(d => ({
+          direction: d.direction,
+          mode: d.mode,
+          lots: d.lots,
+        })),
+      });
+
       const canonicalConfig = canonicalizeConfigForBackend(newConfig);
       const nowIso = new Date().toISOString();
       const enrichedConfig: MTConfig = {
@@ -59,7 +81,12 @@ export function useMTFileOps(
         last_saved_at: nowIso,
         last_saved_platform: mtPlatform,
       };
+
+      console.log("[SETFILE] loadConfigOnly: Calling setConfigOnly with enrichedConfig");
       setConfigOnly(enrichedConfig);
+
+      // Verify what was set
+      console.log("[SETFILE] loadConfigOnly: DONE");
 
       if (onLoadConfig) {
         onLoadConfig(enrichedConfig);

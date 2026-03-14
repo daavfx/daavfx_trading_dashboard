@@ -188,21 +188,6 @@ const normalizeTrailStepMethod = (raw: unknown): "Step_Points" | "Step_Percent" 
   return "Step_Points";
 };
 
-const normalizeTrailStepMode = (
-  raw: unknown,
-): "TrailStepMode_Auto" | "TrailStepMode_Fixed" | "TrailStepMode_PerOrder" => {
-  const mode = String(raw ?? "").trim().toLowerCase();
-  if (mode === "trailstepmode_perorder") return "TrailStepMode_PerOrder";
-  if (
-    mode === "trailstepmode_fixed" ||
-    mode === "trailstepmode_points" ||
-    mode === "trailstepmode_percent"
-  ) {
-    return "TrailStepMode_Fixed";
-  }
-  return "TrailStepMode_Auto";
-};
-
 const normalizePartialMode = (
   raw: unknown,
 ): "PartialMode_Low" | "PartialMode_Mid" | "PartialMode_Aggressive" => {
@@ -284,17 +269,12 @@ const normalizeTrailContract = (row: Record<string, any>): Record<string, any> =
   const out = { ...row };
   out.trail_method = normalizeTrailMethod(out.trail_method);
   out.trail_step_method = normalizeTrailStepMethod(out.trail_step_method);
-  out.trail_step_mode = normalizeTrailStepMode(out.trail_step_mode);
   out.close_partial_mode = normalizePartialMode(out.close_partial_mode);
 
   for (let level = 2; level <= 7; level += 1) {
     const methodKey = `trail_step_method_${level}`;
-    const modeKey = `trail_step_mode_${level}`;
     if (out[methodKey] !== undefined && out[methodKey] !== null && out[methodKey] !== "") {
       out[methodKey] = normalizeTrailStepMethod(out[methodKey]);
-    }
-    if (out[modeKey] !== undefined && out[modeKey] !== null && out[modeKey] !== "") {
-      out[modeKey] = normalizeTrailStepMode(out[modeKey]);
     }
   }
 
@@ -312,6 +292,10 @@ const normalizeTrailContract = (row: Record<string, any>): Record<string, any> =
     }
   }
 
+  delete out.trail_step_mode;
+  for (let level = 2; level <= 7; level += 1) {
+    delete out[`trail_step_mode_${level}`];
+  }
   delete out.close_partial_cycle;
   delete out.close_partial_balance;
   delete out.close_partial_trail_step_mode;

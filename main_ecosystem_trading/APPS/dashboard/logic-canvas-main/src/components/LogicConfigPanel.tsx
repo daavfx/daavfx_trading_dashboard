@@ -60,7 +60,6 @@ interface LogicConfig {
   close_targets_ref_group?: number;
   // Trail Advanced
   trail_levels?: number;
-  trail_step_mode?: string;
   trail_step_cycle?: number;
   // TPSL
   use_tp?: boolean;
@@ -117,7 +116,7 @@ const LabeledField = ({
   </div>
 );
 
-// Category card component
+// Category card component - Metallic Terminal Style
 const CategoryCard = ({
   title,
   icon: Icon,
@@ -133,43 +132,17 @@ const CategoryCard = ({
 }) => {
   const colorClasses: Record<
     string,
-    { text: string; bg: string; border: string }
+    { accent: string; text: string }
   > = {
-    sky: {
-      text: "text-sky-500",
-      bg: "bg-sky-500/5",
-      border: "border-sky-500/10",
-    },
-    blue: {
-      text: "text-blue-500",
-      bg: "bg-blue-500/5",
-      border: "border-blue-500/10",
-    },
-    indigo: {
-      text: "text-indigo-500",
-      bg: "bg-indigo-500/5",
-      border: "border-indigo-500/10",
-    },
-    purple: {
-      text: "text-purple-500",
-      bg: "bg-purple-500/5",
-      border: "border-purple-500/10",
-    },
-    fuchsia: {
-      text: "text-fuchsia-500",
-      bg: "bg-fuchsia-500/5",
-      border: "border-fuchsia-500/10",
-    },
-    cyan: {
-      text: "text-cyan-500",
-      bg: "bg-cyan-500/5",
-      border: "border-cyan-500/10",
-    },
-    rose: {
-      text: "text-rose-500",
-      bg: "bg-rose-500/5",
-      border: "border-rose-500/10",
-    },
+    sky: { accent: "#C5A059", text: "#C5A059" },
+    blue: { accent: "#4A5568", text: "#4A5568" },
+    indigo: { accent: "#2D4F4F", text: "#2D4F4F" },
+    purple: { accent: "#5D2E2E", text: "#5D2E2E" },
+    fuchsia: { accent: "#C5A059", text: "#C5A059" },
+    cyan: { accent: "#4A5568", text: "#4A5568" },
+    rose: { accent: "#C5A059", text: "#C5A059" },
+    emerald: { accent: "#2D4F4F", text: "#2D4F4F" },
+    amber: { accent: "#C5A059", text: "#C5A059" },
   };
 
   const colors = colorClasses[color] || colorClasses.blue;
@@ -177,38 +150,37 @@ const CategoryCard = ({
   return (
     <div
       className={cn(
-        "rounded-xl border p-3.5 shadow-sm relative overflow-hidden group transition-all duration-300",
-        "hover:shadow-lg hover:-translate-y-0.5",
-        colors.bg,
-        colors.border,
-        `border-l-[3px] ${colors.text.replace("text-", "border-")}`,
+        "rounded-lg border relative overflow-hidden transition-all duration-300",
+        "bg-[rgba(10,10,10,0.8)] backdrop-blur-2xl",
+        "border-t border-white/[0.05]",
+        "before:absolute before:inset-x-0 before:top-0 before:h-[1px] before:bg-gradient-to-r before:from-transparent before:via-white/5 before:to-transparent",
+        "shadow-[0_4px_12px_rgba(0,0,0,0.08)]",
       )}
     >
-      <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent opacity-50 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+      <div
+        className="absolute inset-y-0 left-0 w-px bg-gradient-to-b from-white/[0.05] via-white/[0.03] to-transparent pointer-events-none"
+      />
 
-      <div className="flex items-center gap-2.5 mb-3.5 relative z-10">
+      <div className="flex items-center gap-2.5 p-5 pb-3 relative z-10">
         <div
-          className={cn(
-            "p-1.5 rounded-lg border shadow-sm backdrop-blur-md transition-all duration-300 group-hover:scale-110",
-            colors.bg.replace("/5", "/20"),
-            colors.border,
-            colors.text,
-          )}
+          className="p-1 rounded border transition-all duration-300"
+          style={{
+            backgroundColor: `${colors.accent}15`,
+            borderColor: `${colors.accent}30`,
+          }}
         >
-          <Icon className="w-3.5 h-3.5" />
+          <Icon className="w-3.5 h-3.5" style={{ color: colors.text }} />
         </div>
         <div
-          className={cn(
-            "text-[11px] uppercase tracking-wider font-bold text-foreground/80 group-hover:text-foreground transition-colors",
-            colors.text,
-          )}
+          className="text-[11px] uppercase tracking-wider font-medium"
+          style={{ color: colors.text, letterSpacing: "-0.02em" }}
         >
           {title}
         </div>
         {rightContent && <div className="ml-auto">{rightContent}</div>}
       </div>
 
-      <div className="relative z-10">{children}</div>
+      <div className="p-5 pt-0 relative z-10">{children}</div>
     </div>
   );
 };
@@ -251,11 +223,6 @@ const closeTargetOptions = [
 const TRADING_MODES = ["Counter Trend", "Hedge", "Reverse"];
 const TRAIL_METHODS = ["Points", "AVG_Percent"];
 const TRAIL_STEP_METHODS = ["Step_Points", "Step_Percent"];
-const TRAIL_STEP_MODES = [
-  "TrailStepMode_Auto",
-  "TrailStepMode_Fixed",
-  "TrailStepMode_PerOrder",
-];
 const PARTIAL_MODES = [
   "PartialMode_Low",
   "PartialMode_Mid",
@@ -372,19 +339,19 @@ const CounterTrendAndReverseUI = ({
           >
             <ToggleGroupItem
               value="buy"
-              className="flex-1 h-8 px-3 text-xs data-[state=on]:bg-emerald-500/20 data-[state=on]:text-emerald-500 border border-border/50 data-[state=on]:border-emerald-500/30"
+              className="flex-1 h-8 px-3 text-xs data-[state=on]:bg-[rgba(45,79,79,0.25)] data-[state=on]:text-[#CFE0E0] border border-border/50 data-[state=on]:border-[#2D4F4F]/40"
             >
               Buy
             </ToggleGroupItem>
             <ToggleGroupItem
               value="sell"
-              className="flex-1 h-8 px-3 text-xs data-[state=on]:bg-rose-500/20 data-[state=on]:text-rose-500 border border-border/50 data-[state=on]:border-rose-500/30"
+              className="flex-1 h-8 px-3 text-xs data-[state=on]:bg-[rgba(93,46,46,0.25)] data-[state=on]:text-[#E0C8C8] border border-border/50 data-[state=on]:border-[#5D2E2E]/40"
             >
               Sell
             </ToggleGroupItem>
             <ToggleGroupItem
               value="both"
-              className="flex-1 h-8 px-3 text-xs data-[state=on]:bg-blue-500/20 data-[state=on]:text-blue-500 border border-border/50 data-[state=on]:border-blue-500/30"
+              className="flex-1 h-8 px-3 text-xs data-[state=on]:bg-[rgba(197,160,89,0.2)] data-[state=on]:text-[#EAD9B3] border border-border/50 data-[state=on]:border-[#C5A059]/40"
             >
               Both Sides
             </ToggleGroupItem>
@@ -408,7 +375,7 @@ const CounterTrendAndReverseUI = ({
               className={cn(
                 "flex-1 h-8 px-3 text-xs rounded-md border transition-colors",
                 exitMode === "Trail"
-                  ? "bg-violet-500/20 text-violet-500 border-violet-500/30"
+                  ? "bg-[rgba(74,85,104,0.35)] text-[#C9D1DB] border-[#4A5568]/40"
                   : "bg-background border-border hover:bg-accent",
               )}
             >
@@ -424,7 +391,7 @@ const CounterTrendAndReverseUI = ({
               className={cn(
                 "flex-1 h-8 px-3 text-xs rounded-md border transition-colors",
                 exitMode === "TPSL"
-                  ? "bg-amber-500/20 text-amber-500 border-amber-500/30"
+                  ? "bg-[rgba(93,46,46,0.35)] text-[#E0C8C8] border-[#5D2E2E]/40"
                   : "bg-background border-border hover:bg-accent",
               )}
             >
@@ -519,56 +486,70 @@ const CounterTrendAndReverseUI = ({
         </div>
       </CategoryCard>
 
-      {/* Triggers Category */}
-      <CategoryCard title="Triggers" icon={Settings2} color="rose">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <LabeledField label="Trigger Type">
-            <Select
-              value={localConfig.trigger_type || "0 Trigger_Immediate"}
-              onValueChange={(val) => handleChange("trigger_type", val)}
-            >
-              <SelectTrigger className="bg-background/50">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {TRIGGER_TYPES.map((opt) => (
-                  <SelectItem key={opt} value={opt}>
-                    {opt}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </LabeledField>
-          <LabeledField label="Trigger Bars">
-            <Input
-              type="number"
-              value={localConfig.trigger_bars || 0}
-              onChange={(e) =>
-                handleChange("trigger_bars", parseInt(e.target.value))
-              }
-              className="bg-background/50"
-            />
-          </LabeledField>
-          <LabeledField label="Trigger Seconds" hint="sec">
-            <Input
-              type="number"
-              value={localConfig.trigger_seconds || 0}
-              onChange={(e) =>
-                handleChange("trigger_seconds", parseInt(e.target.value))
-              }
-              className="bg-background/50"
-            />
-          </LabeledField>
-          <LabeledField label="Trigger Points" hint="pts">
-            <Input
-              type="number"
-              value={localConfig.trigger_points || 0}
-              onChange={(e) =>
-                handleChange("trigger_points", parseFloat(e.target.value))
-              }
-              className="bg-background/50"
-            />
-          </LabeledField>
+      {/* Triggers + Grid Category - merged */}
+      <CategoryCard title="Triggers & Grid" icon={Settings2} color="rose">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="space-y-3">
+            <LabeledField label="Trigger Type">
+              <Select
+                value={localConfig.trigger_type || "0 Trigger_Immediate"}
+                onValueChange={(val) => handleChange("trigger_type", val)}
+              >
+                <SelectTrigger className="bg-background/50">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TRIGGER_TYPES.map((opt) => (
+                    <SelectItem key={opt} value={opt}>
+                      {opt}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </LabeledField>
+            <LabeledField label="Trigger Bars">
+              <Input
+                type="number"
+                value={localConfig.trigger_bars || 0}
+                onChange={(e) =>
+                  handleChange("trigger_bars", parseInt(e.target.value))
+                }
+                className="bg-background/50"
+              />
+            </LabeledField>
+            <LabeledField label="Trigger Seconds" hint="sec">
+              <Input
+                type="number"
+                value={localConfig.trigger_seconds || 0}
+                onChange={(e) =>
+                  handleChange("trigger_seconds", parseInt(e.target.value))
+                }
+                className="bg-background/50"
+              />
+            </LabeledField>
+            <LabeledField label="Trigger Points" hint="pts">
+              <Input
+                type="number"
+                value={localConfig.trigger_points || 0}
+                onChange={(e) =>
+                  handleChange("trigger_points", parseFloat(e.target.value))
+                }
+                className="bg-background/50"
+              />
+            </LabeledField>
+          </div>
+          <div className="space-y-3">
+            <LabeledField label="Grid Spacing" hint="FX: pips">
+              <Input
+                type="number"
+                value={localConfig.grid || 320}
+                onChange={(e) => handleChange("grid", parseInt(e.target.value))}
+                step={10}
+                min={10}
+                className="bg-background/50"
+              />
+            </LabeledField>
+          </div>
         </div>
       </CategoryCard>
 
@@ -641,20 +622,6 @@ const CounterTrendAndReverseUI = ({
             </LabeledField>
           </div>
         )}
-      </CategoryCard>
-
-      {/* Grid Category */}
-      <CategoryCard title="Grid" icon={ArrowLeftRight} color="indigo">
-        <LabeledField label="Grid Spacing" hint="FX: 320 pips">
-          <Input
-            type="number"
-            value={localConfig.grid || 320}
-            onChange={(e) => handleChange("grid", parseInt(e.target.value))}
-            step={10}
-            min={10}
-            className="bg-background/50"
-          />
-        </LabeledField>
       </CategoryCard>
 
       {!tpslActive && (
@@ -832,23 +799,6 @@ const CounterTrendAndReverseUI = ({
           }
         >
           <div className="grid grid-cols-2 gap-4">
-            <LabeledField label="Trail Step Mode">
-              <Select
-                value={localConfig.trail_step_mode || "TrailStepMode_Auto"}
-                onValueChange={(val) => handleChange("trail_step_mode", val)}
-              >
-                <SelectTrigger className="bg-background/50">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {TRAIL_STEP_MODES.map((opt) => (
-                    <SelectItem key={opt} value={opt}>
-                      {opt}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </LabeledField>
             <LabeledField label="Trail Step Cycle">
               <Input
                 type="number"
@@ -1042,7 +992,7 @@ export const LogicConfigPanel = ({
   // HEDGE MODE - Minimal UI
   if (mode === "hedge") {
     return (
-      <div className="space-y-6 p-6 bg-neutral-900/50 rounded-xl border border-blue-500/30">
+      <div className="space-y-6 p-6 bg-[rgba(10,10,10,0.8)] rounded-xl border border-white/10 backdrop-blur-2xl">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-xl font-semibold text-white">Hedge</h3>
           <Button

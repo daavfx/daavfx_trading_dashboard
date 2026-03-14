@@ -25,12 +25,10 @@ const FIELD_ALIASES: Record<string, string> = {
   "trail_step_method": "trail_step_method",
   "trail step method": "trail_step_method",
   // Trail Step Advanced (V17.04+)
-  "trail_step_mode": "trail_step_mode",
   "trail_step_cycle": "trail_step_cycle",
   "trail_cycle": "trail_step_cycle",
   "trail_step_balance": "trail_step_balance",
   "trail_balance": "trail_step_balance",
-  "trail mode": "trail_step_mode",
   "trail cycle": "trail_step_cycle",
   "trail balance": "trail_step_balance",
   // Trail Step Extended Levels (2-7)
@@ -116,7 +114,6 @@ const FIELD_ALIASES: Record<string, string> = {
   "partial mode": "close_partial_mode",
   "close_partial_balance": "close_partial_balance",
   "partial balance": "close_partial_balance",
-  "close_partial_trail_step_mode": "close_partial_trail_step_mode",
   // Close Partial Extended Levels (2-4)
   "close_partial_2": "close_partial_2",
   "partial 2": "close_partial_2",
@@ -148,9 +145,6 @@ const FIELD_ALIASES: Record<string, string> = {
   "trigger_pips": "trigger_pips",
   "trigger pips": "trigger_pips",
   // General config
-  "magic_number": "magic_number",
-  "magic number": "magic_number",
-  "magic": "magic_number",
   "magic_buy": "magic_number_buy",
   "magic buy": "magic_number_buy",
   "magic_sell": "magic_number_sell",

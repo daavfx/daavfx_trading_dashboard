@@ -120,12 +120,6 @@ export function generateMassiveCompleteConfig(
             hedge_reference: `Logic_${engineId}_Repower`,
 
             // TRAIL STEP ADVANCED (7 levels)
-            trail_step_mode:
-              logicIndex % 3 === 0
-                ? "TrailStepMode_Auto"
-                : logicIndex % 3 === 1
-                  ? "TrailStepMode_Fixed"
-                  : "TrailStepMode_PerOrder",
             trail_step_cycle: 1 + (logicIndex % 5),
             trail_step_balance: 1000 + groupNum * 100,
 
@@ -135,38 +129,31 @@ export function generateMassiveCompleteConfig(
               logicIndex % 2 === 0 ? "Step_Points" : "Step_Percent",
             trail_step_cycle_2: 2 + (logicIndex % 3),
             trail_step_balance_2: 1000 + groupNum * 100,
-            trail_step_mode_2: "TrailStepMode_Auto",
-
             trail_step_3: 200 + logicIndex * 30 + dirIndex * 15,
             trail_step_method_3:
               logicIndex % 3 === 0 ? "Step_Points" : "Step_Percent",
             trail_step_cycle_3: 3 + (logicIndex % 2),
             trail_step_balance_3: 1500 + groupNum * 150,
-            trail_step_mode_3: "TrailStepMode_Fixed",
 
             trail_step_4: 250 + logicIndex * 35 + dirIndex * 20,
             trail_step_method_4: "Step_Points",
             trail_step_cycle_4: 4 + (logicIndex % 2),
             trail_step_balance_4: 2000 + groupNum * 200,
-            trail_step_mode_4: "TrailStepMode_PerOrder",
 
             trail_step_5: 300 + logicIndex * 40 + dirIndex * 25,
             trail_step_method_5: "Step_Percent",
             trail_step_cycle_5: 5,
             trail_step_balance_5: 2500 + groupNum * 250,
-            trail_step_mode_5: "TrailStepMode_Fixed",
 
             trail_step_6: 350 + logicIndex * 45 + dirIndex * 30,
             trail_step_method_6: "Step_Points",
             trail_step_cycle_6: 6,
             trail_step_balance_6: 3000 + groupNum * 300,
-            trail_step_mode_6: "TrailStepMode_Auto",
 
             trail_step_7: 400 + logicIndex * 50 + dirIndex * 35,
             trail_step_method_7: "Step_Percent",
             trail_step_cycle_7: 7,
             trail_step_balance_7: 3500 + groupNum * 350,
-            trail_step_mode_7: "TrailStepMode_Fixed",
 
             // CLOSE PARTIAL
             close_partial: logicIndex % 2 === 0,

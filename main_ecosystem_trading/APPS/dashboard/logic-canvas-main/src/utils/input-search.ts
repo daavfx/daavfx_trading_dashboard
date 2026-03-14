@@ -30,7 +30,6 @@ const FIELD_ALIASES: Record<string, string[]> = {
   "trail_step": ["trail step", "step", "trailing step"],
   "trail_method": ["trail method", "trailing method"],
   "trail_step_method": ["trail step method"],
-  "trail_step_mode": ["trail step mode", "step mode"],
   "trail_step_cycle": ["trail cycle", "cycle", "trail step cycle"],
   "trail_step_balance": ["trail balance", "balance", "trail step balance"],
   "tp_value": ["tp", "take profit", "takeprofit", "take_profit"],
@@ -61,6 +60,7 @@ const FIELD_ALIASES: Record<string, string[]> = {
   "trigger_bars": ["trigger bars", "bars"],
   "trigger_minutes": ["trigger minutes", "minutes", "trigger time"],
   "trigger_pips": ["trigger pips", "pips"],
+  "group_power_start": ["group power start", "power start", "group threshold"],
   "enabled": ["enabled", "active", "enable"],
   "entry_delay_bars": ["entry delay", "delay", "entry delay bars"],
 };
@@ -94,6 +94,17 @@ function buildFieldSearchItems(): SearchableItem[] {
         description: field.description,
       });
     }
+  }
+  if (!seenFields.has("group_power_start")) {
+    items.push({
+      type: "field",
+      id: "group_power_start",
+      label: "Group Power Start",
+      aliases: FIELD_ALIASES["group_power_start"] || [],
+      category: "Triggers",
+      description:
+        "Power A order-count threshold required to activate this group.",
+    });
   }
   
   return items;

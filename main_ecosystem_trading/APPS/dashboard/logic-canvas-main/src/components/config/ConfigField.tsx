@@ -57,7 +57,7 @@ export function ConfigField({
 
   const renderLabel = () => (
     <div className="flex items-center gap-1.5 min-w-0">
-      <span className="text-[9px] font-medium text-neutral-300 group-hover:text-neutral-200 transition-colors whitespace-nowrap shrink-0">
+      <span className="text-[10px] font-semibold text-neutral-200 group-hover:text-neutral-100 transition-colors whitespace-nowrap shrink-0">
         {label}
       </span>
       {description && (
@@ -106,13 +106,13 @@ export function ConfigField({
             <Switch
               checked={localValue === "ON"}
               onCheckedChange={(checked) => handleChange(checked ? "ON" : "OFF")}
-              className="h-4 w-7 data-[state=checked]:bg-neutral-500"
+              className="h-4 w-7 data-[state=checked]:bg-[#4A5568]"
             />
             <span
               className={cn(
-                "text-[9px] font-mono min-w-[2rem] text-right transition-colors",
+                "text-[9px] font-bold min-w-[2rem] text-right transition-colors",
                 localValue === "ON"
-                  ? "text-neutral-300 font-bold"
+                  ? "text-[#C5A059]"
                   : "text-neutral-600",
               )}
             >
@@ -131,15 +131,15 @@ export function ConfigField({
             handleChange(isNumericSelect ? parseInt(val, 10) : val)
           }
         >
-          <SelectTrigger className="h-6 min-w-[5rem] w-full text-[9px] font-mono bg-transparent border border-amber-600/20 hover:border-amber-500/30 focus:border-amber-400/50 focus:ring-1 focus:ring-amber-500/20 transition-all shrink-0">
+          <SelectTrigger className="h-6 min-w-[5rem] w-full text-[9px] font-bold bg-transparent border border-white/10 hover:border-white/20 focus:border-[#C5A059]/40 focus:ring-1 focus:ring-[#C5A059]/20 transition-all shrink-0">
             <SelectValue placeholder={localValue} />
           </SelectTrigger>
-          <SelectContent className="bg-neutral-950 border-neutral-800">
+          <SelectContent className="bg-neutral-950 border-white/10">
             {options.map((option) => (
               <SelectItem
                 key={option}
                 value={option}
-                className="text-[9px] font-mono focus:bg-neutral-900 focus:text-neutral-200"
+                className="text-[9px] font-medium focus:bg-neutral-900 focus:text-neutral-200"
               >
                 {option}
               </SelectItem>
@@ -168,7 +168,7 @@ export function ConfigField({
             type="text"
             value={localValue}
             onChange={(e) => handleChange(e.target.value)}
-            className="min-w-[3.5rem] w-full h-6 text-right font-mono text-[9px] px-1.5 bg-transparent border border-amber-600/20 hover:border-amber-500/30 text-neutral-200 focus:border-amber-400/50 focus:ring-1 focus:ring-amber-500/20 transition-all rounded placeholder:text-neutral-700"
+            className="min-w-[3.5rem] w-full h-6 text-right font-mono-data font-bold text-[9px] px-1.5 bg-transparent border border-white/10 hover:border-white/20 text-neutral-200 focus:border-[#C5A059]/40 focus:ring-1 focus:ring-[#C5A059]/20 transition-all rounded placeholder:text-neutral-700"
           />
           {unit && (
             <span className="text-[8px] text-neutral-500 min-w-[2rem] text-left font-medium">
@@ -185,7 +185,7 @@ export function ConfigField({
           type="text"
           value={localValue}
           onChange={(e) => handleChange(e.target.value)}
-          className="min-w-[4rem] w-full h-6 text-right font-mono text-[9px] px-1.5 bg-transparent border border-amber-600/20 hover:border-amber-500/30 text-neutral-200 focus:border-amber-400/50 focus:ring-1 focus:ring-amber-500/20 transition-all rounded placeholder:text-neutral-700 shrink-0"
+          className="min-w-[4rem] w-full h-6 text-right font-mono-data font-bold text-[9px] px-1.5 bg-transparent border border-white/10 hover:border-white/20 text-neutral-200 focus:border-[#C5A059]/40 focus:ring-1 focus:ring-[#C5A059]/20 transition-all rounded placeholder:text-neutral-700 shrink-0"
         />
       );
     }
@@ -193,7 +193,7 @@ export function ConfigField({
     return (
       <span
         className={cn(
-          "text-[9px] font-mono px-1.5 py-0.5 rounded bg-transparent border border-amber-600/15 text-neutral-400 min-w-[2rem] shrink-0",
+          "text-[9px] font-mono-data font-bold px-1.5 py-0.5 rounded bg-transparent border border-white/10 text-neutral-400 min-w-[2rem] shrink-0",
           value === "-" && "text-neutral-700",
         )}
       >
@@ -216,7 +216,7 @@ export function ConfigField({
       <div className="flex items-center justify-between gap-2">
         {renderLabel()}
         {hint && type !== "toggle" && (
-          <span className="text-[8px] font-mono text-neutral-500 truncate hidden sm:inline">
+          <span className="text-[8px] font-medium text-neutral-500 truncate hidden sm:inline">
             {hint}
           </span>
         )}

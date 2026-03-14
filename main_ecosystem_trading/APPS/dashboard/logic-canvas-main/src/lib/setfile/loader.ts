@@ -4,7 +4,6 @@ import type { ChangePreview } from "@/lib/chat/types";
 
 function invTrailMethod(n: number): string { return n === 1 ? "AVG_Percent" : "Points"; }
 function invTrailStepMethod(n: number): string { return n === 0 ? "Step_Points" : "Step_Percent"; }
-function invTrailStepMode(n: number): string { switch (n) { case 0: return "TrailStepMode_Auto"; case 1: return "TrailStepMode_Fixed"; case 2: return "TrailStepMode_Fixed"; case 3: return "TrailStepMode_PerOrder"; default: return "TrailStepMode_Auto"; } }
 function invTPSLMode(_n: number): string { return "TPSL_Points"; }
 function invPartialMode(n: number): string {
   switch (n) {
@@ -171,7 +170,6 @@ export function computeSetChanges(config: MTConfigComplete, content: string): Ch
             else if (kind === "Method") { field = `trailSteps_${i}_method`; newValue = invTrailStepMethod(valNum); }
             else if (kind === "Cycle") { field = `trailSteps_${i}_cycle`; newValue = valNum; }
             else if (kind === "Balance") { field = `trailSteps_${i}_balance`; newValue = valNum; }
-            else if (kind === "Mode") { field = `trailSteps_${i}_mode`; newValue = invTrailStepMode(valNum); }
           } else {
             const pc = param.match(/^ClosePartial(Trigger|Cycle|Mode|Balance|TrailMode|ProfitThreshold|Percent|Hours)?(\d?)$/);
             if (pc) {
@@ -184,7 +182,6 @@ export function computeSetChanges(config: MTConfigComplete, content: string): Ch
               else if (kind === "Cycle") { field = `partials_${i}_cycle`; newValue = valNum; }
               else if (kind === "Mode") { field = `partials_${i}_mode`; newValue = invPartialMode(valNum); }
               else if (kind === "Balance") { field = `partials_${i}_balance`; newValue = invPartialBalance(valNum); }
-              else if (kind === "TrailMode") { field = `partials_${i}_trailMode`; newValue = invTrailStepMode(valNum); }
               else if (kind === "Trigger") { field = `partials_${i}_trigger`; newValue = invPartialTrigger(valNum); }
               else if (kind === "ProfitThreshold" || kind === "Percent") { field = `partials_${i}_profitThreshold`; newValue = valNum; }
               else if (kind === "Hours") { field = `partials_${i}_hours`; newValue = valNum; }
@@ -333,7 +330,6 @@ export function applySetContent(config: MTConfigComplete, content: string): MTCo
             else if (kind === "Method") { (t as any).method = invTrailStepMethod(valNum); }
             else if (kind === "Cycle") { (t as any).cycle = valNum; }
             else if (kind === "Balance") { (t as any).balance = valNum; }
-            else if (kind === "Mode") { (t as any).mode = invTrailStepMode(valNum); }
             continue;
           } else {
             const pc = param.match(/^ClosePartial(Trigger|Cycle|Mode|Balance|TrailMode|ProfitThreshold|Percent|Hours)?(\d?)$/);
@@ -347,7 +343,6 @@ export function applySetContent(config: MTConfigComplete, content: string): MTCo
               else if (kind === "Cycle") { (p as any).cycle = valNum; }
               else if (kind === "Mode") { (p as any).mode = invPartialMode(valNum); }
               else if (kind === "Balance") { (p as any).balance = invPartialBalance(valNum); }
-              else if (kind === "TrailMode") { (p as any).trailMode = invTrailStepMode(valNum); }
               else if (kind === "Trigger") { (p as any).trigger = invPartialTrigger(valNum); }
               else if (kind === "ProfitThreshold" || kind === "Percent") { (p as any).profitThreshold = valNum; }
               else if (kind === "Hours") { (p as any).hours = valNum; }

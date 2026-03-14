@@ -78,13 +78,13 @@ interface SidebarProps {
 const sidebarBorderClass = "border-l-platform-mt4/50";
 
 const logicColors: Record<string, string> = {
-  POWER: "bg-[hsl(43_80%_50%)]",
-  REPOWER: "bg-[hsl(210_60%_52%)]",
-  SCALPER: "bg-[hsl(152_55%_48%)]",
-  STOPPER: "bg-[hsl(0_55%_52%)]",
-  STO: "bg-[hsl(38_70%_52%)]",
-  SCA: "bg-[hsl(270_50%_58%)]",
-  RPO: "bg-[hsl(175_55%_48%)]",
+  POWER: "bg-[hsl(var(--logic-power))]",
+  REPOWER: "bg-[hsl(var(--logic-repower))]",
+  SCALPER: "bg-[hsl(var(--logic-scalper))]",
+  STOPPER: "bg-[hsl(var(--logic-stopper))]",
+  STO: "bg-[hsl(var(--logic-sto))]",
+  SCA: "bg-[hsl(var(--logic-sca))]",
+  RPO: "bg-[hsl(var(--logic-rpo))]",
 };
 
 export function Sidebar({
@@ -583,17 +583,17 @@ export function Sidebar({
           </div>
           <div className="flex flex-wrap gap-1.5">
             {currentSelectedEngines.length > 1 && (
-              <span className="px-2 py-1 rounded-md bg-blue-500/15 text-blue-400 text-[10px] font-medium border border-blue-500/20">
+              <span className="px-2 py-1 rounded-md bg-white/[0.04] text-[#4A5568] text-[10px] font-medium border border-white/10">
                 {currentSelectedEngines.length} engines
               </span>
             )}
             {currentSelectedGroups.length > 1 && (
-              <span className="px-2 py-1 rounded-md bg-green-500/15 text-green-400 text-[10px] font-medium border border-green-500/20">
+              <span className="px-2 py-1 rounded-md bg-white/[0.04] text-[#2D4F4F] text-[10px] font-medium border border-white/10">
                 {currentSelectedGroups.length} groups
               </span>
             )}
             {currentSelectedLogics.length > 1 && (
-              <span className="px-2 py-1 rounded-md bg-amber-500/15 text-amber-400 text-[10px] font-medium border border-amber-500/20">
+              <span className="px-2 py-1 rounded-md bg-white/[0.04] text-[#C5A059] text-[10px] font-medium border border-white/10">
                 {currentSelectedLogics.length} logics
               </span>
             )}

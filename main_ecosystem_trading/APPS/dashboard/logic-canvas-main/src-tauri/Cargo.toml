@@ -15,10 +15,10 @@ default-run = "app"
 name = "app_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
-# Headless CLI for testing
-[[bin]]
-name = "ryctl"
-path = "src/bin/ryctl.rs"
+# Headless CLI for testing (disabled - depends on tinyllm_daavfx)
+# [[bin]]
+# name = "ryctl"
+# path = "src/bin/ryctl.rs"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
@@ -52,7 +52,7 @@ windows = { version = "0.52", features = ["Win32_Foundation", "Win32_System_Memo
 rand = "0.8"
 ndarray = "0.15"
 statrs = "0.16"
-tinyllm_daavfx = { path = "../../../tinyllm_daavfx" }
+# tinyllm_daavfx = { path = "../../../tinyllm_daavfx" }
 
 [features]
 default = ["tauri-app"]

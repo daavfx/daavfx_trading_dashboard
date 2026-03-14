@@ -57,14 +57,12 @@ function createTestConfig(): MTConfig {
         hedge_scale: 50,
         reverse_reference: "Logic_None" as any,
         hedge_reference: "Logic_None" as any,
-        trail_step_mode: "TrailStepMode_Auto" as any,
         trail_step_cycle: 1,
         trail_step_balance: 0,
         close_partial: false,
         close_partial_cycle: 3,
         close_partial_mode: "PartialMode_Low" as any,
         close_partial_balance: "PartialBalance_Balanced" as any,
-        close_partial_trail_step_mode: "TrailStepMode_Auto" as any,
       }))
     }))
   }));

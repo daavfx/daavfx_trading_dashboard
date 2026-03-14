@@ -120,11 +120,11 @@ export function TopBar({
 
   const getTypeIcon = (type: SearchableItem["type"]) => {
     switch (type) {
-      case "field": return <Settings2 className="w-3.5 h-3.5 text-blue-400" />;
-      case "logic": return <BarChart3 className="w-3.5 h-3.5 text-green-400" />;
-      case "category": return <Layers className="w-3.5 h-3.5 text-purple-400" />;
-      case "engine": return <Box className="w-3.5 h-3.5 text-orange-400" />;
-      case "group": return <Circle className="w-3.5 h-3.5 text-cyan-400" />;
+      case "field": return <Settings2 className="w-3.5 h-3.5 text-[#4A5568]" />;
+      case "logic": return <BarChart3 className="w-3.5 h-3.5 text-[#2D4F4F]" />;
+      case "category": return <Layers className="w-3.5 h-3.5 text-[#C5A059]" />;
+      case "engine": return <Box className="w-3.5 h-3.5 text-[#C5A059]" />;
+      case "group": return <Circle className="w-3.5 h-3.5 text-[#4A5568]" />;
       default: return <Filter className="w-3.5 h-3.5 text-muted-foreground" />;
     }
   };
@@ -150,7 +150,7 @@ export function TopBar({
         {/* Tools Dropdown - Consolidated extra features */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-7 px-2.5 text-xs font-medium text-orange-500 hover:text-orange-600 hover:bg-orange-500/10 border border-orange-500/20 rounded-md gap-1.5 transition-all">
+            <Button variant="ghost" size="sm" className="h-7 px-2.5 text-xs font-medium text-[#C5A059] hover:text-[#D8B66B] hover:bg-white/[0.04] border border-white/10 rounded-md gap-1.5 transition-all">
               <Sparkles className="w-3.5 h-3.5" />
               Tools
             </Button>
@@ -160,8 +160,8 @@ export function TopBar({
               Advanced Features
             </div>
             <DropdownMenuItem className="text-xs flex items-center gap-2.5 py-2 px-2 rounded-md hover:bg-muted/50" onClick={() => onViewModeChange("version-control")}>
-              <div className="w-6 h-6 rounded-md bg-purple-500/15 flex items-center justify-center border border-purple-500/20">
-                <GitBranch className="w-3.5 h-3.5 text-purple-500" />
+              <div className="w-6 h-6 rounded-md bg-white/[0.04] flex items-center justify-center border border-white/10">
+                <GitBranch className="w-3.5 h-3.5 text-[#C5A059]" />
               </div>
               <div className="flex flex-col">
                 <span className="font-medium">Version Control</span>
@@ -169,8 +169,8 @@ export function TopBar({
               </div>
             </DropdownMenuItem>
             <DropdownMenuItem className="text-xs flex items-center gap-2.5 py-2 px-2 rounded-md hover:bg-muted/50" onClick={() => onViewModeChange("analytics")}>
-              <div className="w-6 h-6 rounded-md bg-blue-500/15 flex items-center justify-center border border-blue-500/20">
-                <BarChart3 className="w-3.5 h-3.5 text-blue-500" />
+              <div className="w-6 h-6 rounded-md bg-white/[0.04] flex items-center justify-center border border-white/10">
+                <BarChart3 className="w-3.5 h-3.5 text-[#4A5568]" />
               </div>
               <div className="flex flex-col">
                 <span className="font-medium">Analytics</span>
@@ -178,8 +178,8 @@ export function TopBar({
               </div>
             </DropdownMenuItem>
             <DropdownMenuItem className="text-xs flex items-center gap-2.5 py-2 px-2 rounded-md hover:bg-muted/50" onClick={() => onViewModeChange("undo-redo")}>
-              <div className="w-6 h-6 rounded-md bg-green-500/15 flex items-center justify-center border border-green-500/20">
-                <RotateCcw className="w-3.5 h-3.5 text-green-500" />
+              <div className="w-6 h-6 rounded-md bg-white/[0.04] flex items-center justify-center border border-white/10">
+                <RotateCcw className="w-3.5 h-3.5 text-[#2D4F4F]" />
               </div>
               <div className="flex flex-col">
                 <span className="font-medium">History</span>
@@ -187,8 +187,8 @@ export function TopBar({
               </div>
             </DropdownMenuItem>
             <DropdownMenuItem className="text-xs flex items-center gap-2.5 py-2 px-2 rounded-md hover:bg-muted/50" onClick={() => onViewModeChange("grouping")}>
-              <div className="w-6 h-6 rounded-md bg-pink-500/15 flex items-center justify-center border border-pink-500/20">
-                <Tags className="w-3.5 h-3.5 text-pink-500" />
+              <div className="w-6 h-6 rounded-md bg-white/[0.04] flex items-center justify-center border border-white/10">
+                <Tags className="w-3.5 h-3.5 text-[#C5A059]" />
               </div>
               <div className="flex flex-col">
                 <span className="font-medium">Parameter Groups</span>
@@ -196,8 +196,8 @@ export function TopBar({
               </div>
             </DropdownMenuItem>
             <DropdownMenuItem className="text-xs flex items-center gap-2.5 py-2 px-2 rounded-md hover:bg-muted/50" onClick={() => onViewModeChange("memory")}>
-              <div className="w-6 h-6 rounded-md bg-cyan-500/15 flex items-center justify-center border border-cyan-500/20">
-                <Brain className="w-3.5 h-3.5 text-cyan-500" />
+              <div className="w-6 h-6 rounded-md bg-white/[0.04] flex items-center justify-center border border-white/10">
+                <Brain className="w-3.5 h-3.5 text-[#4A5568]" />
               </div>
               <div className="flex flex-col">
                 <span className="font-medium">Memory System</span>
@@ -205,8 +205,8 @@ export function TopBar({
               </div>
             </DropdownMenuItem>
             <DropdownMenuItem className="text-xs flex items-center gap-2.5 py-2 px-2 rounded-md hover:bg-muted/50" onClick={() => onViewModeChange("collaboration")}>
-              <div className="w-6 h-6 rounded-md bg-orange-500/15 flex items-center justify-center border border-orange-500/20">
-                <Users className="w-3.5 h-3.5 text-orange-500" />
+              <div className="w-6 h-6 rounded-md bg-white/[0.04] flex items-center justify-center border border-white/10">
+                <Users className="w-3.5 h-3.5 text-[#C5A059]" />
               </div>
               <div className="flex flex-col">
                 <span className="font-medium">Team Collaboration</span>
@@ -256,12 +256,12 @@ export function TopBar({
                 className={cn(
                   "h-8 px-2.5 shrink-0 transition-colors",
                   favoritesOnly 
-                    ? "bg-yellow-500/20 text-yellow-500 hover:bg-yellow-500/30 border border-yellow-500/30" 
+                    ? "bg-[rgba(197,160,89,0.18)] text-[#C5A059] hover:bg-[rgba(197,160,89,0.26)] border border-[#C5A059]/30" 
                     : "text-muted-foreground hover:text-foreground"
                 )}
                 title={favoritesOnly ? "Show all inputs" : "Show favorites only"}
               >
-                <Star className={cn("w-3.5 h-3.5", favoritesOnly && "fill-yellow-500 text-yellow-500")} />
+                <Star className={cn("w-3.5 h-3.5", favoritesOnly && "fill-[#C5A059] text-[#C5A059]")} />
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-64 p-3" align="start">
@@ -350,8 +350,8 @@ export function TopBar({
                         className={cn(
                           "w-3.5 h-3.5",
                           favoriteFields.includes(item.id)
-                            ? "fill-yellow-500 text-yellow-500"
-                            : "text-muted-foreground hover:text-yellow-500"
+                            ? "fill-[#C5A059] text-[#C5A059]"
+                            : "text-muted-foreground hover:text-[#C5A059]"
                         )} 
                       />
                     </button>

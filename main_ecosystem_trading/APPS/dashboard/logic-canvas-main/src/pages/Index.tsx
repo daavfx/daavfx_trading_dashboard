@@ -806,9 +806,9 @@ function Index() {
   const getBorderColor = () => {
     if (!config) return "border-border";
     if (config.general.allow_buy && config.general.allow_sell)
-      return "border-blue-500/30";
-    if (config.general.allow_buy) return "border-blue-600";
-    if (config.general.allow_sell) return "border-red-600";
+      return "border-[#4A5568]/40";
+    if (config.general.allow_buy) return "border-[#2D4F4F]/60";
+    if (config.general.allow_sell) return "border-[#5D2E2E]/60";
     return "border-border";
   };
 
@@ -1135,6 +1135,36 @@ function Index() {
                                           | "A"
                                           | "B"
                                           | "C";
+                                        if (field === "group_power_start") {
+                                          const directionKey =
+                                            direction === "buy"
+                                              ? "group_power_start_b"
+                                              : direction === "sell"
+                                                ? "group_power_start_s"
+                                                : "group_power_start";
+                                          const newConfig: MTConfig = {
+                                            ...config,
+                                            engines: config.engines.map((e) => {
+                                              if (e.engine_id !== targetEngineId) return e;
+                                              return {
+                                                ...e,
+                                                groups: e.groups.map((g) => {
+                                                  if (g.group_number !== groupNum) return g;
+                                                  return {
+                                                    ...g,
+                                                    group_power_start: processedValue,
+                                                    [directionKey]: processedValue,
+                                                  } as typeof g;
+                                                }),
+                                              };
+                                            }),
+                                          };
+                                          handleSaveConfig(newConfig);
+                                          return;
+                                        }
+                                        const shouldSyncGroup1Lots =
+                                          groupNum === 1 &&
+                                          (field === "initial_lot" || field === "last_lot");
                                         const newConfig: MTConfig = {
                                           ...config,
                                           engines: config.engines.map((e) => {
@@ -1142,7 +1172,7 @@ function Index() {
                                             return {
                                               ...e,
                                               groups: e.groups.map((g) => {
-                                                if (g.group_number !== groupNum) return g;
+                                                if (!shouldSyncGroup1Lots && g.group_number !== groupNum) return g;
                                                 return {
                                                   ...g,
                                                   logics: g.logics.map((l) => {

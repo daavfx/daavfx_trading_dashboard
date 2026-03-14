@@ -109,7 +109,7 @@ export function GroupCard({
           >
             <ChevronRight className="w-4 h-4 text-muted-foreground" />
           </motion.div>
-          <span className="text-xs font-mono text-foreground flex items-center gap-2">
+          <span className="text-xs font-medium text-foreground flex items-center gap-2">
             <span className="text-muted-foreground">{prefix}/</span>
             <span className="font-semibold">{group}</span>
             {isGroup1 && (

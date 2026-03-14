@@ -9,7 +9,7 @@ import type {
   ProgressionType,
   TransactionPlan
 } from "./types";
-import type { MTConfig, MTConfigComplete, EngineConfig, GroupConfig, LogicConfig, TrailMethod, TrailStepMethod, TrailStepMode, TPSLMode, PartialMode, PartialBalance, LogicReference, GeneralConfig } from "@/types/mt-config";
+import type { MTConfig, MTConfigComplete, EngineConfig, GroupConfig, LogicConfig, TrailMethod, TrailStepMethod, TPSLMode, PartialMode, PartialBalance, LogicReference, GeneralConfig } from "@/types/mt-config";
 import {
   createProgressionPlan,
   createSetPlan,
@@ -407,7 +407,6 @@ export class CommandExecutor {
           const logic_id = `${engineId}_${name}_G${g}`;
           const trail_method: TrailMethod = "Points";
           const trail_step_method: TrailStepMethod = "Step_Points";
-          const trail_step_mode: TrailStepMode = "TrailStepMode_Auto";
           const tp_mode: TPSLMode = "TPSL_Points";
           const sl_mode: TPSLMode = "TPSL_Points";
           const order_count_reference: LogicReference = "Logic_Self";
@@ -441,14 +440,12 @@ export class CommandExecutor {
             hedge_scale: 50.0,
             reverse_reference: "Logic_None" as LogicReference,
             hedge_reference: "Logic_None" as LogicReference,
-            trail_step_mode,
             trail_step_cycle: 1,
             trail_step_balance: 0,
             close_partial: false,
             close_partial_cycle: 3,
             close_partial_mode: "PartialMode_Low",
             close_partial_balance: "PartialBalance_Balanced",
-            close_partial_trail_step_mode: trail_step_mode,
           };
 
           const withLogicSpecific: LogicConfig = {

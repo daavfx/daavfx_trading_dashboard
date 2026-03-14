@@ -160,7 +160,6 @@ function generateTestCases(): TestCase[] {
     { input: "trailing", expectField: "trail_value" },
     { input: "trail_start", expectField: "trail_start" },
     { input: "trail start", expectField: "trail_start" },
-    { input: "trail_step_mode", expectField: "trail_step_mode" },
     { input: "trail_step_cycle", expectField: "trail_step_cycle" },
     { input: "trail_cycle", expectField: "trail_step_cycle" },
   ];

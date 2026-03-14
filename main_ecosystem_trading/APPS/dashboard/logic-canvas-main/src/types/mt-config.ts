@@ -148,7 +148,7 @@ export interface GeneralConfig {
   hold_timeout_bars: number;
   
   // Global System Settings
-  magic_number: number; // GLOBAL magic number
+  magic_number?: number; // Legacy fallback magic number
   magic_number_buy: number; // BUY direction magic number
   magic_number_sell: number; // SELL direction magic number
   slippage_enabled: boolean; // GLOBAL slippage enabled
@@ -258,6 +258,8 @@ export interface GroupConfig {
   
   // ===== GROUP TRIGGER (Groups 2-20 only) =====
   group_power_start?: number;               // gInput_GroupPowerStart_P{N} - # of Power A trades needed to trigger this group
+  group_power_start_b?: number;             // Buy-side group power start override
+  group_power_start_s?: number;             // Sell-side group power start override
   
   // ===== GROUP-LEVEL REVERSE/HEDGE CONTROLS =====
   reverse_mode: boolean;                    // gInput_Group{N}_ReverseMode - flip counter-trend to trend-follow
@@ -327,8 +329,8 @@ export interface LogicConfig {
   hedge_reference: LogicReference;      // gInput_G{group}_{logic}_HedgeReference - which logic to hedge against
   trading_mode?: TradingMode;
   
-  // ===== TRAIL STEP ADVANCED (3 fields) =====
-  trail_step_mode: TrailStepMode;       // gInput_TrailStepMode_{suffix} - how trail steps are applied
+  // ===== TRAIL STEP ADVANCED (2 active + 1 legacy field) =====
+  trail_step_mode?: TrailStepMode;      // Legacy compatibility only; active contract uses trail_step_method
   trail_step_cycle: number;             // gInput_TrailStepCycle_{suffix} - update every Nth cycle (1=always)
   trail_step_balance: number;           // gInput_TrailStepBalance_{suffix} - skip if balance < threshold
   
@@ -337,37 +339,37 @@ export interface LogicConfig {
   trail_step_method_2?: TrailStepMethod;
   trail_step_cycle_2?: number;
   trail_step_balance_2?: number;
-  trail_step_mode_2?: TrailStepMode;
+  trail_step_mode_2?: TrailStepMode;    // Legacy compatibility only
 
   trail_step_3?: number;
   trail_step_method_3?: TrailStepMethod;
   trail_step_cycle_3?: number;
   trail_step_balance_3?: number;
-  trail_step_mode_3?: TrailStepMode;
+  trail_step_mode_3?: TrailStepMode;    // Legacy compatibility only
 
   trail_step_4?: number;
   trail_step_method_4?: TrailStepMethod;
   trail_step_cycle_4?: number;
   trail_step_balance_4?: number;
-  trail_step_mode_4?: TrailStepMode;
+  trail_step_mode_4?: TrailStepMode;    // Legacy compatibility only
 
   trail_step_5?: number;
   trail_step_method_5?: TrailStepMethod;
   trail_step_cycle_5?: number;
   trail_step_balance_5?: number;
-  trail_step_mode_5?: TrailStepMode;
+  trail_step_mode_5?: TrailStepMode;    // Legacy compatibility only
 
   trail_step_6?: number;
   trail_step_method_6?: TrailStepMethod;
   trail_step_cycle_6?: number;
   trail_step_balance_6?: number;
-  trail_step_mode_6?: TrailStepMode;
+  trail_step_mode_6?: TrailStepMode;    // Legacy compatibility only
 
   trail_step_7?: number;
   trail_step_method_7?: TrailStepMethod;
   trail_step_cycle_7?: number;
   trail_step_balance_7?: number;
-  trail_step_mode_7?: TrailStepMode;
+  trail_step_mode_7?: TrailStepMode;    // Legacy compatibility only
 
   // ===== CLOSE PARTIAL (active contract) =====
   close_partial: boolean;               // gInput_ClosePartial_{suffix}
@@ -377,7 +379,7 @@ export interface LogicConfig {
   // Legacy compatibility fields - ignored by active runtime contract.
   close_partial_cycle?: number;
   close_partial_balance?: LegacyPartialBalance;
-  close_partial_trail_step_mode?: TrailStepMode;
+  close_partial_trail_step_mode?: TrailStepMode; // Legacy compatibility only
 
   // ===== CLOSE PARTIAL EXTENDED (Levels 2-4) =====
   close_partial_2?: boolean;

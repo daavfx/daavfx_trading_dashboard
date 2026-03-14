@@ -1456,55 +1456,11 @@ pub fn export_set_file(
     // General Settings
     lines.push("; === GENERAL SETTINGS ===".to_string());
     lines.push(format!(
-        "gInput_MagicNumber={}",
-        config.general.magic_number
-    ));
-    lines.push(format!(
-        "gInput_MagicNumberBuy={}",
-        config.general.magic_number_buy
-    ));
-    lines.push(format!(
-        "gInput_MagicNumberSell={}",
-        config.general.magic_number_sell
-    ));
-    lines.push(format!(
-        "gInput_MagicNumberPowerBuy={}",
-        config.general.magic_number_buy
-    ));
-    lines.push(format!(
-        "gInput_MagicNumberPowerSell={}",
-        config.general.magic_number_sell
-    ));
-    lines.push(format!(
-        "gInput_MagicNumberReverseBase={}",
-        config.general.reverse_magic_base
-    ));
-    lines.push(format!(
-        "gInput_MagicNumberHedgeBase={}",
-        config.general.hedge_magic_base
-    ));
-    lines.push(format!(
-        "gInput_HedgeMagicIndependent={}",
-        if config.general.hedge_magic_independent {
-            1
-        } else {
-            0
-        }
-    ));
-    lines.push(format!(
-        "gInput_MaxSlippage={}",
-        (config.general.max_slippage_points.round() as i32)
-    ));
-    lines.push(format!(
-        "gInput_MaxSlippagePoints={:.1}",
-        config.general.max_slippage_points
-    ));
-    lines.push(format!(
-        "gInput_allowBuy={}",
+        "gInput_AllowBuy={}",
         if config.general.allow_buy { 1 } else { 0 }
     ));
     lines.push(format!(
-        "gInput_allowSell={}",
+        "gInput_AllowSell={}",
         if config.general.allow_sell { 1 } else { 0 }
     ));
     lines.push(format!(
@@ -1561,6 +1517,14 @@ pub fn export_set_file(
 
     // Risk Management
     lines.push("; === RISK MANAGEMENT ===".to_string());
+    lines.push(format!(
+        "gInput_MaxSlippage={}",
+        (config.general.max_slippage_points.round() as i32)
+    ));
+    lines.push(format!(
+        "gInput_MaxSlippagePoints={:.1}",
+        config.general.max_slippage_points
+    ));
     lines.push(format!(
         "gInput_UseSpreadFilter={}",
         if config.general.risk_management.spread_filter_enabled {
@@ -1883,6 +1847,8 @@ pub fn export_set_file(
                 let suffix =
                     get_logic_suffix(&engine.engine_id, group.group_number, &logic.logic_name);
                 let short = get_logic_short(&engine.engine_id, &logic.logic_name);
+                let is_engine_a_power_logic =
+                    is_engine_a_power(&engine.engine_id, &logic.logic_name);
 
                 // No _Enabled/_Start key — all logics always enabled.
                 // Trading is controlled by StartLevel, trigger type, risk management, etc.
@@ -2492,9 +2458,11 @@ pub fn export_set_file(
                         lines.push(format!("gInput_OpCountRef_{}={}", suffix, ocr));
                     }
                 }
-                if let Some(slr) = &logic.start_level_ref {
-                    if !slr.is_empty() {
-                        lines.push(format!("gInput_StartLevelRef_{}={}", suffix, slr));
+                if group.group_number == 1 && !is_engine_a_power_logic {
+                    if let Some(slr) = &logic.start_level_ref {
+                        if !slr.is_empty() {
+                            lines.push(format!("gInput_StartLevelRef_{}={}", suffix, slr));
+                        }
                     }
                 }
 
@@ -2576,28 +2544,6 @@ pub fn export_massive_v19_setfile(
     // Enforce canonical mode contract before serialization.
     normalize_config_mode_contract(&mut config);
 
-    let mut any_reverse_mode = false;
-    let mut any_hedge_mode = false;
-    for engine in &config.engines {
-        for group in &engine.groups {
-            if group.reverse_mode {
-                any_reverse_mode = true;
-            }
-            if group.hedge_mode {
-                any_hedge_mode = true;
-            }
-            for logic in &group.logics {
-                let mode = normalize_trading_mode(&logic.trading_mode);
-                if mode == "Reverse" {
-                    any_reverse_mode = true;
-                }
-                if mode == "Hedge" {
-                    any_hedge_mode = true;
-                }
-            }
-        }
-    }
-
     // Header
     lines.push(format!("; DAAVFX MASSIVE v19 Configuration"));
     lines.push(format!("; Platform: {}", platform));
@@ -2605,48 +2551,25 @@ pub fn export_massive_v19_setfile(
     lines.push(format!("; Format: gInput_{{Group}}_{{Engine}}{{Logic}}_{{Direction}}_{{Param}}"));
     lines.push(format!("; Total Logic Inputs: {}", V19_TOTAL_LOGIC_INPUTS));
     lines.push(format!(
-        "; Contract: 630 logic-directions, ~49,260 logic inputs total, Group 1 Power=80 fields, other Group 1 rows=81, Groups 2-15=78"
+        "; Contract: 630 logic-directions, Group 1 Power=80 fields, other Group 1 rows=81, Groups 2-15=83"
     ));
     lines.push(String::new());
 
     // General settings
     lines.push("; === GENERAL SETTINGS ===".to_string());
-    
-    // Magic Numbers
-    lines.push(format!("gInput_MagicNumber={}", config.general.magic_number));
-    lines.push(format!("gInput_MagicNumberBuy={}", config.general.magic_number_buy));
-    lines.push(format!("gInput_MagicNumberSell={}", config.general.magic_number_sell));
-    lines.push(format!("gInput_MagicNumberPowerBuy={}", config.general.magic_number_buy));
-    lines.push(format!("gInput_MagicNumberPowerSell={}", config.general.magic_number_sell));
-    lines.push(format!("gInput_MagicNumberReverseBase={}", config.general.reverse_magic_base));
-    lines.push(format!("gInput_MagicNumberHedgeBase={}", config.general.hedge_magic_base));
+    // Trading permissions
     lines.push(format!(
-        "gInput_HedgeMagicIndependent={}",
-        if config.general.hedge_magic_independent { 1 } else { 0 }
-    ));
-    
-    // Trading Permissions - allowBuy/allowSell controlled in terminal only
-    lines.push(format!(
-        "gInput_EnableReverseMode={}",
-        if any_reverse_mode { 1 } else { 0 }
+        "gInput_AllowBuy={}",
+        if config.general.allow_buy { 1 } else { 0 }
     ));
     lines.push(format!(
-        "gInput_EnableHedgeMode={}",
-        if any_hedge_mode { 1 } else { 0 }
+        "gInput_AllowSell={}",
+        if config.general.allow_sell { 1 } else { 0 }
     ));
-    
+
     // Logging
     lines.push(format!("gInput_EnableLogs={}", if config.general.enable_logs { 1 } else { 0 }));
-    
-    // Slippage
-    lines.push(format!(
-        "gInput_MaxSlippage={}",
-        (config.general.max_slippage_points.round() as i32)
-    ));
-    lines.push(format!("gInput_MaxSlippagePoints={:.1}", config.general.max_slippage_points));
-    
-    // Config File
-    
+
     // ===== COMPOUNDING =====
     lines.push(String::new());
     lines.push("; === COMPOUNDING ===".to_string());
@@ -2715,6 +2638,14 @@ pub fn export_massive_v19_setfile(
     // ===== RISK MANAGEMENT =====
     lines.push(String::new());
     lines.push("; === RISK MANAGEMENT ===".to_string());
+    lines.push(format!(
+        "gInput_MaxSlippage={}",
+        (config.general.max_slippage_points.round() as i32)
+    ));
+    lines.push(format!(
+        "gInput_MaxSlippagePoints={:.1}",
+        config.general.max_slippage_points
+    ));
     let rm = &config.general.risk_management;
     lines.push(format!("gInput_RiskManagementEnabled={}", if rm.enabled { 1 } else { 0 }));
     lines.push(format!("gInput_UseSpreadFilter={}", if rm.spread_filter_enabled { 1 } else { 0 }));
@@ -3442,17 +3373,21 @@ pub fn export_massive_v19_setfile(
                         key_opcount_ref,
                         opcount_ref_fallback
                     ));
-                    let key_start_level_ref =
-                        format!("gInput_{}_{}_{}_StartLevelRef", group_num, v19_suffix, direction);
-                    let start_level_ref_fallback = logic
-                        .start_level_ref
-                        .clone()
-                        .unwrap_or_else(|| "".to_string());
-                    lines.push(format!(
-                        "{}={}",
-                        key_start_level_ref,
-                        start_level_ref_fallback
-                    ));
+                    if group_num == 1 && !is_engine_a_power(&engine.engine_id, logic_name) {
+                        let key_start_level_ref = format!(
+                            "gInput_{}_{}_{}_StartLevelRef",
+                            group_num, v19_suffix, direction
+                        );
+                        let start_level_ref_fallback = logic
+                            .start_level_ref
+                            .clone()
+                            .unwrap_or_else(|| "".to_string());
+                        lines.push(format!(
+                            "{}={}",
+                            key_start_level_ref,
+                            start_level_ref_fallback
+                        ));
+                    }
 
                     let order_count_reference_export = if group_num == 1 {
                         logic.order_count_reference.clone()
@@ -4342,6 +4277,27 @@ pub async fn import_set_file(file_path: String) -> Result<MTConfig, String> {
     config.tags = tags;
     config.comments = comments;
     config.deobfuscate_sensitive_fields(); // Deobfuscate
+
+    // DEBUG: Log Group 1 Power Engine values
+    println!("[SETFILE] Rust: ========== RETURNING CONFIG ==========");
+    if let Some(engine_a) = config.engines.iter().find(|e| e.engine_id == "A") {
+        if let Some(group1) = engine_a.groups.iter().find(|g| g.group_number == 1) {
+            println!("[SETFILE] Rust: Engine A Group 1:");
+            println!("[SETFILE] Rust:   group_power_start: {:?}", group1.group_power_start);
+            for logic in &group1.logics {
+                if logic.logic_name == "Power" {
+                    println!("[SETFILE] Rust:   Power Logic:");
+                    println!("[SETFILE] Rust:     enabled: {:?}", logic.enabled);
+                    println!("[SETFILE] Rust:     initial_lot: {:?}", logic.initial_lot);
+                    println!("[SETFILE] Rust:     initial_lot_b: {:?}", logic.initial_lot_b);
+                    println!("[SETFILE] Rust:     initial_lot_s: {:?}", logic.initial_lot_s);
+                    println!("[SETFILE] Rust:     multiplier: {:?}", logic.multiplier);
+                    println!("[SETFILE] Rust:     grid: {:?}", logic.grid);
+                }
+            }
+        }
+    }
+    println!("[SETFILE] Rust: ========================================");
 
     Ok(config)
 }
@@ -6609,10 +6565,27 @@ fn build_logic_config(
     }
     let group_order_count_reference_b = get_dir_string(&["GroupOrderCountRef", "GroupOrderCountReference", "GroupOrderCountReferenceLogic"], "Buy");
     let group_order_count_reference_s = get_dir_string(&["GroupOrderCountRef", "GroupOrderCountReference", "GroupOrderCountReferenceLogic"], "Sell");
-    let start_level_ref_val = get_param_multi(&["StartLevelRef"], "");
-    let start_level_ref = if start_level_ref_val.is_empty() { None } else { Some(start_level_ref_val) };
-    let start_level_ref_b = get_dir_string(&["StartLevelRef"], "Buy");
-    let start_level_ref_s = get_dir_string(&["StartLevelRef"], "Sell");
+    let is_engine_a_power_logic = is_engine_a_power(engine_id, logic_name);
+    let start_level_ref_val = if group_num == 1 && !is_engine_a_power_logic {
+        get_param_multi(&["StartLevelRef"], "")
+    } else {
+        "".to_string()
+    };
+    let start_level_ref = if group_num == 1 && !is_engine_a_power_logic && !start_level_ref_val.is_empty() {
+        Some(start_level_ref_val)
+    } else {
+        None
+    };
+    let start_level_ref_b = if group_num == 1 && !is_engine_a_power_logic {
+        get_dir_string(&["StartLevelRef"], "Buy")
+    } else {
+        None
+    };
+    let start_level_ref_s = if group_num == 1 && !is_engine_a_power_logic {
+        get_dir_string(&["StartLevelRef"], "Sell")
+    } else {
+        None
+    };
     let reset_lot_on_restart = get_param_bool_multi(&["ResetLotOnRestart"]);
     let reset_lot_on_restart_b = get_dir_bool(&["ResetLotOnRestart"], "Buy");
     let reset_lot_on_restart_s = get_dir_bool(&["ResetLotOnRestart"], "Sell");
@@ -8884,7 +8857,7 @@ const V19_MAX_DIRECTIONS: usize = 2;
 #[allow(dead_code)]
 const V19_FIELDS_PER_LOGIC_GROUP1: usize = 81;
 #[allow(dead_code)]
-const V19_FIELDS_PER_LOGIC_OTHER_GROUPS: usize = 78;
+const V19_FIELDS_PER_LOGIC_OTHER_GROUPS: usize = 83;
 #[allow(dead_code)]
 const V19_FIELDS_PER_LOGIC_GROUP1_LEGACY: usize = 87;
 #[allow(dead_code)]
@@ -8902,7 +8875,7 @@ const V19_NON_GROUP1_LOGIC_DIRECTIONS: usize = V19_TOTAL_LOGIC_DIRECTIONS - V19_
 #[allow(dead_code)]
 const V19_TOTAL_LOGIC_INPUTS: usize = (V19_MAX_ENGINES * V19_MAX_DIRECTIONS) * V19_FIELDS_PER_LOGIC_GROUP1_POWER
     + (V19_GROUP1_LOGIC_DIRECTIONS - (V19_MAX_ENGINES * V19_MAX_DIRECTIONS)) * V19_FIELDS_PER_LOGIC_GROUP1
-    + V19_NON_GROUP1_LOGIC_DIRECTIONS * V19_FIELDS_PER_LOGIC_OTHER_GROUPS; // 49,260
+    + V19_NON_GROUP1_LOGIC_DIRECTIONS * V19_FIELDS_PER_LOGIC_OTHER_GROUPS; // 52,200
 #[allow(dead_code)]
 const V19_MIN_TOTAL_INPUTS: usize = 45000;
 
@@ -9063,10 +9036,11 @@ pub fn parse_v19_setfile(content: &str) -> V19ParsedSetfile {
                 && *count != V19_FIELDS_PER_LOGIC_GROUP1_LEGACY
                 && *count != 74
                 && *count != 75
+                && *count != 85
                 && *count != 86
             {
                 errors.push(format!(
-                    "Logic-direction {} has {} fields (expected one of {}, {}, {}, 74, 75, 86).",
+                    "Logic-direction {} has {} fields (expected one of {}, {}, {}, 74, 75, 85, 86).",
                     k,
                     count,
                     expected_current,
@@ -9076,13 +9050,14 @@ pub fn parse_v19_setfile(content: &str) -> V19ParsedSetfile {
             }
         } else {
             if *count != V19_FIELDS_PER_LOGIC_OTHER_GROUPS
+                && *count != 78
                 && *count != V19_FIELDS_PER_LOGIC_OTHER_GROUPS_LEGACY
                 && *count != 72
                 && *count != 85
                 && *count != 86
                 && *count != V19_FIELDS_PER_LOGIC_OTHER_GROUPS_LEGACY_MAX {
                 errors.push(format!(
-                    "Logic-direction {} has {} fields (expected one of 72, 78, 84, 85, 86, 87).",
+                    "Logic-direction {} has {} fields (expected one of 72, 78, 83, 84, 85, 86, 87).",
                     k, count
                 ));
             }
@@ -10048,6 +10023,14 @@ fn apply_v19_global_keys(config: &mut MTConfig, inputs: &HashMap<String, String>
         &["gInput_MaxSlippagePoints", "gInput_MaxSlippage"],
         config.general.max_slippage_points,
     );
+    let allow_buy_keys = ["gInput_AllowBuy", "gInput_allowBuy", "AllowBuy", "allowBuy"];
+    if allow_buy_keys.iter().any(|k| inputs.contains_key(*k)) {
+        config.general.allow_buy = get_bool_first(inputs, &allow_buy_keys);
+    }
+    let allow_sell_keys = ["gInput_AllowSell", "gInput_allowSell", "AllowSell", "allowSell"];
+    if allow_sell_keys.iter().any(|k| inputs.contains_key(*k)) {
+        config.general.allow_sell = get_bool_first(inputs, &allow_sell_keys);
+    }
 
     // Grid Unit and Pip Factor - MISSING in original implementation!
     let grid_unit_default = config.general.grid_unit.unwrap_or(10);

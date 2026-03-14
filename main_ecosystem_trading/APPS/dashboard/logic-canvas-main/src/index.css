@@ -4,7 +4,12 @@
 @import "@fontsource/inter/400.css";
 @import "@fontsource/inter/500.css";
 @import "@fontsource/inter/600.css";
-@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap");
+
+/* Monospace accents for numeric and code-like data */
+.font-mono {
+  font-family: 'JetBrains Mono', 'Geist Mono', ui-monospace, monospace;
+}
 
 @tailwind base;
 @tailwind components;
@@ -12,103 +17,105 @@
 
 @layer base {
   :root {
-    /* JP Morgan Sophisticated Dark Palette */
-    --background: 220 18% 3%;
-    --background-elevated: 220 16% 7%;
-    --background-subtle: 220 14% 10%;
+    /* Metallic & Industrial Palette */
+    --background: 0 0% 4%;
+    --background-elevated: 0 0% 7%;
+    --background-subtle: 0 0% 10%;
 
-    --foreground: 45 10% 92%;
-    --foreground-muted: 220 10% 55%;
+    --foreground: 40 12% 92%;
+    --foreground-muted: 220 8% 56%;
 
-    --card: 220 16% 6%;
-    --card-foreground: 45 10% 90%;
-    --card-hover: 220 14% 9%;
+    --card: 0 0% 7%;
+    --card-foreground: 40 12% 90%;
+    --card-hover: 0 0% 10%;
 
-    --popover: 220 16% 8%;
+    --popover: 0 0% 8%;
     --popover-foreground: 45 10% 90%;
 
-    /* Refined Gold - Elegant, corporate */
-    --primary: 43 65% 52%;
+    /* Primary (Bronze) */
+    --primary: 40 45% 56%;
     --primary-foreground: 220 20% 8%;
-    --primary-glow: 43 50% 62%;
+    --primary-glow: 40 35% 62%;
 
-    /* Slate Blue Data Accent */
-    --accent: 210 35% 55%;
-    --accent-foreground: 45 10% 92%;
-    --accent-muted: 210 20% 40%;
+    /* Secondary (Gunmetal / Steel) */
+    --accent: 214 20% 35%;
+    --accent-foreground: 40 12% 92%;
+    --accent-muted: 214 14% 28%;
 
     /* Secondary - Subtle UI */
-    --secondary: 220 14% 14%;
-    --secondary-foreground: 45 10% 80%;
+    --secondary: 0 0% 14%;
+    --secondary-foreground: 40 12% 82%;
 
-    --muted: 220 12% 16%;
-    --muted-foreground: 220 10% 55%;
+    --muted: 0 0% 16%;
+    --muted-foreground: 220 8% 55%;
 
-    --destructive: 0 55% 48%;
-    --destructive-foreground: 45 10% 92%;
+    /* Critical (Burnt Oxide) */
+    --destructive: 0 35% 27%;
+    --destructive-foreground: 40 12% 92%;
 
-    --success: 152 50% 42%;
-    --success-foreground: 220 20% 8%;
+    /* Status (Muted Forest / Manganese) */
+    --success: 180 18% 25%;
+    --success-foreground: 40 12% 92%;
 
-    --warning: 38 75% 52%;
+    --warning: 40 35% 50%;
     --warning-foreground: 220 20% 8%;
 
-    --border: 220 12% 15%;
-    --border-subtle: 220 10% 12%;
-    --input: 220 14% 10%;
-    --ring: 43 65% 52%;
+    --border: 0 0% 16%;
+    --border-subtle: 0 0% 12%;
+    --input: 0 0% 11%;
+    --ring: 40 45% 56%;
 
     --radius: 0.375rem;
 
     /* Platform Canvas - Very subtle tints */
-    --canvas-default: 220 18% 5%;
-    --canvas-mt4: 220 22% 5%;
-    --canvas-mt5: 215 22% 5%;
-    --canvas-python: 45 12% 5%;
-    --canvas-c: 260 14% 5%;
-    --canvas-cpp: 340 12% 5%;
-    --canvas-rust: 20 14% 5%;
+    --canvas-default: 0 0% 5%;
+    --canvas-mt4: 0 0% 5%;
+    --canvas-mt5: 0 0% 5%;
+    --canvas-python: 0 0% 5%;
+    --canvas-c: 0 0% 5%;
+    --canvas-cpp: 0 0% 5%;
+    --canvas-rust: 0 0% 5%;
 
-    /* Platform Colors - Refined */
-    --platform-mt4: 220 55% 58%;
-    --platform-mt5: 200 50% 55%;
-    --platform-python: 45 55% 55%;
-    --platform-c: 260 40% 58%;
-    --platform-cpp: 340 45% 55%;
-    --platform-rust: 20 50% 52%;
+    /* Platform Colors - Muted */
+    --platform-mt4: 214 20% 45%;
+    --platform-mt5: 205 18% 42%;
+    --platform-python: 40 30% 50%;
+    --platform-c: 260 18% 46%;
+    --platform-cpp: 340 18% 46%;
+    --platform-rust: 20 28% 48%;
 
-    /* Shadows - Professional */
-    --shadow-xs: 0 1px 2px hsl(0 0% 0% / 0.25);
-    --shadow-sm: 0 2px 4px hsl(0 0% 0% / 0.3);
-    --shadow-md: 0 4px 12px hsl(0 0% 0% / 0.35);
-    --shadow-lg: 0 8px 24px hsl(0 0% 0% / 0.4);
-    --shadow-xl: 0 12px 40px hsl(0 0% 0% / 0.45);
+    /* Shadows - Subtle */
+    --shadow-xs: 0 1px 2px hsl(0 0% 0% / 0.08);
+    --shadow-sm: 0 2px 6px hsl(0 0% 0% / 0.12);
+    --shadow-md: 0 6px 16px hsl(0 0% 0% / 0.16);
+    --shadow-lg: 0 10px 24px hsl(0 0% 0% / 0.18);
+    --shadow-xl: 0 16px 40px hsl(0 0% 0% / 0.2);
 
     /* Sidebar */
-    --sidebar-background: 220 18% 5%;
-    --sidebar-foreground: 45 10% 80%;
-    --sidebar-primary: 43 65% 52%;
+    --sidebar-background: 0 0% 5%;
+    --sidebar-foreground: 40 12% 80%;
+    --sidebar-primary: 40 45% 56%;
     --sidebar-primary-foreground: 220 20% 8%;
-    --sidebar-accent: 220 14% 12%;
-    --sidebar-accent-foreground: 45 10% 80%;
-    --sidebar-border: 220 12% 13%;
-    --sidebar-ring: 43 65% 52%;
+    --sidebar-accent: 0 0% 12%;
+    --sidebar-accent-foreground: 40 12% 80%;
+    --sidebar-border: 0 0% 13%;
+    --sidebar-ring: 40 45% 56%;
 
     /* Chart */
-    --chart-1: 152 50% 48%;
-    --chart-2: 43 65% 52%;
-    --chart-3: 45 10% 88%;
-    --chart-4: 20 75% 52%;
-    --chart-5: 200 70% 52%;
+    --chart-1: 180 18% 32%;
+    --chart-2: 40 45% 56%;
+    --chart-3: 40 10% 86%;
+    --chart-4: 0 35% 35%;
+    --chart-5: 214 22% 42%;
 
-    /* Logic Colors */
-    --logic-power: 43 80% 50%;
-    --logic-repower: 210 60% 52%;
-    --logic-scalper: 152 55% 48%;
-    --logic-stopper: 0 55% 52%;
-    --logic-sto: 38 70% 52%;
-    --logic-sca: 270 50% 58%;
-    --logic-rpo: 175 55% 48%;
+    /* Logic Colors - Metallic */
+    --logic-power: 40 45% 56%;
+    --logic-repower: 214 20% 38%;
+    --logic-scalper: 180 18% 28%;
+    --logic-stopper: 0 35% 30%;
+    --logic-sto: 40 35% 50%;
+    --logic-sca: 214 16% 36%;
+    --logic-rpo: 175 20% 30%;
   }
 }
 
@@ -161,7 +168,7 @@
   }
 
   .card-elevated {
-    @apply bg-card border border-border/70 rounded-lg;
+    @apply bg-card border border-white/5 rounded-lg;
     box-shadow: var(--shadow-sm);
   }
 
@@ -171,8 +178,8 @@
   }
 
   .card-premium {
-    @apply bg-gradient-to-b from-card to-background border border-border/60 rounded-lg;
-    box-shadow: var(--shadow-md), inset 0 1px 0 hsl(45 10% 92% / 0.03);
+    @apply bg-gradient-to-b from-card to-background border border-white/5 rounded-lg;
+    box-shadow: var(--shadow-md), inset 0 1px 0 hsl(0 0% 100% / 0.03);
   }
 
   .status-filled {
@@ -223,7 +230,7 @@
 
   /* Glass effect */
   .glass {
-    @apply bg-card/80 backdrop-blur-sm border border-border/50;
+    @apply bg-[rgba(10,10,10,0.8)] backdrop-blur-2xl border border-white/5;
   }
 
   /* Highlight animation */
@@ -232,7 +239,7 @@
   }
 
   @keyframes highlight-pulse {
-    0% { background-color: hsl(43 65% 52% / 0.2); }
+    0% { background-color: hsl(40 45% 56% / 0.2); }
     100% { background-color: transparent; }
   }
 

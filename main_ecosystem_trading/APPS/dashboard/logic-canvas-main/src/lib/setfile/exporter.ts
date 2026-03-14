@@ -58,18 +58,6 @@ function trailStepMethodToInt(method: string): number {
   }
 }
 
-// Trail step mode to number
-function trailStepModeToInt(mode: string): number {
-  switch (mode) {
-    case "TrailStepMode_Auto": return 0;
-    case "TrailStepMode_Fixed":
-    case "TrailStepMode_Points": return 1;
-    case "TrailStepMode_Percent": return 1;
-    case "TrailStepMode_PerOrder": return 3;
-    default: return 0;
-  }
-}
-
 // TP/SL mode to number
 function tpslModeToInt(mode: string): number {
   switch (mode) {
@@ -257,7 +245,6 @@ function exportLogicConfig(
       add(direction, `TrailStepMethod${s}`, trailStepMethodToInt(step.method));
       add(direction, `TrailStepCycle${s}`, step.cycle);
       add(direction, `TrailStepBalance${s}`, step.balance);
-      add(direction, `TrailStepMode${s}`, trailStepModeToInt(step.mode));
     });
 
     // Partial close - 4 levels
@@ -268,7 +255,6 @@ function exportLogicConfig(
       add(direction, `ClosePartialCycle${s}`, partial.cycle);
       add(direction, `ClosePartialMode${s}`, partialModeToInt(partial.mode));
       add(direction, `ClosePartialBalance${s}`, partialBalanceToInt(partial.balance));
-      add(direction, `ClosePartialTrailMode${s}`, trailStepModeToInt(partial.trailMode));
       add(direction, `ClosePartialTrigger${s}`, partialTriggerToInt(partial.trigger));
       add(direction, `ClosePartialProfitThreshold${s}`, partial.profitThreshold);
       // Keep legacy alias used by existing setfiles.
@@ -329,7 +315,7 @@ function exportGlobalConfig(global: GlobalConfig, entries: Map<string, string>):
   };
 
   // Core global settings
-  add("MagicNumber", global.baseMagicNumber);
+  add("MagicNumber", global.magicNumberBuy || global.baseMagicNumber);
   add("MagicNumberBuy", global.magicNumberBuy);
   add("MagicNumberSell", global.magicNumberSell);
   add("SlippageEnabled", global.slippageEnabled || false);

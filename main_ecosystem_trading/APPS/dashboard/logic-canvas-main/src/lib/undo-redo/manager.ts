@@ -41,28 +41,29 @@ export class UndoRedoManager {
     }
   }
 
-  // Persist to sessionStorage (cleared on tab close, no quota issues)
+  // Persist to localStorage - only store user modifications
   private saveToStorage(): void {
     try {
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
     } catch (e: any) {
-      // sessionStorage rarely fills up, but handle gracefully
-      console.warn('[UndoRedo] Storage failed, clearing old data');
-      const stack = this.getCurrentStack();
-      stack.undo = stack.undo.slice(-20);
-      stack.redo = [];
-      try {
-        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
-      } catch {
-        sessionStorage.removeItem(STORAGE_KEY);
+      if (e?.name === 'QuotaExceededError') {
+        console.warn('[UndoRedo] Storage quota exceeded, clearing old data');
+        const stack = this.getCurrentStack();
+        stack.undo = stack.undo.slice(-20);
+        stack.redo = [];
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+        } catch {
+          localStorage.removeItem(STORAGE_KEY);
+        }
       }
     }
   }
 
-  // Load from sessionStorage
+  // Load from localStorage
   private loadFromStorage(): UndoRedoState | null {
     try {
-      const saved = sessionStorage.getItem(STORAGE_KEY);
+      const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         return JSON.parse(saved);
       }

@@ -33,7 +33,6 @@ interface GridBatchEditorProps {
 const availableInputs = [
   // Core
   { id: "start_level", label: "Start Level", type: "number", category: "Core" },
-  { id: "start_level_ref", label: "Start Level Ref", type: "number", category: "Core" },
   { id: "enabled", label: "Enabled", type: "toggle", category: "Core" },
   { id: "trigger_type", label: "Trigger Type", type: "select", category: "Core" },
   // Lots
@@ -65,7 +64,6 @@ const availableInputs = [
   // Safety
   { id: "max_spread", label: "Max Spread", type: "number", category: "Safety" },
   { id: "max_slippage", label: "Max Slippage", type: "number", category: "Safety" },
-  { id: "magic_number", label: "Magic Number", type: "number", category: "Safety" },
   // Restart
   { id: "restart_enabled", label: "Restart Enabled", type: "toggle", category: "Restart" },
   { id: "restart_timeout", label: "Restart Timeout", type: "number", category: "Restart" },

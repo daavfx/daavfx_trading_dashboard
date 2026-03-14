@@ -38,7 +38,7 @@ export interface TrailStepConfig {
   method: TrailStepMethod;
   cycle: number;
   balance: number;
-  mode: TrailStepMode;
+  mode?: TrailStepMode;
 }
 
 // Partial Close Configuration (4 levels)
@@ -47,7 +47,7 @@ export interface PartialCloseConfig {
   cycle: number;
   mode: PartialMode;
   balance: PartialBalance;
-  trailMode: TrailStepMode;
+  trailMode?: TrailStepMode;
   trigger: PartialTrigger;
   profitThreshold: number;
   hours: number;
@@ -156,6 +156,8 @@ export interface GroupConfig {
   group_number: number;
   enabled: boolean;
   group_power_start?: number;
+  group_power_start_b?: number;
+  group_power_start_s?: number;
   reverse_mode: boolean;
   hedge_mode: boolean;
   hedge_reference: LogicReference;

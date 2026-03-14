@@ -29,6 +29,7 @@ import {
   logicInputs,
   ENGINE_LOGICS,
   LOGIC_DISPLAY_NAMES,
+  LogicFieldDef,
 } from "@/data/logic-inputs";
 import { useSettings } from "@/contexts/SettingsContext";
 import LogicConfigPanel from "@/components/LogicConfigPanel";
@@ -59,110 +60,110 @@ const logicMeta: Record<
 > = {
   // Engine A logics
   POWER: {
-    color: "bg-[hsl(43_80%_50%)]",
+    color: "bg-[hsl(var(--logic-power))]",
     description:
       "Main trading logic - core position management and entry signals",
     cssClass: "logic-power",
   },
   REPOWER: {
-    color: "bg-[hsl(210_60%_52%)]",
+    color: "bg-[hsl(var(--logic-repower))]",
     description: "Grid recovery system with dynamic lot sizing",
     cssClass: "logic-repower",
   },
   SCALPER: {
-    color: "bg-[hsl(152_55%_48%)]",
+    color: "bg-[hsl(var(--logic-scalper))]",
     description: "Fast scalping entries with tight stops",
     cssClass: "logic-scalper",
   },
   STOPPER: {
-    color: "bg-[hsl(0_55%_52%)]",
+    color: "bg-[hsl(var(--logic-stopper))]",
     description: "Risk management and position limiting",
     cssClass: "logic-stopper",
   },
   STO: {
-    color: "bg-[hsl(38_70%_52%)]",
+    color: "bg-[hsl(var(--logic-sto))]",
     description: "Stochastic oscillator signals",
     cssClass: "logic-sto",
   },
   SCA: {
-    color: "bg-[hsl(270_50%_58%)]",
+    color: "bg-[hsl(var(--logic-sca))]",
     description: "Scale-in position management",
     cssClass: "logic-sca",
   },
   RPO: {
-    color: "bg-[hsl(175_55%_48%)]",
+    color: "bg-[hsl(var(--logic-rpo))]",
     description: "Recovery position optimization",
     cssClass: "logic-rpo",
   },
   // Engine B logics (same colors, different prefix)
   BPOWER: {
-    color: "bg-[hsl(43_80%_50%)]",
+    color: "bg-[hsl(var(--logic-power))]",
     description: "Engine B - Main trading logic",
     cssClass: "logic-power",
   },
   BREPOWER: {
-    color: "bg-[hsl(210_60%_52%)]",
+    color: "bg-[hsl(var(--logic-repower))]",
     description: "Engine B - Grid recovery",
     cssClass: "logic-repower",
   },
   BSCALPER: {
-    color: "bg-[hsl(152_55%_48%)]",
+    color: "bg-[hsl(var(--logic-scalper))]",
     description: "Engine B - Fast scalping",
     cssClass: "logic-scalper",
   },
   BSTOPPER: {
-    color: "bg-[hsl(0_55%_52%)]",
+    color: "bg-[hsl(var(--logic-stopper))]",
     description: "Engine B - Risk management",
     cssClass: "logic-stopper",
   },
   BSTO: {
-    color: "bg-[hsl(38_70%_52%)]",
+    color: "bg-[hsl(var(--logic-sto))]",
     description: "Engine B - Stochastic",
     cssClass: "logic-sto",
   },
   BSCA: {
-    color: "bg-[hsl(270_50%_58%)]",
+    color: "bg-[hsl(var(--logic-sca))]",
     description: "Engine B - Scale-in",
     cssClass: "logic-sca",
   },
   BRPO: {
-    color: "bg-[hsl(175_55%_48%)]",
+    color: "bg-[hsl(var(--logic-rpo))]",
     description: "Engine B - Recovery",
     cssClass: "logic-rpo",
   },
   // Engine C logics
   CPOWER: {
-    color: "bg-[hsl(43_80%_50%)]",
+    color: "bg-[hsl(var(--logic-power))]",
     description: "Engine C - Main trading logic",
     cssClass: "logic-power",
   },
   CREPOWER: {
-    color: "bg-[hsl(210_60%_52%)]",
+    color: "bg-[hsl(var(--logic-repower))]",
     description: "Engine C - Grid recovery",
     cssClass: "logic-repower",
   },
   CSCALPER: {
-    color: "bg-[hsl(152_55%_48%)]",
+    color: "bg-[hsl(var(--logic-scalper))]",
     description: "Engine C - Fast scalping",
     cssClass: "logic-scalper",
   },
   CSTOPPER: {
-    color: "bg-[hsl(0_55%_52%)]",
+    color: "bg-[hsl(var(--logic-stopper))]",
     description: "Engine C - Risk management",
     cssClass: "logic-stopper",
   },
   CSTO: {
-    color: "bg-[hsl(38_70%_52%)]",
+    color: "bg-[hsl(var(--logic-sto))]",
     description: "Engine C - Stochastic",
     cssClass: "logic-sto",
   },
   CSCA: {
-    color: "bg-[hsl(270_50%_58%)]",
+    color: "bg-[hsl(var(--logic-sca))]",
     description: "Engine C - Scale-in",
     cssClass: "logic-sca",
   },
   CRPO: {
-    color: "bg-[hsl(175_55%_48%)]",
+    color: "bg-[hsl(var(--logic-rpo))]",
     description: "Engine C - Recovery",
     cssClass: "logic-rpo",
   },
@@ -170,114 +171,111 @@ const logicMeta: Record<
 
 // Category display order and icons
 const CATEGORY_ORDER = [
-  "Mode Selectors",
-  "Core",
-  "Triggers",
-  "Logic",
+  "Triggers + Grid",
   "Lots",
-  "Grid",
+  "Logic",
   "Trail",
   "Trail Advanced",
-  "Close Partial",
-  "Reverse/Hedge",
   "TPSL",
-  "Safety",
+  "Close Partial",
   "Restart",
+  "Reverse/Hedge",
+  "Safety",
 ];
+
+const CATEGORY_MERGE_MAP: Record<string, string> = {
+  "Mode Selectors": "Triggers + Grid",
+  Core: "Triggers + Grid",
+  Triggers: "Triggers + Grid",
+  Grid: "Triggers + Grid",
+};
 
 const categoryStyles: Record<
   string,
   { color: string; bg: string; border: string; glow: string; icon: any }
 > = {
-  "Mode Selectors": {
-    color: "text-sky-400",
-    bg: "bg-transparent",
-    border: "border-t-2 border-sky-500/40",
-    glow: "shadow-[0_8px_32px_rgba(14,165,233,0.1)]",
+  "Triggers + Grid": {
+    color: "text-[#C5A059]",
+    bg: "bg-[rgba(10,10,10,0.8)]",
+    border: "border border-white/[0.05]",
+    glow: "shadow-[0_4px_12px_rgba(0,0,0,0.08)]",
     icon: Settings2,
   },
   Core: {
-    color: "text-blue-400",
-    bg: "bg-[rgba(15,15,15,0.6)]",
-    border: "border-t-2 border-blue-500/40",
-    glow: "shadow-[0_8px_32px_rgba(59,130,246,0.1)]",
+    color: "text-[#4A5568]",
+    bg: "bg-[rgba(10,10,10,0.8)]",
+    border: "border border-white/[0.05]",
+    glow: "shadow-[0_4px_12px_rgba(0,0,0,0.08)]",
     icon: Layers,
   },
   Lots: {
-    color: "text-amber-400",
-    bg: "bg-[rgba(15,15,15,0.6)]",
-    border: "border-t-2 border-amber-500/40",
-    glow: "shadow-[0_8px_32px_rgba(245,158,11,0.1)]",
+    color: "text-[#C5A059]",
+    bg: "bg-[rgba(10,10,10,0.8)]",
+    border: "border border-white/[0.05]",
+    glow: "shadow-[0_4px_12px_rgba(0,0,0,0.08)]",
     icon: Box,
   },
-  Grid: {
-    color: "text-amber-400",
-    bg: "bg-[rgba(15,15,15,0.6)]",
-    border: "border-t-2 border-amber-500/40",
-    glow: "shadow-[0_8px_32px_rgba(245,158,11,0.1)]",
-    icon: ArrowLeftRight,
+  "Triggers + Grid": {
+    color: "text-[#C5A059]",
+    bg: "bg-[rgba(10,10,10,0.8)]",
+    border: "border border-white/[0.05]",
+    glow: "shadow-[0_4px_12px_rgba(0,0,0,0.08)]",
+    icon: Shield,
   },
   Trail: {
-    color: "text-purple-400",
-    bg: "bg-[rgba(15,15,15,0.6)]",
-    border: "border-t-2 border-purple-500/40",
-    glow: "shadow-[0_8px_32px_rgba(168,85,247,0.15)]",
+    color: "text-[#4A5568]",
+    bg: "bg-[rgba(10,10,10,0.8)]",
+    border: "border border-white/[0.05]",
+    glow: "shadow-[0_4px_12px_rgba(0,0,0,0.08)]",
     icon: ChevronRight,
   },
   "Trail Advanced": {
-    color: "text-fuchsia-400",
-    bg: "bg-[rgba(15,15,15,0.6)]",
-    border: "border-t-2 border-fuchsia-500/40",
-    glow: "shadow-[0_8px_32px_rgba(232,121,249,0.1)]",
+    color: "text-[#4A5568]",
+    bg: "bg-[rgba(10,10,10,0.8)]",
+    border: "border border-white/[0.05]",
+    glow: "shadow-[0_4px_12px_rgba(0,0,0,0.08)]",
     icon: Settings2,
   },
   Logic: {
-    color: "text-emerald-400",
-    bg: "bg-[rgba(15,15,15,0.6)]",
-    border: "border-t-2 border-emerald-500/40",
-    glow: "shadow-[0_8px_32px_rgba(16,185,129,0.1)]",
+    color: "text-[#4A5568]",
+    bg: "bg-[rgba(10,10,10,0.8)]",
+    border: "border border-white/[0.05]",
+    glow: "shadow-[0_4px_12px_rgba(0,0,0,0.08)]",
     icon: Zap,
   },
   TPSL: {
-    color: "text-amber-400",
-    bg: "bg-[rgba(15,15,15,0.6)]",
-    border: "border-t-2 border-amber-500/40",
-    glow: "shadow-[0_8px_32px_rgba(245,158,11,0.1)]",
+    color: "text-[#5D2E2E]",
+    bg: "bg-[rgba(10,10,10,0.8)]",
+    border: "border border-white/[0.05]",
+    glow: "shadow-[0_4px_12px_rgba(0,0,0,0.08)]",
     icon: Shield,
   },
   "Reverse/Hedge": {
-    color: "text-orange-400",
-    bg: "bg-[rgba(15,15,15,0.6)]",
-    border: "border-t-2 border-orange-500/40",
-    glow: "shadow-[0_8px_32px_rgba(249,115,22,0.1)]",
+    color: "text-[#4A5568]",
+    bg: "bg-[rgba(10,10,10,0.8)]",
+    border: "border border-white/[0.05]",
+    glow: "shadow-[0_4px_12px_rgba(0,0,0,0.08)]",
     icon: ArrowLeftRight,
   },
   "Close Partial": {
-    color: "text-cyan-400",
-    bg: "bg-[rgba(15,15,15,0.6)]",
-    border: "border-t-2 border-cyan-500/40",
-    glow: "shadow-[0_8px_32px_rgba(6,182,212,0.15)]",
+    color: "text-[#2D4F4F]",
+    bg: "bg-[rgba(10,10,10,0.8)]",
+    border: "border border-white/[0.05]",
+    glow: "shadow-[0_4px_12px_rgba(0,0,0,0.08)]",
     icon: RefreshCw,
   },
-  Triggers: {
-    color: "text-rose-400",
-    bg: "bg-[rgba(15,15,15,0.6)]",
-    border: "border-t-2 border-rose-500/40",
-    glow: "shadow-[0_8px_32px_rgba(244,63,94,0.1)]",
-    icon: Shield,
-  },
   Safety: {
-    color: "text-red-400",
-    bg: "bg-[rgba(15,15,15,0.6)]",
-    border: "border-t-2 border-red-500/40",
-    glow: "shadow-[0_8px_32px_rgba(239,68,68,0.1)]",
+    color: "text-[#5D2E2E]",
+    bg: "bg-[rgba(10,10,10,0.8)]",
+    border: "border border-white/[0.05]",
+    glow: "shadow-[0_4px_12px_rgba(0,0,0,0.08)]",
     icon: Shield,
   },
   Restart: {
-    color: "text-teal-400",
-    bg: "bg-[rgba(15,15,15,0.6)]",
-    border: "border-t-2 border-teal-500/40",
-    glow: "shadow-[0_8px_32px_rgba(20,184,166,0.15)]",
+    color: "text-[#5D2E2E]",
+    bg: "bg-[rgba(10,10,10,0.8)]",
+    border: "border border-white/[0.05]",
+    glow: "shadow-[0_6px_16px_rgba(0,0,0,0.12)]",
     icon: RefreshCw,
   },
 };
@@ -326,6 +324,32 @@ export function LogicModule({
   const nameSafe = name || "";
   const isEngineAPower =
     engineSafe.includes("Engine A") && nameSafe.toUpperCase() === "POWER";
+  const groupNumber = useMemo(() => {
+    const parseGroupValue = (raw?: string | null) => {
+      if (!raw) return null;
+      const match = raw.match(/(\d+)/);
+      if (!match) return null;
+      const parsed = parseInt(match[1], 10);
+      return Number.isNaN(parsed) ? null : parsed;
+    };
+    const parsedGroup = parseGroupValue(group);
+    if (parsedGroup !== null) return parsedGroup;
+    const parsedLogic = parseGroupValue(logicConfig?.logic_id || "");
+    if (parsedLogic !== null) return parsedLogic;
+    return null;
+  }, [group, logicConfig?.logic_id]);
+  const groupConfig = useMemo(() => {
+    if (!engineData || !groupNumber) return null;
+    return engineData.groups?.find((g) => g.group_number === groupNumber) ?? null;
+  }, [engineData, groupNumber]);
+  const shouldShowGroupPowerStart = isEngineAPower && (groupNumber ?? 0) > 1;
+  const getGroupPowerStartForSide = (side: "buy" | "sell") => {
+    if (!shouldShowGroupPowerStart || !groupConfig) return undefined;
+    const directionalKey =
+      side === "buy" ? "group_power_start_b" : "group_power_start_s";
+    const directionalValue = (groupConfig as any)?.[directionalKey];
+    return directionalValue ?? groupConfig.group_power_start;
+  };
 
   const [trailLevelsVisible, setTrailLevelsVisible] = useState(1);
   const [showAdvancedFields, setShowAdvancedFields] = useState(false);
@@ -505,13 +529,36 @@ export function LogicModule({
     const logicInputConfig = logicInputs[nameSafe];
     if (!logicInputConfig) return;
 
-    const templateFields = isGroup1
-      ? logicInputConfig.group_1
-      : logicInputConfig.standard;
+    const templateFields = [
+      ...(isGroup1 ? logicInputConfig.group_1 : logicInputConfig.standard),
+    ];
+    if (shouldShowGroupPowerStart) {
+      const groupPowerField: LogicFieldDef = {
+        id: "group_power_start",
+        label: "Group Power Start",
+        mt4_variable: "gInput_GroupPowerStart",
+        type: "number",
+        default: groupNumber ?? 2,
+        description:
+          "Power A order-count threshold required to activate this group.",
+        category: "Triggers",
+      };
+      const triggerIndex = templateFields.findIndex(
+        (field) => field.id === "trigger_type",
+      );
+      const insertAt =
+        triggerIndex >= 0 ? triggerIndex + 1 : templateFields.length;
+      templateFields.splice(insertAt, 0, groupPowerField);
+    }
 
     const newInitialFields = templateFields.map((field) => {
       const configKey = field.id as keyof LogicConfig;
       let val = config[configKey];
+      if (field.id === "group_power_start") {
+        val =
+          getGroupPowerStartForSide("buy") ??
+          getGroupPowerStartForSide("sell");
+      }
 
       // Fall back to default if value is not set in config
       if (val === undefined || val === null) {
@@ -551,6 +598,13 @@ export function LogicModule({
       if (!sourceLogic) return values;
 
       newInitialFields.forEach((field) => {
+        if (field.id === "group_power_start") {
+          const groupValue = getGroupPowerStartForSide(side);
+          if (groupValue !== undefined && groupValue !== null) {
+            values[field.id] = groupValue;
+          }
+          return;
+        }
         const source = sourceLogic as Record<string, any>;
         const directionalKey = `${field.id}${suffix}`;
         let rawValue: any;
@@ -775,7 +829,10 @@ export function LogicModule({
   const isPowerLogic = name === "POWER";
 
   const categoriesSet = new Set(
-    filteredFields.map((f) => f.category || "General"),
+    filteredFields.map((f) => {
+      const category = f.category || "General";
+      return CATEGORY_MERGE_MAP[category] || category;
+    }),
   );
   // Always include Mode Selectors category for Buy/Sell toggle
   categoriesSet.add("Mode Selectors");
@@ -789,16 +846,18 @@ export function LogicModule({
   return (
     <div
       className={cn(
-        "rounded-lg border bg-background/40 overflow-hidden transition-all",
-        expanded ? "border-border shadow-soft" : "border-border/50",
-        isPowerLogic && expanded && "ring-1 ring-primary/20",
+        "rounded-lg border bg-[rgba(10,10,10,0.7)] overflow-hidden transition-all",
+        expanded
+          ? "border-white/10 shadow-[0_6px_16px_rgba(0,0,0,0.35)]"
+          : "border-white/5",
+        isPowerLogic && expanded && "ring-1 ring-white/10",
       )}
     >
       <button
         onClick={onToggle}
         className={cn(
           "w-full px-4 py-3 flex items-center justify-between transition-colors",
-          expanded ? "bg-card/60" : "hover:bg-card/40",
+          expanded ? "bg-[rgba(15,15,15,0.7)]" : "hover:bg-[rgba(15,15,15,0.5)]",
         )}
       >
         <div className="flex items-center gap-3">
@@ -809,7 +868,7 @@ export function LogicModule({
           >
             <ChevronRight className="w-4 h-4 text-muted-foreground" />
           </motion.div>
-          <span className="text-xs font-mono text-foreground flex items-center gap-2">
+          <span className="text-xs font-medium text-foreground flex items-center gap-2">
             <span className="text-muted-foreground">{prefix}/</span>
             <span className="font-semibold">{name}</span>
             {group && (
@@ -849,7 +908,7 @@ export function LogicModule({
                 }}
               />
             </div>
-            <span className="text-[10px] text-muted-foreground font-mono w-12 text-right">
+            <span className="text-[10px] text-muted-foreground font-medium w-12 text-right">
               {filledCount}/{filteredFields.length}
             </span>
           </div>
@@ -1078,7 +1137,12 @@ export function LogicModule({
 
               {/* Show standard category-based UI for Counter Trend and Reverse - 2 columns */}
               {tradingMode !== "Hedge" && (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 p-1">
+                <div
+                  className="grid gap-4 p-1"
+                  style={{
+                    gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))",
+                  }}
+                >
                   {categories
                     .filter((cat) => {
                       // Hide Close Partial when in TPSL mode
@@ -1086,30 +1150,35 @@ export function LogicModule({
                       return true;
                     })
                     .map((category) => {
-                  const categoryFields = filteredFields.filter(
-                    (f) => (f.category || "General") === category,
-                  );
+                  const categoryFields = filteredFields.filter((f) => {
+                    const rawCategory = f.category || "General";
+                    const mergedCategory =
+                      CATEGORY_MERGE_MAP[rawCategory] || rawCategory;
+                    return mergedCategory === category;
+                  });
                   const style = categoryStyles[category] || {
                     color: "text-muted-foreground",
                     bg: "bg-[rgba(15,15,15,0.6)]",
                     border: "border-t-2 border-neutral-500/30",
-                    glow: "shadow-[0_8px_32px_rgba(0,0,0,0.2)]",
+                    glow: "shadow-[0_8px_24px_rgba(0,0,0,0.12)]",
                     icon: ChevronRight,
                   };
                   const Icon = style.icon;
 
-                  // Determine column span for layout optimization - wider sections get more space
-                  const isWideSection = category === "Mode Selectors" || category === "Core" || category === "Lots" || category === "Trail";
-                  const colSpanClass = isWideSection ? "lg:col-span-2" : "";
+                  const colSpanClass = "";
 
                   const isClosePartial = category === "Close Partial";
-                  const isTriggers = category === "Triggers";
+                  const isCoreTriggers = category === "Triggers + Grid";
                   const isLogic = category === "Logic";
-                  const isCore = category === "Core";
+                  const isCore = isCoreTriggers;
                   const isLots = category === "Lots";
                   const isRestart = category === "Restart";
                   const isTrail = category === "Trail";
                   const isPowerEngineA = engineSafe.includes("Engine A") && nameSafe.toUpperCase() === "POWER";
+                  const isGroup1 =
+                    group === "Group 1" ||
+                    group === 1 ||
+                    (groups && groups.some((g) => g === "Group 1" || g === 1));
 
                   // Get current trigger type from field values
                   const rawTriggerType = fieldValues["trigger_type"] || "Trigger_Immediate";
@@ -1140,44 +1209,51 @@ export function LogicModule({
                           }
                           return level <= partialLevelsVisible;
                         })
-                      : isCore
+                      : isCoreTriggers
                         ? categoryFields.filter((f) => {
-                            // Hide start_level for Power Engine A
-                            if (f.id === "start_level") {
-                              return !isPowerEngineA;
+                            const fieldCategory = f.category || "General";
+
+                            if (fieldCategory === "Core") {
+                              // Hide start_level for Power Engine A
+                              if (f.id === "start_level") {
+                                return !isPowerEngineA && isGroup1;
+                              }
+                              // Hide start_level_ref for Power Engine A
+                              if (f.id === "start_level_ref") {
+                                return !isPowerEngineA && isGroup1;
+                              }
+                              // Hide reverse_reference for Power Engine A (doesn't use trading modes)
+                              if (f.id === "reverse_reference") {
+                                return !isPowerEngineA;
+                              }
+                              // Filter start_level_ref based on direction (Buy/Sell)
+                              if (f.id === "start_level_ref") {
+                                const isBuyDirection = currentDirection.toLowerCase().includes("buy") || currentDirection === "Buy";
+                                // Filter options: show only matching direction + exclude self
+                                return true; // Let the dropdown handle filtering in the UI
+                              }
+                              return true;
                             }
-                            // Hide start_level_ref for Power Engine A
-                            if (f.id === "start_level_ref") {
-                              return !isPowerEngineA;
+
+                            if (fieldCategory === "Mode Selectors") return true;
+
+                            if (fieldCategory === "Grid") return true;
+
+                            if (fieldCategory === "Triggers") {
+                              // Always show trigger_type dropdown
+                              if (f.id === "trigger_type") return true;
+                              if (f.id === "group_power_start") return true;
+                              // Show the extra trigger field only if its type is selected
+                              if (currentTriggerType === "Trigger_AfterBars" && f.id === "trigger_bars") return true;
+                              if (currentTriggerType === "Trigger_AfterSeconds" && f.id === "trigger_seconds") return true;
+                              if (currentTriggerType === "Trigger_AfterPips" && f.id === "trigger_points") return true;
+                              if (currentTriggerType === "Trigger_OpCount" && f.id === "opcount_ref") return true;
+                              if (currentTriggerType === "Trigger_OpCount" && f.id === "start_op_count") return true;
+                              // TimeFilter and NewsFilter use global settings - no extra fields needed
+                              if (currentTriggerType === "Trigger_TimeFilter" || currentTriggerType === "Trigger_NewsFilter") return true;
+                              return false;
                             }
-                            // Hide reverse_reference for Power Engine A (doesn't use trading modes)
-                            if (f.id === "reverse_reference") {
-                              return !isPowerEngineA;
-                            }
-                            // Filter start_level_ref based on direction (Buy/Sell)
-                            if (f.id === "start_level_ref") {
-                              const isBuyDirection = currentDirection.toLowerCase().includes("buy") || currentDirection === "Buy";
-                              // Filter options: show only matching direction + exclude self
-                              return true; // Let the dropdown handle filtering in the UI
-                            }
-                            return true;
-                          })
-                      : isTriggers
-                        ? categoryFields.filter((f) => {
-                            // Always show trigger_type dropdown
-                            if (f.id === "trigger_type") return true;
-                            // Hide start_level for Power Engine A (both buy and sell)
-                            if (f.id === "start_level") {
-                              return !isPowerEngineA;
-                            }
-                            // Show the extra trigger field only if its type is selected
-                            if (currentTriggerType === "Trigger_AfterBars" && f.id === "trigger_bars") return true;
-                            if (currentTriggerType === "Trigger_AfterSeconds" && f.id === "trigger_seconds") return true;
-                            if (currentTriggerType === "Trigger_AfterPips" && f.id === "trigger_points") return true;
-                            if (currentTriggerType === "Trigger_OpCount" && f.id === "opcount_ref") return true;
-                            if (currentTriggerType === "Trigger_OpCount" && f.id === "start_op_count") return true;
-                            // TimeFilter and NewsFilter use global settings - no extra fields needed
-                            if (currentTriggerType === "Trigger_TimeFilter" || currentTriggerType === "Trigger_NewsFilter") return true;
+
                             return false;
                           })
                         : isLots
@@ -1193,7 +1269,6 @@ export function LogicModule({
                               // Power Engine A: show restart_policy_power, close_non_power_on_power_close, hold_timeout_seconds
                               // Non-Power: show restart_policy_non_power, hold_timeout_seconds
                               // Only show for Group 1
-                              const isGroup1 = group === "Group 1" || group === 1 || (groups && groups.some(g => g === "Group 1" || g === 1));
                               if (!isGroup1) return false;
                               
                               if (isPowerEngineA) {
@@ -1212,39 +1287,48 @@ export function LogicModule({
                   // Skip Trail Advanced category if not enabled
                   if (category === "Trail Advanced" && !trailAdvancedEnabled) return null;
 
-                  // Skip if no fields to display (except Mode Selectors which always renders for Buy/Sell toggle)
-                  if (displayFields.length === 0 && category !== "Mode Selectors") return null;
+                  // Skip if no fields to display (except Triggers + Grid which always renders for Buy/Sell toggle)
+                  if (displayFields.length === 0 && category !== "Triggers + Grid") return null;
+
+                  const bodyGridClass = cn(
+                    "grid grid-cols-1 xl:grid-cols-2 gap-x-4 gap-y-2 relative z-10 px-5 pb-4",
+                    isCoreTriggers && "xl:grid-cols-1 gap-y-3",
+                  );
+
+                  const headerClass = cn(
+                    "flex items-center gap-2 px-5",
+                    isCore ? "py-2.5" : "py-3",
+                  );
 
                   return (
                     <div
                       key={category}
                       className={cn(
-                        "rounded-lg backdrop-blur-md",
+                        "rounded-lg backdrop-blur-2xl",
                         // Glass panel background
                         style.bg,
                         // Top border accent
                         style.border,
                         // Unique glow per category
                         style.glow,
-                        // Column span for wide sections
                         colSpanClass,
                       )}
                     >
                       {/* Category Header - Transparent with subtle gradient accent */}
-                      <div className="flex items-center gap-2 px-3 py-2">
+                      <div className={headerClass}>
                         <div className={cn(
                           "p-1 rounded",
                           // Morphism - subtle glass effect with inner shadow
-                          "bg-neutral-900/40 shadow-[inset_0_1px_2px_rgba(0,0,0,0.15)]",
+                          "bg-white/[0.03] border border-white/[0.05] shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]",
                         )}>
                           <Icon className={cn("w-3 h-3", style.color)} />
                         </div>
-                        <div className="text-[10px] uppercase tracking-wider font-semibold text-neutral-300">
+                        <h2 className="text-[11px] uppercase tracking-wider font-semibold text-neutral-200">
                           {category}
-                        </div>
+                        </h2>
 
                         {/* Subtle gradient separator line */}
-                        <div className={cn("flex-1 h-px mx-2 bg-gradient-to-r from-transparent via-neutral-600/30 to-transparent")} />
+                        <div className={cn("flex-1 h-px mx-2 bg-gradient-to-r from-transparent via-white/5 to-transparent")} />
 
                         {/* Trail: Enable Advanced toggle */}
                         {isTrail && (
@@ -1348,10 +1432,13 @@ export function LogicModule({
                         )}
                       </div>
 
-                      <div className="grid grid-cols-1 xl:grid-cols-2 gap-x-4 gap-y-1 relative z-10 px-3 pb-2">
+                      <div className={bodyGridClass}>
                         {/* Custom Trading Direction & Exit Mode for Mode Selectors - COMPACT */}
-{category === "Mode Selectors" && (
-                          <div className="col-span-2 xl:col-span-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+                        {category === "Triggers + Grid" && (
+                          <div className="col-span-full flex flex-wrap items-center gap-x-4 gap-y-2">
+                            <span className="text-[10px] uppercase tracking-wider font-semibold text-neutral-400">
+                              Mode Selectors
+                            </span>
                             {/* Direction */}
                             <div className="flex items-center gap-1.5">
                               <span className="text-[9px] text-neutral-500 uppercase tracking-wider">Dir</span>
@@ -1369,8 +1456,8 @@ export function LogicModule({
                                   "h-7 px-3 text-[10px] font-medium rounded transition-all duration-200",
                                   // Elegant dark green - very subtle, morphism effect
                                   activeDirection === "buy"
-                                    ? "bg-emerald-950/30 text-emerald-300 shadow-[inset_0_1px_1px_rgba(255,255,255,0.03)]"
-                                    : "bg-neutral-900/20 text-neutral-400 hover:bg-emerald-950/15 hover:text-emerald-300"
+                                    ? "bg-[rgba(45,79,79,0.3)] text-[#CFE0E0] shadow-[inset_0_1px_1px_rgba(255,255,255,0.03)]"
+                                    : "bg-neutral-900/20 text-neutral-400 hover:bg-[rgba(45,79,79,0.18)] hover:text-[#CFE0E0]"
                                 )}
                               >
                                 Buy
@@ -1389,8 +1476,8 @@ export function LogicModule({
                                   "h-7 px-3 text-[10px] font-medium rounded transition-all duration-200",
                                   // Elegant dark red - very subtle, morphism effect
                                   activeDirection === "sell"
-                                    ? "bg-rose-950/30 text-rose-300 shadow-[inset_0_1px_1px_rgba(255,255,255,0.03)]"
-                                    : "bg-neutral-900/20 text-neutral-400 hover:bg-rose-950/15 hover:text-rose-300"
+                                    ? "bg-[rgba(93,46,46,0.3)] text-[#E0C8C8] shadow-[inset_0_1px_1px_rgba(255,255,255,0.03)]"
+                                    : "bg-neutral-900/20 text-neutral-400 hover:bg-[rgba(93,46,46,0.18)] hover:text-[#E0C8C8]"
                                 )}
                               >
                                 Sell
@@ -1414,8 +1501,8 @@ export function LogicModule({
                                 className={cn(
                                   "h-7 px-3 text-[10px] font-medium rounded transition-all duration-200",
                                   exitMode === "Trail"
-                                    ? "bg-violet-950/30 text-violet-300 shadow-[inset_0_1px_1px_rgba(255,255,255,0.03)]"
-                                    : "bg-neutral-900/20 text-neutral-400 hover:bg-violet-950/15 hover:text-violet-300",
+                                    ? "bg-[rgba(74,85,104,0.35)] text-[#C9D1DB] shadow-[inset_0_1px_1px_rgba(255,255,255,0.03)]"
+                                    : "bg-neutral-900/20 text-neutral-400 hover:bg-[rgba(74,85,104,0.2)] hover:text-[#C9D1DB]",
                                 )}
                               >
                                 Trail
@@ -1430,8 +1517,8 @@ export function LogicModule({
                                 className={cn(
                                   "h-7 px-3 text-[10px] font-medium rounded transition-all duration-200",
                                   exitMode === "TPSL"
-                                    ? "bg-amber-950/30 text-amber-300 shadow-[inset_0_1px_1px_rgba(255,255,255,0.03)]"
-                                    : "bg-neutral-900/20 text-neutral-400 hover:bg-amber-950/15 hover:text-amber-300",
+                                    ? "bg-[rgba(93,46,46,0.35)] text-[#E0C8C8] shadow-[inset_0_1px_1px_rgba(255,255,255,0.03)]"
+                                    : "bg-neutral-900/20 text-neutral-400 hover:bg-[rgba(93,46,46,0.2)] hover:text-[#E0C8C8]",
                                 )}
                               >
                                 TP/SL
@@ -1440,15 +1527,127 @@ export function LogicModule({
                           </div>
                         )}
 
-                        {displayFields
-                          .filter(
-                            (f) => {
-                              if (f.id === "allow_buy" || f.id === "allow_sell") return false;
-                              if (isEngineAPower && f.id === "trading_mode") return false;
-                              return true;
-                            },
-                          )
-                          .map((field) => (
+                        {(() => {
+                          const visibleFields = displayFields.filter((f) => {
+                            if (f.id === "allow_buy" || f.id === "allow_sell") return false;
+                            if (isEngineAPower && f.id === "trading_mode") return false;
+                            return true;
+                          });
+
+                          if (isCoreTriggers) {
+                            const isTriggerField = (id: string) =>
+                              id === "trigger_type" ||
+                              id === "trigger_bars" ||
+                              id === "trigger_seconds" ||
+                              id === "trigger_points" ||
+                              id === "opcount_ref" ||
+                              id === "start_op_count" ||
+                              id === "group_power_start";
+                            const isGridField = (id: string) =>
+                              id === "grid" || id === "grid_behavior";
+
+                            const modeFields = visibleFields.filter(
+                              (f) => f.category === "Mode Selectors",
+                            );
+                            const coreFields = visibleFields.filter(
+                              (f) => f.category === "Core",
+                            );
+                            const triggerFields = visibleFields.filter((f) =>
+                              isTriggerField(f.id),
+                            );
+                            const gridFields = visibleFields.filter((f) =>
+                              isGridField(f.id),
+                            );
+
+                            return (
+                              <div className="space-y-3">
+                                <div className="space-y-2">
+                                  <div className="text-[9px] uppercase tracking-wider font-semibold text-neutral-400">
+                                    Core
+                                  </div>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                                    {[...modeFields, ...coreFields].map((field) => (
+                                      <ConfigField
+                                        key={field.id}
+                                        label={field.label}
+                                        value={field.value}
+                                        type={field.type}
+                                        unit={field.unit}
+                                        description={field.description}
+                                        fieldId={field.id}
+                                        hint={getUnitHint(field.id, field.value)}
+                                        options={(field as any).options}
+                                        currentLogicId={currentLogicId}
+                                        onChange={(val) => {
+                                          if ((field as any).onChange) {
+                                            (field as any).onChange(val);
+                                          } else {
+                                            handleFieldChange(field.id, val);
+                                          }
+                                        }}
+                                      />
+                                    ))}
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                  <div className="space-y-1">
+                                    <div className="text-[9px] uppercase tracking-wider font-semibold text-neutral-400">
+                                      Triggers
+                                    </div>
+                                    {triggerFields.map((field) => (
+                                      <ConfigField
+                                        key={field.id}
+                                        label={field.label}
+                                        value={field.value}
+                                        type={field.type}
+                                        unit={field.unit}
+                                        description={field.description}
+                                        fieldId={field.id}
+                                        hint={getUnitHint(field.id, field.value)}
+                                        options={(field as any).options}
+                                        currentLogicId={currentLogicId}
+                                        onChange={(val) => {
+                                          if ((field as any).onChange) {
+                                            (field as any).onChange(val);
+                                          } else {
+                                            handleFieldChange(field.id, val);
+                                          }
+                                        }}
+                                      />
+                                    ))}
+                                  </div>
+                                  <div className="space-y-1">
+                                    <div className="text-[9px] uppercase tracking-wider font-semibold text-neutral-400">
+                                      Grid
+                                    </div>
+                                    {gridFields.map((field) => (
+                                      <ConfigField
+                                        key={field.id}
+                                        label={field.label}
+                                        value={field.value}
+                                        type={field.type}
+                                        unit={field.unit}
+                                        description={field.description}
+                                        fieldId={field.id}
+                                        hint={getUnitHint(field.id, field.value)}
+                                        options={(field as any).options}
+                                        currentLogicId={currentLogicId}
+                                        onChange={(val) => {
+                                          if ((field as any).onChange) {
+                                            (field as any).onChange(val);
+                                          } else {
+                                            handleFieldChange(field.id, val);
+                                          }
+                                        }}
+                                      />
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          }
+
+                          return visibleFields.map((field) => (
                             <ConfigField
                               key={field.id}
                               label={field.label}
@@ -1468,7 +1667,8 @@ export function LogicModule({
                                 }
                               }}
                             />
-                          ))}
+                          ));
+                        })()}
 
                          {/* Close Targets Multi-Select - show when trail_method = AVG_Percent */}
                          {isTrail && fieldValues["trail_method"] === "AVG_Percent" && (

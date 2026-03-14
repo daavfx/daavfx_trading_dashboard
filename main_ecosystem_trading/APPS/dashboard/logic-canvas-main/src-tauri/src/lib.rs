@@ -1,13 +1,13 @@
 mod mt_bridge;
 pub mod mql_rust_compiler;
 mod mql_compiler;
-pub mod headless;
+// pub mod headless; // Commented - depends on tinyllm_daavfx
 mod chat_neural;
 mod chat_commands;
 mod chat_preprocessor;
 mod trading_transformer;
 mod diffusion_refine;
-mod tinyllm_command;
+// mod tinyllm_command;
 
 use tauri::Emitter;
 
@@ -17,7 +17,7 @@ use mt_bridge::MTBridgeState;
 use chat_commands::{ChatNeuralState, TransformerState, DiffusionState};
 
 // Re-export headless API for CLI
-pub use headless::handle_message_headless;
+// pub use headless::handle_message_headless;
 
 pub use mt_bridge::{
   export_set_file,
@@ -50,6 +50,8 @@ pub fn run() {
     .manage(DiffusionState::default())
     .setup(|app| {
       // Start silicon monitoring - emits every 2 seconds
+      // Commented out - tinyllm_daavfx dependency disabled
+      /*
       let app_handle = app.handle().clone();
       std::thread::spawn(move || {
         loop {
@@ -70,6 +72,7 @@ pub fn run() {
           let _ = app_handle.emit("silicon:update", &status);
         }
       });
+      */
 
       if cfg!(debug_assertions) {
         app.handle().plugin(
@@ -109,9 +112,9 @@ pub fn run() {
       chat_commands::extract_parameter,
       // Chat preprocessor commands
       chat_preprocessor::preprocess_command,
-      // TinyLLM commands
-      tinyllm_command::process_command,
-      tinyllm_command::get_silicon_status,
+      // TinyLLM commands (disabled - tinyllm_daavfx dependency removed)
+      // tinyllm_command::process_command,
+      // tinyllm_command::get_silicon_status,
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
