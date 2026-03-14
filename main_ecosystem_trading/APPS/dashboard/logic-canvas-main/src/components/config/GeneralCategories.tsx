@@ -48,8 +48,8 @@ interface GeneralCategoriesProps {
 }
 
 export const generalCategoriesList = [
-  { id: "risk_management", label: "Risk Management", icon: Shield, color: "text-red-400", hasBuySell: true },
   { id: "general", label: "Core", icon: Settings2, color: "text-slate-400", hasBuySell: false },
+  { id: "risk_management", label: "Risk Management", icon: Shield, color: "text-red-400", hasBuySell: true },
 ] as const;
 
 export function GeneralCategories({ 
@@ -66,7 +66,7 @@ export function GeneralCategories({
   selectedGroups = [],
   selectedLogics = [],
 }: GeneralCategoriesProps) {
-  const [expandedCategories, setExpandedCategories] = useState<string[]>(["risk_management"]);
+  const [expandedCategories, setExpandedCategories] = useState<string[]>(["general"]);
   const [generalEditScope, setGeneralEditScope] = useState<"Buy" | "Sell">(
     "Buy",
   );
@@ -140,6 +140,12 @@ export function GeneralCategories({
         return;
     } else if (categoryId === "general" && (fieldId === "magic_number_buy" || fieldId === "magic_number_sell")) {
         newConfig[fieldId] = typeof value === "string" ? parseInt(value, 10) : value;
+    } else if (categoryId === "general" && (fieldId === "enable_logs" || fieldId.startsWith("log_"))) {
+        // Handle logging fields as boolean toggles
+        const boolValue = value === "ON" || value === true || value === 1 || value === "true";
+        newConfig[fieldId] = boolValue;
+        onConfigChange(newConfig);
+        return;
     } else if (categoryId === "risk_management") {
         const setRisk = (key: "risk_management" | "risk_management_b" | "risk_management_s") => {
           if (!newConfig[key]) newConfig[key] = {};
@@ -444,6 +450,62 @@ export function GeneralCategories({
           type: "toggle" as const,
           description: "Enable detailed logging",
           onChange: createHandler("enable_logs")
+        });
+        fields.push({
+          id: "log_lifecycle",
+          label: "Lifecycle",
+          value: generalConfig.log_lifecycle !== false ? "ON" : "OFF",
+          type: "toggle" as const,
+          description: "Open/close events, init, deinit",
+          onChange: createHandler("log_lifecycle")
+        });
+        fields.push({
+          id: "log_trail",
+          label: "Trail",
+          value: generalConfig.log_trail !== false ? "ON" : "OFF",
+          type: "toggle" as const,
+          description: "Trailing stop updates (high volume)",
+          onChange: createHandler("log_trail")
+        });
+        fields.push({
+          id: "log_grid",
+          label: "Grid",
+          value: generalConfig.log_grid !== false ? "ON" : "OFF",
+          type: "toggle" as const,
+          description: "Grid entry add events",
+          onChange: createHandler("log_grid")
+        });
+        fields.push({
+          id: "log_start_level",
+          label: "Start Level",
+          value: generalConfig.log_start_level !== false ? "ON" : "OFF",
+          type: "toggle" as const,
+          description: "Start level gating decisions",
+          onChange: createHandler("log_start_level")
+        });
+        fields.push({
+          id: "log_risk",
+          label: "Risk",
+          value: generalConfig.log_risk !== false ? "ON" : "OFF",
+          type: "toggle" as const,
+          description: "Risk checks, equity/balance protection",
+          onChange: createHandler("log_risk")
+        });
+        fields.push({
+          id: "log_session",
+          label: "Session",
+          value: generalConfig.log_session !== false ? "ON" : "OFF",
+          type: "toggle" as const,
+          description: "Session filter, news filter events",
+          onChange: createHandler("log_session")
+        });
+        fields.push({
+          id: "log_config",
+          label: "Config",
+          value: generalConfig.log_config !== false ? "ON" : "OFF",
+          type: "toggle" as const,
+          description: "Config loading, setfile parsing",
+          onChange: createHandler("log_config")
         });
         
         return fields;
@@ -973,8 +1035,8 @@ export function GeneralCategories({
   const renderGeneralGlobal = (fields: any[]) => {
     const mainFields = fields.filter(f => !f.type === "header");
     const uiFields = fields.filter(f => f.id === "theme" || f.id === "language" || f.id === "ui_settings_header");
-    const logFields = fields.filter(f => f.id === "enable_logs" || f.id === "logs_header");
-    const coreFields = fields.filter(f => f.id !== "theme" && f.id !== "language" && f.id !== "ui_settings_header" && f.id !== "enable_logs" && f.id !== "logs_header" && f.type !== "header");
+    const logFields = fields.filter(f => f.id === "enable_logs" || f.id === "logs_header" || f.id.startsWith("log_"));
+    const coreFields = fields.filter(f => f.id !== "theme" && f.id !== "language" && f.id !== "ui_settings_header" && f.id !== "enable_logs" && f.id !== "logs_header" && !f.id.startsWith("log_") && f.type !== "header");
 
     return (
       <div className="space-y-4">
@@ -1042,6 +1104,15 @@ export function GeneralCategories({
                 ))}
               </div>
             </div>
+            {logFields.some(f => f.id === "enable_logs" && f.value === "ON") && (
+              <div className="mt-3 grid grid-cols-2 gap-2 conditional-indent">
+                {logFields.filter(f => f.id.startsWith("log_")).map(f => (
+                  <div key={f.id} className="p-2.5 rounded-lg bg-black/20 border border-white/5 hover:bg-black/30 transition-all">
+                    <ConfigField {...f} />
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

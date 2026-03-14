@@ -116,6 +116,7 @@ export function Sidebar({
   const currentSelectedGroups = isControlView ? controlSelectedGroups : selectedGroups;
   const currentSelectedLogics = isControlView ? controlSelectedLogics : selectedLogics;
   const currentOnSelectionChange = isControlView ? onControlSelectionChange : onSelectionChange;
+  const showControlSelection = isControlView && selectedGeneralCategory === "risk_management";
   const [searchQuery, setSearchQuery] = useState("");
   const sidebarRef = useRef<HTMLElement>(null);
   const [isCompact, setIsCompact] = useState(false);
@@ -342,68 +343,76 @@ export function Sidebar({
             </div>
           ) : viewMode === "control" ? (
             <div className="space-y-3">
-              {/* Control Mode: Show Engine/Group/Logic selector for applying Control settings */}
-              <div className="text-xs text-muted-foreground px-1 mb-2">
-                Select engines, groups, and logics to apply Control settings
-              </div>
-              
-              {/* Engines Section */}
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 px-1 py-1">
-                  <Grid3X3 className="w-3 h-3 text-muted-foreground" />
-                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Engines</span>
+              {showControlSelection ? (
+                <>
+                  {/* Control Mode: Show Engine/Group/Logic selector for applying Risk Management settings */}
+                  <div className="text-xs text-muted-foreground px-1 mb-2">
+                    Select engines, groups, and logics to apply Risk Management settings
+                  </div>
+
+                  {/* Engines Section */}
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 px-1 py-1">
+                      <Grid3X3 className="w-3 h-3 text-muted-foreground" />
+                      <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Engines</span>
+                    </div>
+                    {engines.map((engine) => (
+                      <TreeItem
+                        key={engine}
+                        label={engine}
+                        selected={currentSelectedEngines.includes(engine)}
+                        onToggle={() => toggleItem("engines", engine)}
+                        highlight={searchQuery}
+                        compact={isCompact}
+                      />
+                    ))}
+                  </div>
+
+                  <div className="border-t border-border/30 my-2" />
+
+                  {/* Groups Section */}
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 px-1 py-1">
+                      <FolderOpen className="w-3 h-3 text-muted-foreground" />
+                      <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Groups</span>
+                    </div>
+                    {filteredGroups.map((group) => (
+                      <TreeItem
+                        key={group}
+                        label={group}
+                        selected={currentSelectedGroups.includes(group)}
+                        onToggle={() => toggleItem("groups", group)}
+                        highlight={searchQuery}
+                        compact={isCompact}
+                      />
+                    ))}
+                  </div>
+
+                  <div className="border-t border-border/30 my-2" />
+
+                  {/* Logics Section */}
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 px-1 py-1">
+                      <Zap className="w-3 h-3 text-muted-foreground" />
+                      <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Logics</span>
+                    </div>
+                    {filteredLogics.map((logic) => (
+                      <TreeItem
+                        key={logic}
+                        label={logic}
+                        selected={currentSelectedLogics.includes(logic)}
+                        onToggle={() => toggleItem("logics", logic)}
+                        highlight={searchQuery}
+                        compact={isCompact}
+                      />
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="text-xs text-muted-foreground px-1">
+                  Engine/group/logic selection applies only to Risk Management.
                 </div>
-                {engines.map((engine) => (
-                  <TreeItem
-                    key={engine}
-                    label={engine}
-                    selected={currentSelectedEngines.includes(engine)}
-                    onToggle={() => toggleItem("engines", engine)}
-                    highlight={searchQuery}
-                    compact={isCompact}
-                  />
-                ))}
-              </div>
-
-              <div className="border-t border-border/30 my-2" />
-
-              {/* Groups Section */}
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 px-1 py-1">
-                  <FolderOpen className="w-3 h-3 text-muted-foreground" />
-                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Groups</span>
-                </div>
-                {filteredGroups.map((group) => (
-                  <TreeItem
-                    key={group}
-                    label={group}
-                    selected={currentSelectedGroups.includes(group)}
-                    onToggle={() => toggleItem("groups", group)}
-                    highlight={searchQuery}
-                    compact={isCompact}
-                  />
-                ))}
-              </div>
-
-              <div className="border-t border-border/30 my-2" />
-
-              {/* Logics Section */}
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 px-1 py-1">
-                  <Zap className="w-3 h-3 text-muted-foreground" />
-                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Logics</span>
-                </div>
-                {filteredLogics.map((logic) => (
-                  <TreeItem
-                    key={logic}
-                    label={logic}
-                    selected={currentSelectedLogics.includes(logic)}
-                    onToggle={() => toggleItem("logics", logic)}
-                    highlight={searchQuery}
-                    compact={isCompact}
-                  />
-                ))}
-              </div>
+              )}
             </div>
           ) : viewMode === "chat" ? (
             <>

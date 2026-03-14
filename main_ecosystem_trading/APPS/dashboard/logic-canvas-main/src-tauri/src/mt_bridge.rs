@@ -239,6 +239,20 @@ pub struct GeneralConfig {
 
     // Logging
     pub enable_logs: bool,
+    #[serde(default = "default_true")]
+    pub log_lifecycle: bool,
+    #[serde(default = "default_true")]
+    pub log_trail: bool,
+    #[serde(default = "default_true")]
+    pub log_grid: bool,
+    #[serde(default = "default_true")]
+    pub log_start_level: bool,
+    #[serde(default = "default_true")]
+    pub log_risk: bool,
+    #[serde(default = "default_true")]
+    pub log_session: bool,
+    #[serde(default = "default_true")]
+    pub log_config: bool,
 
     #[serde(default)]
     pub grid_unit: Option<i32>,
@@ -1467,6 +1481,34 @@ pub fn export_set_file(
         "gInput_EnableLogs={}",
         if config.general.enable_logs { 1 } else { 0 }
     ));
+    lines.push(format!(
+        "gInput_Log_Lifecycle={}",
+        if config.general.log_lifecycle { 1 } else { 0 }
+    ));
+    lines.push(format!(
+        "gInput_Log_Trail={}",
+        if config.general.log_trail { 1 } else { 0 }
+    ));
+    lines.push(format!(
+        "gInput_Log_Grid={}",
+        if config.general.log_grid { 1 } else { 0 }
+    ));
+    lines.push(format!(
+        "gInput_Log_StartLevel={}",
+        if config.general.log_start_level { 1 } else { 0 }
+    ));
+    lines.push(format!(
+        "gInput_Log_Risk={}",
+        if config.general.log_risk { 1 } else { 0 }
+    ));
+    lines.push(format!(
+        "gInput_Log_Session={}",
+        if config.general.log_session { 1 } else { 0 }
+    ));
+    lines.push(format!(
+        "gInput_Log_Config={}",
+        if config.general.log_config { 1 } else { 0 }
+    ));
     // Lazy Fix: Auto-point to self for absolute paths to support >1100 inputs via EA loader
     // This allows the EA to re-read the .set file from disk to bypass MT5 input limits
     let is_absolute =
@@ -2569,6 +2611,34 @@ pub fn export_massive_v19_setfile(
 
     // Logging
     lines.push(format!("gInput_EnableLogs={}", if config.general.enable_logs { 1 } else { 0 }));
+    lines.push(format!(
+        "gInput_Log_Lifecycle={}",
+        if config.general.log_lifecycle { 1 } else { 0 }
+    ));
+    lines.push(format!(
+        "gInput_Log_Trail={}",
+        if config.general.log_trail { 1 } else { 0 }
+    ));
+    lines.push(format!(
+        "gInput_Log_Grid={}",
+        if config.general.log_grid { 1 } else { 0 }
+    ));
+    lines.push(format!(
+        "gInput_Log_StartLevel={}",
+        if config.general.log_start_level { 1 } else { 0 }
+    ));
+    lines.push(format!(
+        "gInput_Log_Risk={}",
+        if config.general.log_risk { 1 } else { 0 }
+    ));
+    lines.push(format!(
+        "gInput_Log_Session={}",
+        if config.general.log_session { 1 } else { 0 }
+    ));
+    lines.push(format!(
+        "gInput_Log_Config={}",
+        if config.general.log_config { 1 } else { 0 }
+    ));
 
     // ===== COMPOUNDING =====
     lines.push(String::new());
@@ -5530,6 +5600,13 @@ fn build_config_from_values(
         allow_buy: get_bool(values, "gInput_allowBuy"),
         allow_sell: get_bool(values, "gInput_allowSell"),
         enable_logs: get_bool(values, "gInput_EnableLogs"),
+        log_lifecycle: get_bool_with_default(values, "gInput_Log_Lifecycle", true),
+        log_trail: get_bool_with_default(values, "gInput_Log_Trail", true),
+        log_grid: get_bool_with_default(values, "gInput_Log_Grid", true),
+        log_start_level: get_bool_with_default(values, "gInput_Log_StartLevel", true),
+        log_risk: get_bool_with_default(values, "gInput_Log_Risk", true),
+        log_session: get_bool_with_default(values, "gInput_Log_Session", true),
+        log_config: get_bool_with_default(values, "gInput_Log_Config", true),
         grid_unit: Some(get_i32(values, "gInput_GridUnit", 10)),
         pip_factor: Some(get_i32(values, "gInput_PipFactor", 1)),
         compounding_enabled: get_bool(values, "gInput_Input_Compounding"),
@@ -8369,6 +8446,13 @@ fn create_default_mt_config() -> MTConfig {
             allow_buy: true,
             allow_sell: true,
             enable_logs: true,
+            log_lifecycle: true,
+            log_trail: true,
+            log_grid: true,
+            log_start_level: true,
+            log_risk: true,
+            log_session: true,
+            log_config: true,
             grid_unit: Some(10),
             pip_factor: Some(1),
             compounding_enabled: false,

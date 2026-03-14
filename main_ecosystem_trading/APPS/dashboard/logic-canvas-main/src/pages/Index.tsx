@@ -72,6 +72,13 @@ const mockGeneralConfig: GeneralConfig = {
   allow_buy: true,
   allow_sell: true,
   enable_logs: true,
+  log_lifecycle: true,
+  log_trail: true,
+  log_grid: true,
+  log_start_level: true,
+  log_risk: true,
+  log_session: true,
+  log_config: true,
   use_direct_price_grid: false,
   grid_unit: 0,
   pip_factor: 0,
@@ -190,7 +197,7 @@ function Index() {
   const [viewMode, setViewMode] = useState<ViewMode>("logics");
   const [previousViewMode, setPreviousViewMode] = useState<ViewMode>("logics");
   const [selectedGeneralCategory, setSelectedGeneralCategory] =
-    useState<string>("risk_management");
+    useState<string>("general");
 
   const [isChatCollapsed, setIsChatCollapsed] = useState(false);
   const [isQuickActionsCollapsed, setIsQuickActionsCollapsed] = useState(false);
@@ -747,8 +754,17 @@ function Index() {
             comments: data.comments,
           });
         } else {
+          const normalizedConfig = normalizeConfigForExport(backendConfig);
+          console.log("[DEBUG] backendConfig.general.log_lifecycle =", backendConfig.general?.log_lifecycle);
+          console.log("[DEBUG] backendConfig.general.log_trail =", backendConfig.general?.log_trail);
+          console.log("[DEBUG] backendConfig.general.log_grid =", backendConfig.general?.log_grid);
+          console.log("[DEBUG] normalizedConfig.general.log_lifecycle =", normalizedConfig.general?.log_lifecycle);
+          console.log("[DEBUG] normalizedConfig.general.log_trail =", normalizedConfig.general?.log_trail);
+          console.log("[DEBUG] normalizedConfig.general.log_grid =", normalizedConfig.general?.log_grid);
+          console.log("[DEBUG] Full general config:", JSON.stringify(normalizedConfig.general, null, 2));
+          
           await invoke("export_massive_v19_setfile", {
-            config: normalizeConfigForExport(backendConfig),
+            config: normalizedConfig,
             filePath: fullPath,
             platform: platform === "mt5" ? "MT5" : "MT4",
           });
