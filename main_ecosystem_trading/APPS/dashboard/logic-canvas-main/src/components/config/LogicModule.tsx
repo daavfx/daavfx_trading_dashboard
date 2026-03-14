@@ -190,94 +190,18 @@ const CATEGORY_MERGE_MAP: Record<string, string> = {
   Grid: "Triggers + Grid",
 };
 
-const categoryStyles: Record<
-  string,
-  { color: string; bg: string; border: string; glow: string; icon: any }
-> = {
-  "Triggers + Grid": {
-    color: "text-[#C5A059]",
-    bg: "bg-[rgba(10,10,10,0.8)]",
-    border: "border border-white/[0.05]",
-    glow: "shadow-[0_4px_12px_rgba(0,0,0,0.08)]",
-    icon: Settings2,
-  },
-  Core: {
-    color: "text-[#4A5568]",
-    bg: "bg-[rgba(10,10,10,0.8)]",
-    border: "border border-white/[0.05]",
-    glow: "shadow-[0_4px_12px_rgba(0,0,0,0.08)]",
-    icon: Layers,
-  },
-  Lots: {
-    color: "text-[#C5A059]",
-    bg: "bg-[rgba(10,10,10,0.8)]",
-    border: "border border-white/[0.05]",
-    glow: "shadow-[0_4px_12px_rgba(0,0,0,0.08)]",
-    icon: Box,
-  },
-  "Triggers + Grid": {
-    color: "text-[#C5A059]",
-    bg: "bg-[rgba(10,10,10,0.8)]",
-    border: "border border-white/[0.05]",
-    glow: "shadow-[0_4px_12px_rgba(0,0,0,0.08)]",
-    icon: Shield,
-  },
-  Trail: {
-    color: "text-[#4A5568]",
-    bg: "bg-[rgba(10,10,10,0.8)]",
-    border: "border border-white/[0.05]",
-    glow: "shadow-[0_4px_12px_rgba(0,0,0,0.08)]",
-    icon: ChevronRight,
-  },
-  "Trail Advanced": {
-    color: "text-[#4A5568]",
-    bg: "bg-[rgba(10,10,10,0.8)]",
-    border: "border border-white/[0.05]",
-    glow: "shadow-[0_4px_12px_rgba(0,0,0,0.08)]",
-    icon: Settings2,
-  },
-  Logic: {
-    color: "text-[#4A5568]",
-    bg: "bg-[rgba(10,10,10,0.8)]",
-    border: "border border-white/[0.05]",
-    glow: "shadow-[0_4px_12px_rgba(0,0,0,0.08)]",
-    icon: Zap,
-  },
-  TPSL: {
-    color: "text-[#5D2E2E]",
-    bg: "bg-[rgba(10,10,10,0.8)]",
-    border: "border border-white/[0.05]",
-    glow: "shadow-[0_4px_12px_rgba(0,0,0,0.08)]",
-    icon: Shield,
-  },
-  "Reverse/Hedge": {
-    color: "text-[#4A5568]",
-    bg: "bg-[rgba(10,10,10,0.8)]",
-    border: "border border-white/[0.05]",
-    glow: "shadow-[0_4px_12px_rgba(0,0,0,0.08)]",
-    icon: ArrowLeftRight,
-  },
-  "Close Partial": {
-    color: "text-[#2D4F4F]",
-    bg: "bg-[rgba(10,10,10,0.8)]",
-    border: "border border-white/[0.05]",
-    glow: "shadow-[0_4px_12px_rgba(0,0,0,0.08)]",
-    icon: RefreshCw,
-  },
-  Safety: {
-    color: "text-[#5D2E2E]",
-    bg: "bg-[rgba(10,10,10,0.8)]",
-    border: "border border-white/[0.05]",
-    glow: "shadow-[0_4px_12px_rgba(0,0,0,0.08)]",
-    icon: Shield,
-  },
-  Restart: {
-    color: "text-[#5D2E2E]",
-    bg: "bg-[rgba(10,10,10,0.8)]",
-    border: "border border-white/[0.05]",
-    glow: "shadow-[0_6px_16px_rgba(0,0,0,0.12)]",
-    icon: RefreshCw,
-  },
+const categoryStyles: Record<string, { icon: any }> = {
+  "Triggers + Grid": { icon: Settings2 },
+  Core: { icon: Layers },
+  Lots: { icon: Box },
+  Trail: { icon: ChevronRight },
+  "Trail Advanced": { icon: Settings2 },
+  Logic: { icon: Zap },
+  TPSL: { icon: Shield },
+  "Reverse/Hedge": { icon: ArrowLeftRight },
+  "Close Partial": { icon: RefreshCw },
+  Safety: { icon: Shield },
+  Restart: { icon: RefreshCw },
 };
 
 const normalizeTradingModeValue = (raw: unknown): "Counter Trend" | "Hedge" | "Reverse" => {
@@ -1138,7 +1062,7 @@ export function LogicModule({
               {/* Show standard category-based UI for Counter Trend and Reverse - 2 columns */}
               {tradingMode !== "Hedge" && (
                 <div
-                  className="grid gap-4 p-1"
+                  className="grid gap-4 p-1 items-start content-start auto-rows-min"
                   style={{
                     gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))",
                   }}
@@ -1157,10 +1081,6 @@ export function LogicModule({
                     return mergedCategory === category;
                   });
                   const style = categoryStyles[category] || {
-                    color: "text-muted-foreground",
-                    bg: "bg-[rgba(15,15,15,0.6)]",
-                    border: "border-t-2 border-neutral-500/30",
-                    glow: "shadow-[0_8px_24px_rgba(0,0,0,0.12)]",
                     icon: ChevronRight,
                   };
                   const Icon = style.icon;
@@ -1170,7 +1090,6 @@ export function LogicModule({
                   const isClosePartial = category === "Close Partial";
                   const isCoreTriggers = category === "Triggers + Grid";
                   const isLogic = category === "Logic";
-                  const isCore = isCoreTriggers;
                   const isLots = category === "Lots";
                   const isRestart = category === "Restart";
                   const isTrail = category === "Trail";
@@ -1291,26 +1210,17 @@ export function LogicModule({
                   if (displayFields.length === 0 && category !== "Triggers + Grid") return null;
 
                   const bodyGridClass = cn(
-                    "grid grid-cols-1 xl:grid-cols-2 gap-x-4 gap-y-2 relative z-10 px-5 pb-4",
+                    "grid grid-cols-1 xl:grid-cols-2 gap-x-4 gap-y-2 items-start relative z-10 px-4 pt-3 pb-4",
                     isCoreTriggers && "xl:grid-cols-1 gap-y-3",
                   );
 
-                  const headerClass = cn(
-                    "flex items-center gap-2 px-5",
-                    isCore ? "py-2.5" : "py-3",
-                  );
+                  const headerClass = "flex items-center gap-2 px-4 py-2.5";
 
                   return (
                     <div
                       key={category}
                       className={cn(
-                        "rounded-lg backdrop-blur-2xl",
-                        // Glass panel background
-                        style.bg,
-                        // Top border accent
-                        style.border,
-                        // Unique glow per category
-                        style.glow,
+                        "rounded-lg depth-card self-start",
                         colSpanClass,
                       )}
                     >
@@ -1318,17 +1228,14 @@ export function LogicModule({
                       <div className={headerClass}>
                         <div className={cn(
                           "p-1 rounded",
-                          // Morphism - subtle glass effect with inner shadow
-                          "bg-white/[0.03] border border-white/[0.05] shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]",
+                          "bg-background/40 border border-border/60",
                         )}>
-                          <Icon className={cn("w-3 h-3", style.color)} />
+                          <Icon className="w-3 h-3 text-muted-foreground" />
                         </div>
-                        <h2 className="text-[11px] uppercase tracking-wider font-semibold text-neutral-200">
-                          {category}
-                        </h2>
+                        <h2 className="heading-card">{category}</h2>
 
                         {/* Subtle gradient separator line */}
-                        <div className={cn("flex-1 h-px mx-2 bg-gradient-to-r from-transparent via-white/5 to-transparent")} />
+                        <div className="flex-1 h-px mx-2 separator-subtle" />
 
                         {/* Trail: Enable Advanced toggle */}
                         {isTrail && (
@@ -1339,10 +1246,10 @@ export function LogicModule({
                                 setTrailAdvancedEnabled(!trailAdvancedEnabled);
                               }}
                               className={cn(
-                                "text-[10px] font-medium flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all duration-200",
+                                "text-[10px] font-semibold flex items-center gap-1.5 px-3 py-1.5 rounded-md border transition-all duration-200",
                                 trailAdvancedEnabled
-                                  ? "bg-neutral-800/50 text-neutral-200 shadow-[inset_0_1px_1px_rgba(255,255,255,0.03)]"
-                                  : "bg-neutral-900/30 text-neutral-500 hover:bg-neutral-800/40 hover:text-neutral-300",
+                                  ? "bg-background/60 border-border/70 text-foreground"
+                                  : "bg-background/30 border-border/60 text-muted-foreground hover:bg-background/50 hover:text-foreground",
                               )}
                             >
                               {trailAdvancedEnabled ? (
@@ -1367,7 +1274,7 @@ export function LogicModule({
                               Levels
                             </span>
                             <select
-                              className="text-[10px] bg-neutral-900/40 border border-neutral-800/50 rounded px-2 py-1 cursor-pointer hover:border-neutral-700 transition-colors text-neutral-300"
+                              className="value-data text-[12px] bg-neutral-900/40 border border-neutral-800/50 rounded px-2 py-1 cursor-pointer hover:border-neutral-700 transition-colors text-neutral-300"
                               value={trailLevelsVisible}
                               onChange={(e) =>
                                 setTrailLevelsVisible(parseInt(e.target.value))
@@ -1408,7 +1315,7 @@ export function LogicModule({
                               Levels
                             </span>
                             <select
-                              className="text-[10px] bg-neutral-800/80 border border-neutral-700 rounded px-2 py-1 cursor-pointer hover:border-neutral-500 transition-colors text-neutral-300"
+                              className="value-data text-[12px] bg-neutral-800/80 border border-neutral-700 rounded px-2 py-1 cursor-pointer hover:border-neutral-500 transition-colors text-neutral-300"
                               value={partialLevelsVisible}
                               onChange={(e) =>
                                 setPartialLevelsVisible(
@@ -1428,10 +1335,11 @@ export function LogicModule({
                         )}
 
                         {!isTrailAdvanced && (
-                          <div className="flex-1 h-px bg-gradient-to-r from-transparent via-neutral-600/20 to-transparent" />
+                          <div className="flex-1 h-px separator-subtle" />
                         )}
                       </div>
 
+                      <div className="mx-4 h-px separator-subtle" />
                       <div className={bodyGridClass}>
                         {/* Custom Trading Direction & Exit Mode for Mode Selectors - COMPACT */}
                         {category === "Triggers + Grid" && (

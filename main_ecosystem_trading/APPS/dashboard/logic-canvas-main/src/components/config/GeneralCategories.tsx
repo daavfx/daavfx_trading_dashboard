@@ -217,7 +217,7 @@ export function GeneralCategories({
           value="buy"
           className={cn(
             "flex-1 h-8 px-3 text-xs",
-            "data-[state=on]:bg-emerald-500/20 data-[state=on]:text-emerald-500 border border-border/50 data-[state=on]:border-emerald-500/30",
+            "data-[state=on]:bg-primary/15 data-[state=on]:text-primary border border-border/50 data-[state=on]:border-primary/40",
           )}
         >
           Buy
@@ -226,7 +226,7 @@ export function GeneralCategories({
           value="sell"
           className={cn(
             "flex-1 h-8 px-3 text-xs",
-            "data-[state=on]:bg-rose-500/20 data-[state=on]:text-rose-500 border border-border/50 data-[state=on]:border-rose-500/30",
+            "data-[state=on]:bg-primary/15 data-[state=on]:text-primary border border-border/50 data-[state=on]:border-primary/40",
           )}
         >
           Sell
@@ -548,13 +548,13 @@ export function GeneralCategories({
 
     return (
       <div className="space-y-6">
-        <Card className="bg-card/40 border-border/60">
+        <Card className="depth-card shadow-none">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Shield className="w-4 h-4 text-amber-400" />
+            <CardTitle className="heading-card flex items-center gap-2">
+              <Shield className="w-4 h-4 text-muted-foreground" />
               Priority Settings
             </CardTitle>
-            <CardDescription className="text-xs">
+            <CardDescription className="text-[10px] text-muted-foreground">
               Configure how different filters interact with each other
             </CardDescription>
           </CardHeader>
@@ -583,15 +583,15 @@ export function GeneralCategories({
 
           {sessions.map(session => (
             <TabsContent key={session.id} value={`session-${session.id}`} className="mt-0">
-              <Card className="bg-card/40 border-border/60">
-                <CardHeader className="pb-3 border-b border-white/5">
+              <Card className="depth-card shadow-none">
+                <CardHeader className="pb-3 border-b border-border/60">
                   <div className="flex items-center justify-between">
                     <div>
-                      <CardTitle className="text-sm font-medium flex items-center gap-2">
-                        <Clock className="w-4 h-4 text-blue-400" />
+                      <CardTitle className="heading-card flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-muted-foreground" />
                         {session.label}
                       </CardTitle>
-                      <CardDescription className="text-xs">
+                      <CardDescription className="text-[10px] text-muted-foreground">
                         Configure operating hours and behavior for this session
                       </CardDescription>
                     </div>
@@ -604,8 +604,8 @@ export function GeneralCategories({
                 </CardHeader>
                 <CardContent className="pt-4 grid gap-4">
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="col-span-2 space-y-2 p-3 rounded-lg bg-black/10 border border-white/5">
-                      <h4 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Time Window</h4>
+                    <div className="col-span-2 space-y-2 p-3 rounded-lg bg-background/30 border border-border/60">
+                      <h4 className="heading-card">Time Window</h4>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                            {session.fields.filter(f => f.id.includes("start_hour") || f.id.includes("start_minute")).map(f => (
@@ -618,14 +618,14 @@ export function GeneralCategories({
                            ))}
                         </div>
                       </div>
-                      <div className="mt-2 pt-2 border-t border-white/5">
+                      <div className="mt-2 pt-2 border-t border-border/60">
                         {session.fields.filter(f => f.id.includes("day")).map(f => (
                            <ConfigField key={f.id} {...f} />
                         ))}
                       </div>
                     </div>
-                    <div className="col-span-2 space-y-2 p-3 rounded-lg bg-black/10 border border-white/5">
-                      <h4 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Session Actions</h4>
+                    <div className="col-span-2 space-y-2 p-3 rounded-lg bg-background/30 border border-border/60">
+                      <h4 className="heading-card">Session Actions</h4>
                       <div className="grid grid-cols-3 gap-2">
                         {session.fields.filter(f => 
                           f.id.includes("stop_ea") || f.id.includes("close_trades") || f.id.includes("restart_mode")
@@ -676,14 +676,14 @@ export function GeneralCategories({
       const isExpanded = expandedRiskSections.includes(id);
       
       return (
-        <Card className="bg-card/40 border-border/60 overflow-hidden">
-          <CardHeader 
-            className="py-3 px-4 cursor-pointer select-none hover:bg-muted/30 transition-colors"
+        <Card className="depth-card shadow-none overflow-hidden">
+          <CardHeader
+            className="py-3 px-4 cursor-pointer select-none hover:bg-muted/20 transition-colors"
             onClick={() => toggleRiskSection(id)}
           >
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <span className={iconColor}>{icon}</span>
+              <CardTitle className="heading-card flex items-center gap-2">
+                <span className={cn("text-muted-foreground", iconColor)}>{icon}</span>
                 {title}
               </CardTitle>
               <ChevronRight className={cn("w-4 h-4 text-muted-foreground transition-transform", isExpanded && "rotate-90")} />
@@ -724,14 +724,14 @@ export function GeneralCategories({
       const isExpanded = expandedRiskSections.includes(id);
       
       return (
-        <div className="bg-card/40 border border-border/60 rounded-lg overflow-hidden">
-          <div 
-            className="py-3 px-4 cursor-pointer select-none hover:bg-muted/30 transition-colors flex items-center justify-between"
+        <div className="depth-card shadow-none rounded-lg overflow-hidden">
+          <div
+            className="py-3 px-4 cursor-pointer select-none hover:bg-muted/20 transition-colors flex items-center justify-between"
             onClick={() => toggleRiskSection(id)}
           >
             <div className="flex items-center gap-2">
-              <span className={iconColor}>{icon}</span>
-              <span className="text-sm font-medium">{title}</span>
+              <span className={cn("text-muted-foreground", iconColor)}>{icon}</span>
+              <span className="heading-card">{title}</span>
             </div>
             <ChevronRight className={cn("w-4 h-4 text-muted-foreground transition-transform", isExpanded && "rotate-90")} />
           </div>
@@ -753,10 +753,10 @@ export function GeneralCategories({
     };
 
     const riskSections = [
-      { id: "spread", title: "Spread Protection", icon: <Shield className="w-4 h-4" />, iconColor: "text-blue-400", fields: spreadFields, prefix: "spread_" },
-      { id: "slippage", title: "Slippage Protection", icon: <Shield className="w-4 h-4" />, iconColor: "text-amber-400", fields: slippageFields.filter(f => f.type !== "header"), prefix: "slippage_" },
-      { id: "equity", title: "Equity Protection", icon: <TrendingUp className="w-4 h-4" />, iconColor: "text-green-400", fields: equityProtectionFields, prefix: "equity_" },
-      { id: "balance", title: "Balance Protection", icon: <TrendingUp className="w-4 h-4" />, iconColor: "text-purple-400", fields: balanceProtectionFields, prefix: "balance_" },
+      { id: "spread", title: "Spread Protection", icon: <Shield className="w-4 h-4" />, iconColor: "text-muted-foreground", fields: spreadFields, prefix: "spread_" },
+      { id: "slippage", title: "Slippage Protection", icon: <Shield className="w-4 h-4" />, iconColor: "text-muted-foreground", fields: slippageFields.filter(f => f.type !== "header"), prefix: "slippage_" },
+      { id: "equity", title: "Equity Protection", icon: <TrendingUp className="w-4 h-4" />, iconColor: "text-muted-foreground", fields: equityProtectionFields, prefix: "equity_" },
+      { id: "balance", title: "Balance Protection", icon: <TrendingUp className="w-4 h-4" />, iconColor: "text-muted-foreground", fields: balanceProtectionFields, prefix: "balance_" },
     ];
 
     return (
@@ -804,9 +804,9 @@ export function GeneralCategories({
           id="compounding"
           title="Compounding Strategy"
           icon={<TrendingUp className="w-4 h-4" />}
-          iconColor="text-indigo-400"
+          iconColor="text-muted-foreground"
         >
-          <Card className="bg-card/40 border-border/60">
+          <Card className="depth-card shadow-none">
             <CardContent className="grid grid-cols-2 gap-4">
               {renderCompounding(compoundingFields)}
             </CardContent>
@@ -818,9 +818,9 @@ export function GeneralCategories({
           id="news"
           title="News Filter"
           icon={<Newspaper className="w-4 h-4" />}
-          iconColor="text-red-400"
+          iconColor="text-muted-foreground"
         >
-          <Card className="bg-card/40 border-border/60">
+          <Card className="depth-card shadow-none">
             <CardContent className="grid grid-cols-2 gap-4">
               {renderNewsFilter(newsFields)}
             </CardContent>
@@ -832,9 +832,9 @@ export function GeneralCategories({
           id="time"
           title="Time Filter"
           icon={<Clock className="w-4 h-4" />}
-          iconColor="text-cyan-400"
+          iconColor="text-muted-foreground"
         >
-          <Card className="bg-card/40 border-border/60">
+          <Card className="depth-card shadow-none">
             <CardContent className="grid grid-cols-2 gap-4">
               {renderTimeFilter(timeFields)}
             </CardContent>
@@ -850,19 +850,19 @@ export function GeneralCategories({
 
     return (
       <div className="space-y-4">
-        <Card className="bg-card/40 border-border/60">
+        <Card className="depth-card shadow-none">
           <CardHeader className="pb-3">
-             <CardTitle className="text-sm font-medium flex items-center gap-2">
-               <TrendingUp className="w-4 h-4 text-indigo-400" />
+             <CardTitle className="heading-card flex items-center gap-2">
+               <TrendingUp className="w-4 h-4 text-muted-foreground" />
                Compounding Strategy
              </CardTitle>
-             <CardDescription className="text-xs">
+             <CardDescription className="text-[10px] text-muted-foreground">
                Manage how your position sizes grow with your account
              </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
-             <div className="p-4 rounded-lg bg-indigo-500/5 border border-indigo-500/10">
-                <h4 className="text-[10px] font-semibold text-indigo-300 uppercase tracking-wider mb-3">Strategy Selection</h4>
+             <div className="p-4 rounded-lg bg-background/30 border border-border/60">
+                <h4 className="heading-card mb-3">Strategy Selection</h4>
                 <div className="grid grid-cols-2 gap-4">
                    {modeFields.map(f => (
                       <ConfigField key={f.id} {...f} />
@@ -870,8 +870,8 @@ export function GeneralCategories({
                 </div>
              </div>
              
-             <div className="p-4 rounded-lg bg-black/10 border border-white/5">
-                <h4 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">Risk Parameters</h4>
+             <div className="p-4 rounded-lg bg-background/30 border border-border/60">
+                <h4 className="heading-card mb-3">Risk Parameters</h4>
                 <div className="grid grid-cols-2 gap-4">
                    {paramFields.map(f => (
                       <ConfigField key={f.id} {...f} />
@@ -887,21 +887,21 @@ export function GeneralCategories({
   const renderRestartPolicy = (fields: any[]) => {
     return (
       <div className="space-y-4">
-        <Card className="bg-card/40 border-border/60">
+        <Card className="depth-card shadow-none">
           <CardHeader className="pb-3">
-             <CardTitle className="text-sm font-medium flex items-center gap-2">
-               <RotateCw className="w-4 h-4 text-orange-400" />
+             <CardTitle className="heading-card flex items-center gap-2">
+               <RotateCw className="w-4 h-4 text-muted-foreground" />
                Restart Logic
              </CardTitle>
-             <CardDescription className="text-xs">
+             <CardDescription className="text-[10px] text-muted-foreground">
                Define conditions for restarting the EA after stops or targets
              </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">
-             <div className="p-4 rounded-lg bg-orange-500/5 border border-orange-500/10">
+             <div className="p-4 rounded-lg bg-background/30 border border-border/60">
                 <div className="flex items-center gap-2 mb-3">
-                   <Zap className="w-3 h-3 text-orange-400" />
-                   <h4 className="text-[10px] font-semibold text-orange-300 uppercase tracking-wider">Trigger Conditions</h4>
+                   <Zap className="w-3 h-3 text-muted-foreground" />
+                   <h4 className="heading-card">Trigger Conditions</h4>
                 </div>
                 <div className="grid gap-3">
                    {fields.map(f => (
@@ -910,7 +910,7 @@ export function GeneralCategories({
                 </div>
              </div>
              
-             <div className="p-4 rounded-lg bg-black/10 border border-white/5 flex flex-col justify-center items-center text-center space-y-2">
+             <div className="p-4 rounded-lg bg-background/30 border border-border/60 flex flex-col justify-center items-center text-center space-y-2">
                 <Activity className="w-8 h-8 text-muted-foreground/30" />
                 <p className="text-xs text-muted-foreground max-w-[200px]">
                    Proper restart policies ensure continuous operation without manual intervention.
@@ -930,13 +930,13 @@ export function GeneralCategories({
 
     return (
       <div className="space-y-4">
-        <Card className="bg-card/40 border-border/60">
+        <Card className="depth-card shadow-none">
           <CardHeader className="pb-3">
-             <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Newspaper className="w-4 h-4 text-amber-400" />
+             <CardTitle className="heading-card flex items-center gap-2">
+                <Newspaper className="w-4 h-4 text-muted-foreground" />
                 Economic Calendar Filter
              </CardTitle>
-             <CardDescription className="text-xs">
+             <CardDescription className="text-[10px] text-muted-foreground">
                 Avoid trading during high-impact news events
              </CardDescription>
           </CardHeader>
@@ -944,11 +944,8 @@ export function GeneralCategories({
              {/* Impact Selection */}
              <div className="grid md:grid-cols-3 gap-4">
                 {impactFields.map(f => (
-                   <div key={f.id} className="p-3 rounded-lg bg-black/20 border border-white/5 flex flex-col items-center text-center gap-2">
-                      <AlertTriangle className={cn("w-5 h-5", 
-                        f.id.includes("high") ? "text-red-500" : 
-                        f.id.includes("medium") ? "text-orange-500" : "text-yellow-500"
-                      )} />
+                   <div key={f.id} className="p-3 rounded-lg bg-background/30 border border-border/60 flex flex-col items-center text-center gap-2">
+                      <AlertTriangle className="w-5 h-5 text-muted-foreground" />
                       <div className="w-full">
                          <ConfigField {...f} />
                       </div>
@@ -958,10 +955,10 @@ export function GeneralCategories({
 
              <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-3">
-                   <h4 className="text-xs font-medium text-foreground/80 flex items-center gap-2">
-                      <Clock className="w-3 h-3 text-blue-400" /> Timing Rules
+                   <h4 className="heading-card flex items-center gap-2">
+                      <Clock className="w-3 h-3 text-muted-foreground" /> Timing Rules
                    </h4>
-                   <div className="p-3 rounded-lg bg-black/10 border border-white/5 grid gap-3">
+                   <div className="p-3 rounded-lg bg-background/30 border border-border/60 grid gap-3">
                       {timeFields.map(f => (
                          <ConfigField key={f.id} {...f} />
                       ))}
@@ -969,10 +966,10 @@ export function GeneralCategories({
                 </div>
                 
                 <div className="space-y-3">
-                   <h4 className="text-xs font-medium text-foreground/80 flex items-center gap-2">
-                      <Globe className="w-3 h-3 text-green-400" /> Filter Scope
+                   <h4 className="heading-card flex items-center gap-2">
+                      <Globe className="w-3 h-3 text-muted-foreground" /> Filter Scope
                    </h4>
-                   <div className="p-3 rounded-lg bg-black/10 border border-white/5 grid gap-3">
+                   <div className="p-3 rounded-lg bg-background/30 border border-border/60 grid gap-3">
                       {otherFields.map(f => (
                          <ConfigField key={f.id} {...f} />
                       ))}
@@ -983,7 +980,7 @@ export function GeneralCategories({
              {/* Action & Restart Controls */}
              <div className="grid md:grid-cols-3 gap-4">
                 {actionFields.map(f => (
-                   <div key={f.id} className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/10">
+                   <div key={f.id} className="p-3 rounded-lg bg-background/30 border border-border/60">
                       <ConfigField {...f} />
                    </div>
                 ))}
@@ -997,13 +994,13 @@ export function GeneralCategories({
   const renderLicense = (fields: any[]) => {
     return (
       <div className="space-y-4">
-        <Card className="bg-card/40 border-border/60">
+        <Card className="depth-card shadow-none">
            <CardHeader className="pb-3">
-             <CardTitle className="text-sm font-medium flex items-center gap-2">
-               <Key className="w-4 h-4 text-purple-400" />
+             <CardTitle className="heading-card flex items-center gap-2">
+               <Key className="w-4 h-4 text-muted-foreground" />
                License Configuration
              </CardTitle>
-             <CardDescription className="text-xs">
+             <CardDescription className="text-[10px] text-muted-foreground">
                Manage your product activation and account bindings
              </CardDescription>
            </CardHeader>
@@ -1014,13 +1011,13 @@ export function GeneralCategories({
                        <ConfigField key={f.id} {...f} />
                     ))}
                  </div>
-                 <div className="md:w-1/3 flex flex-col items-center justify-center p-6 rounded-xl bg-purple-500/5 border border-purple-500/10 text-center space-y-3">
-                    <div className="p-3 rounded-full bg-purple-500/10">
-                       <User className="w-8 h-8 text-purple-400" />
+                 <div className="md:w-1/3 flex flex-col items-center justify-center p-6 rounded-xl bg-background/30 border border-border/60 text-center space-y-3">
+                    <div className="p-3 rounded-full bg-background/40 border border-border/60">
+                       <User className="w-8 h-8 text-muted-foreground" />
                     </div>
                     <div>
-                       <h4 className="text-sm font-medium text-purple-200">Account Protection</h4>
-                       <p className="text-[10px] text-purple-300/60 mt-1">
+                       <h4 className="text-sm font-medium text-foreground">Account Protection</h4>
+                       <p className="text-[10px] text-muted-foreground mt-1">
                           Ensure your license key matches your trading account number.
                        </p>
                     </div>
@@ -1037,22 +1034,24 @@ export function GeneralCategories({
     const uiFields = fields.filter(f => f.id === "theme" || f.id === "language" || f.id === "ui_settings_header");
     const logFields = fields.filter(f => f.id === "enable_logs" || f.id === "logs_header" || f.id.startsWith("log_"));
     const coreFields = fields.filter(f => f.id !== "theme" && f.id !== "language" && f.id !== "ui_settings_header" && f.id !== "enable_logs" && f.id !== "logs_header" && !f.id.startsWith("log_") && f.type !== "header");
+    const logsEnabled = logFields.some(f => f.id === "enable_logs" && f.value === "ON");
 
     return (
       <div className="space-y-4">
         {/* Core System Parameters */}
-        <Card className="bg-card/40 border-border/60 overflow-hidden">
-          <div className="bg-gradient-to-r from-slate-500/10 to-transparent px-4 py-3 border-b border-border/40">
+        <Card className="depth-card shadow-none overflow-hidden">
+          <div className="px-4 py-3 bg-background/40">
             <div className="flex items-center gap-2">
-              <Settings2 className="w-4 h-4 text-slate-400" />
-              <span className="text-sm font-medium text-slate-200">Core System Parameters</span>
+              <Settings2 className="w-4 h-4 text-muted-foreground" />
+              <span className="heading-card">Core System Parameters</span>
             </div>
-            <p className="text-[10px] text-slate-400/60 mt-0.5">Essential settings for trading operation</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Essential settings for trading operation</p>
           </div>
+          <div className="mx-4 h-px separator-subtle" />
           <CardContent className="p-4">
              <div className="grid grid-cols-2 gap-3">
               {coreFields.map(f => (
-                <div key={f.id} className="p-3 rounded-lg bg-black/20 border border-white/5 hover:bg-black/30 transition-all">
+                <div key={f.id} className="p-3 rounded-lg bg-background/40 border border-border/60 hover:bg-background/50 transition-all">
                   <ConfigField {...f} />
                 </div>
               ))}
@@ -1061,18 +1060,19 @@ export function GeneralCategories({
         </Card>
 
         {/* UI Settings */}
-        <Card className="bg-card/40 border-border/60 overflow-hidden">
-          <div className="bg-gradient-to-r from-teal-500/10 to-transparent px-4 py-3 border-b border-border/40">
+        <Card className="depth-card shadow-none overflow-hidden">
+          <div className="px-4 py-3 bg-background/40">
             <div className="flex items-center gap-2">
-              <Palette className="w-4 h-4 text-teal-400" />
-              <span className="text-sm font-medium text-teal-200">Interface Settings</span>
+              <Palette className="w-4 h-4 text-muted-foreground" />
+              <span className="heading-card">Interface Settings</span>
             </div>
-            <p className="text-[10px] text-teal-400/60 mt-0.5">Customize your dashboard appearance</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Customize your dashboard appearance</p>
           </div>
+          <div className="mx-4 h-px separator-subtle" />
           <CardContent className="p-4">
              <div className="grid grid-cols-2 gap-3">
               {uiFields.filter(f => f.type !== "header").map(f => (
-                <div key={f.id} className="p-3 rounded-lg bg-black/20 border border-white/5 hover:bg-black/30 transition-all">
+                <div key={f.id} className="p-3 rounded-lg bg-background/40 border border-border/60 hover:bg-background/50 transition-all">
                   <ConfigField {...f} />
                 </div>
               ))}
@@ -1081,21 +1081,22 @@ export function GeneralCategories({
         </Card>
 
         {/* Logs */}
-        <Card className="bg-card/40 border-border/60 overflow-hidden">
-          <div className="bg-gradient-to-r from-green-500/10 to-transparent px-4 py-3 border-b border-border/40">
+        <Card className="depth-card shadow-none overflow-hidden">
+          <div className="px-4 py-3 bg-background/40">
             <div className="flex items-center gap-2">
-              <Terminal className="w-4 h-4 text-green-400" />
-              <span className="text-sm font-medium text-green-200">Logging & Diagnostics</span>
+              <Terminal className="w-4 h-4 text-muted-foreground" />
+              <span className="heading-card">Logging & Diagnostics</span>
             </div>
-            <p className="text-[10px] text-green-400/60 mt-0.5">Debug and monitoring options</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Debug and monitoring options</p>
           </div>
+          <div className="mx-4 h-px separator-subtle" />
           <CardContent className="p-4">
-            <div className="flex items-center justify-between p-4 rounded-lg bg-green-900/10 border border-green-500/20">
+            <div className="flex items-center justify-between p-4 rounded-lg bg-background/40 border border-border/60">
               <div className="flex items-center gap-3">
-                <Activity className="w-5 h-5 text-green-400" />
+                <Activity className="w-5 h-5 text-muted-foreground" />
                 <div>
-                   <h4 className="text-sm font-medium text-green-100">Debug Mode</h4>
-                   <p className="text-[10px] text-green-400/60">Enable detailed logging output</p>
+                   <h4 className="text-sm font-medium text-foreground">Debug Mode</h4>
+                   <p className="text-[10px] text-muted-foreground">Enable detailed logging output</p>
                 </div>
               </div>
               <div className="w-32">
@@ -1104,15 +1105,18 @@ export function GeneralCategories({
                 ))}
               </div>
             </div>
-            {logFields.some(f => f.id === "enable_logs" && f.value === "ON") && (
-              <div className="mt-3 grid grid-cols-2 gap-2 conditional-indent">
-                {logFields.filter(f => f.id.startsWith("log_")).map(f => (
-                  <div key={f.id} className="p-2.5 rounded-lg bg-black/20 border border-white/5 hover:bg-black/30 transition-all">
-                    <ConfigField {...f} />
-                  </div>
-                ))}
-              </div>
-            )}
+            <div
+              className={cn(
+                "grid grid-cols-2 gap-2 conditional-indent conditional-reveal",
+                logsEnabled && "is-open mt-3",
+              )}
+            >
+              {logFields.filter(f => f.id.startsWith("log_")).map(f => (
+                <div key={f.id} className="p-2.5 rounded-lg bg-background/40 border border-border/60 hover:bg-background/50 transition-all">
+                  <ConfigField {...f} />
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -1122,13 +1126,13 @@ export function GeneralCategories({
   const renderUISettings = (fields: any[]) => {
      return (
         <div className="space-y-4">
-           <Card className="bg-card/40 border-border/60">
+           <Card className="depth-card shadow-none">
               <CardHeader className="pb-3">
-                 <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <Palette className="w-4 h-4 text-teal-400" />
+                 <CardTitle className="heading-card flex items-center gap-2">
+                    <Palette className="w-4 h-4 text-muted-foreground" />
                     Interface Customization
                  </CardTitle>
-                 <CardDescription className="text-xs">
+                 <CardDescription className="text-[10px] text-muted-foreground">
                     Personalize your dashboard appearance
                  </CardDescription>
               </CardHeader>
@@ -1139,7 +1143,7 @@ export function GeneralCategories({
                     ))}
                  </div>
                  <div className="hidden md:flex items-center justify-center w-1/3 p-4">
-                    <Monitor className="w-24 h-24 text-teal-500/10" />
+                    <Monitor className="w-24 h-24 text-muted-foreground/10" />
                  </div>
               </CardContent>
            </Card>
@@ -1150,23 +1154,23 @@ export function GeneralCategories({
   const renderLogs = (fields: any[]) => {
      return (
         <div className="space-y-4">
-           <Card className="bg-card/40 border-border/60">
+           <Card className="depth-card shadow-none">
               <CardHeader className="pb-3">
-                 <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <Terminal className="w-4 h-4 text-green-400" />
+                 <CardTitle className="heading-card flex items-center gap-2">
+                    <Terminal className="w-4 h-4 text-muted-foreground" />
                     System Diagnostics
                  </CardTitle>
-                 <CardDescription className="text-xs">
+                 <CardDescription className="text-[10px] text-muted-foreground">
                     Control detailed logging output for debugging
                  </CardDescription>
               </CardHeader>
               <CardContent>
-                 <div className="flex items-center justify-between p-4 rounded-lg bg-green-900/10 border border-green-500/20">
+                 <div className="flex items-center justify-between p-4 rounded-lg bg-background/40 border border-border/60">
                     <div className="flex items-center gap-3">
-                       <Activity className="w-5 h-5 text-green-400" />
+                       <Activity className="w-5 h-5 text-muted-foreground" />
                        <div>
-                          <h4 className="text-sm font-medium text-green-100">Debug Mode</h4>
-                          <p className="text-[10px] text-green-400/60">Enables verbose output to the console</p>
+                          <h4 className="text-sm font-medium text-foreground">Debug Mode</h4>
+                          <p className="text-[10px] text-muted-foreground">Enables verbose output to the console</p>
                        </div>
                     </div>
                     <div className="w-1/3">
@@ -1229,22 +1233,18 @@ export function GeneralCategories({
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   {isSingleEdit ? (
-                    <Zap className="w-4 h-4 text-blue-400" />
+                    <Zap className="w-4 h-4 text-muted-foreground" />
                   ) : (
-                    <Activity className="w-4 h-4 text-amber-400" />
+                    <Activity className="w-4 h-4 text-muted-foreground" />
                   )}
                   <span className={cn(
-                    "text-sm font-semibold",
-                    isSingleEdit ? "text-blue-400" : "text-amber-400"
+                    "text-sm font-semibold text-foreground"
                   )}>
                     {isSingleEdit ? "SINGLE EDIT MODE" : "MULTI-EDIT MODE"}
                   </span>
                 </div>
                 <span className={cn(
-                  "text-xs px-2 py-1 rounded font-mono",
-                  isSingleEdit 
-                    ? "bg-blue-500/20 text-blue-300" 
-                    : "bg-amber-500/20 text-amber-300"
+                  "text-xs px-2 py-1 rounded font-mono bg-background/40 text-muted-foreground border border-border/60"
                 )}>
                   {totalEditCount} configs
                 </span>
@@ -1253,12 +1253,12 @@ export function GeneralCategories({
               {/* Applying To */}
               <div className="flex flex-wrap gap-2 mb-2">
                 {selectedEngines.length > 0 && (
-                  <span className="px-2 py-1 rounded-md bg-blue-500/15 text-blue-400 text-xs font-medium border border-blue-500/20">
+                  <span className="px-2 py-1 rounded-md bg-background/40 text-muted-foreground text-xs font-medium border border-border/60">
                     {selectedEngines.length === 1 ? selectedEngines[0] : `${selectedEngines.length} Engines`}
                   </span>
                 )}
                 {selectedGroups.length > 0 && (
-                  <span className="px-2 py-1 rounded-md bg-green-500/15 text-green-400 text-xs font-medium border border-green-500/20">
+                  <span className="px-2 py-1 rounded-md bg-background/40 text-muted-foreground text-xs font-medium border border-border/60">
                     {selectedGroups.length === 20 
                       ? "All 20 Groups" 
                       : selectedGroups.length === 1 ? selectedGroups[0] : `${selectedGroups.length} Groups`
@@ -1266,14 +1266,14 @@ export function GeneralCategories({
                   </span>
                 )}
                 {selectedLogics.length > 0 && (
-                  <span className="px-2 py-1 rounded-md bg-amber-500/15 text-amber-400 text-xs font-medium border border-amber-500/20">
+                  <span className="px-2 py-1 rounded-md bg-background/40 text-muted-foreground text-xs font-medium border border-border/60">
                     {selectedLogics.length === 7 
                       ? "All 7 Logics" 
                       : selectedLogics.length === 1 ? selectedLogics[0] : `${selectedLogics.length} Logics`
                     }
                   </span>
                 )}
-                <span className="px-2 py-1 rounded-md bg-purple-500/15 text-purple-400 text-xs font-medium border border-purple-500/20">
+                <span className="px-2 py-1 rounded-md bg-background/40 text-muted-foreground text-xs font-medium border border-border/60">
                   Buy + Sell
                 </span>
               </div>
@@ -1299,8 +1299,8 @@ export function GeneralCategories({
                     value="buy"
                     className={cn(
                       "flex-1 h-9 px-4 text-sm font-medium",
-                      "data-[state=on]:bg-emerald-500/20 data-[state=on]:text-emerald-400 data-[state=on]:border-emerald-500/30",
-                      "border border-neutral-600 text-neutral-400 hover:text-emerald-400"
+                      "data-[state=on]:bg-primary/15 data-[state=on]:text-primary data-[state=on]:border-primary/40",
+                      "border border-border/60 text-muted-foreground hover:text-foreground"
                     )}
                   >
                     Buy
@@ -1309,8 +1309,8 @@ export function GeneralCategories({
                     value="sell"
                     className={cn(
                       "flex-1 h-9 px-4 text-sm font-medium",
-                      "data-[state=on]:bg-rose-500/20 data-[state=on]:text-rose-400 data-[state=on]:border-rose-500/30",
-                      "border border-neutral-600 text-neutral-400 hover:text-rose-400"
+                      "data-[state=on]:bg-primary/15 data-[state=on]:text-primary data-[state=on]:border-primary/40",
+                      "border border-border/60 text-muted-foreground hover:text-foreground"
                     )}
                   >
                     Sell

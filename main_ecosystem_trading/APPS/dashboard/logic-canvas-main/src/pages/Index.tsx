@@ -6,13 +6,11 @@ import { TopBar, Platform } from "@/components/layout/TopBar";
 import { Sidebar, ViewMode } from "@/components/layout/Sidebar";
 import { ChatPanel } from "@/components/layout/ChatPanel";
 import { QuickActionsPanel } from "@/components/layout/QuickActionsPanel";
-import { BatchEditPanel } from "@/components/config/BatchEditPanel";
 import { EngineCard } from "@/components/config/EngineCard";
 import { GroupCard } from "@/components/config/GroupCard";
 import { GeneralCategories } from "@/components/config/GeneralCategories";
 // import { GroupThresholdsCard } from "@/components/config/GroupThresholdsCard";
 import { MultiEditIndicator } from "@/components/config/MultiEditIndicator";
-import { CLITerminal } from "@/components/config/CLITerminal";
 import { EmptyState } from "@/components/config/EmptyState";
 import { FooterRibbon } from "@/components/config/FooterRibbon";
 import {
@@ -1070,29 +1068,6 @@ function Index() {
                           selectedLogics={selectedLogics}
                           isGroup1Mode={isGroup1Mode}
                           onClearSelection={clearSelection}
-                        />
-                      )}
-
-                      {viewMode === "logics" && (
-                        <div className="space-y-3">
-                          <CLITerminal
-                            onExecuteCommand={(cmd) => pushChatCommand(cmd)}
-                            placeholder="Type: set grid power a 600, set lot 0.02, enable reverse..."
-                          />
-                        </div>
-                      )}
-
-                      {viewMode === "logics" && (
-                        <BatchEditPanel
-                          selectedCount={{
-                            engines: selectedEngines.length,
-                            groups: selectedGroups.length,
-                            logics: selectedLogics.length,
-                          }}
-                          platform={platform}
-                          onClearEngines={() => setSelectedEngines([])}
-                          onClearGroups={() => setSelectedGroups([])}
-                          onClearLogics={() => setSelectedLogics([])}
                         />
                       )}
 

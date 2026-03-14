@@ -56,8 +56,8 @@ export function ConfigField({
   };
 
   const renderLabel = () => (
-    <div className="flex items-center gap-1.5 min-w-0">
-      <span className="text-[10px] font-semibold text-neutral-200 group-hover:text-neutral-100 transition-colors whitespace-nowrap shrink-0">
+    <div className="flex items-start gap-1.5 min-w-0">
+      <span className="label-field group-hover:text-neutral-100 transition-colors leading-tight break-words">
         {label}
       </span>
       {description && (
@@ -84,7 +84,7 @@ export function ConfigField({
                 key={option}
                 onClick={() => handleChange(option)}
                 className={cn(
-                  "px-2 py-0.5 text-[9px] font-medium rounded transition-all whitespace-nowrap",
+                  "px-2 py-0.5 value-data rounded transition-all whitespace-nowrap",
                   isSelected
                     ? "bg-neutral-700 text-neutral-100 shadow-sm"
                     : "text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800",
@@ -110,10 +110,10 @@ export function ConfigField({
             />
             <span
               className={cn(
-                "text-[9px] font-bold min-w-[2rem] text-right transition-colors",
+                "value-data min-w-[2rem] text-right transition-colors",
                 localValue === "ON"
-                  ? "text-[#C5A059]"
-                  : "text-neutral-600",
+                  ? "text-primary"
+                  : "text-muted-foreground",
               )}
             >
               {localValue === "ON" ? "ON" : "OFF"}
@@ -131,7 +131,7 @@ export function ConfigField({
             handleChange(isNumericSelect ? parseInt(val, 10) : val)
           }
         >
-          <SelectTrigger className="h-6 min-w-[5rem] w-full text-[9px] font-bold bg-transparent border border-white/10 hover:border-white/20 focus:border-[#C5A059]/40 focus:ring-1 focus:ring-[#C5A059]/20 transition-all shrink-0">
+          <SelectTrigger className="h-6 min-w-[5rem] w-full value-data text-[12px] depth-input focus:border-primary/60 focus:ring-1 focus:ring-primary/20 transition-all shrink-0 overflow-hidden text-ellipsis whitespace-nowrap">
             <SelectValue placeholder={localValue} />
           </SelectTrigger>
           <SelectContent className="bg-neutral-950 border-white/10">
@@ -139,7 +139,7 @@ export function ConfigField({
               <SelectItem
                 key={option}
                 value={option}
-                className="text-[9px] font-medium focus:bg-neutral-900 focus:text-neutral-200"
+                className="value-data focus:bg-neutral-900 focus:text-neutral-200"
               >
                 {option}
               </SelectItem>
@@ -164,11 +164,11 @@ export function ConfigField({
     if (type === "number") {
       return (
         <div className="flex items-center gap-1 shrink-0">
-          <Input
+            <Input
             type="text"
             value={localValue}
             onChange={(e) => handleChange(e.target.value)}
-            className="min-w-[3.5rem] w-full h-6 text-right font-mono-data font-bold text-[9px] px-1.5 bg-transparent border border-white/10 hover:border-white/20 text-neutral-200 focus:border-[#C5A059]/40 focus:ring-1 focus:ring-[#C5A059]/20 transition-all rounded placeholder:text-neutral-700"
+            className="min-w-[3.5rem] w-full h-6 text-right value-data text-[12px] px-1.5 depth-input focus:border-primary/60 focus:ring-1 focus:ring-primary/20 transition-all rounded placeholder:text-neutral-700 overflow-hidden text-ellipsis whitespace-nowrap"
           />
           {unit && (
             <span className="text-[8px] text-neutral-500 min-w-[2rem] text-left font-medium">
@@ -185,7 +185,7 @@ export function ConfigField({
           type="text"
           value={localValue}
           onChange={(e) => handleChange(e.target.value)}
-          className="min-w-[4rem] w-full h-6 text-right font-mono-data font-bold text-[9px] px-1.5 bg-transparent border border-white/10 hover:border-white/20 text-neutral-200 focus:border-[#C5A059]/40 focus:ring-1 focus:ring-[#C5A059]/20 transition-all rounded placeholder:text-neutral-700 shrink-0"
+          className="min-w-[4rem] w-full h-6 text-right value-data text-[12px] px-1.5 depth-input focus:border-primary/60 focus:ring-1 focus:ring-primary/20 transition-all rounded placeholder:text-neutral-700 shrink-0 overflow-hidden text-ellipsis whitespace-nowrap"
         />
       );
     }
@@ -193,7 +193,7 @@ export function ConfigField({
     return (
       <span
         className={cn(
-          "text-[9px] font-mono-data font-bold px-1.5 py-0.5 rounded bg-transparent border border-white/10 text-neutral-400 min-w-[2rem] shrink-0",
+          "value-data px-1.5 py-0.5 rounded bg-background/30 border border-border/60 min-w-[2rem] shrink-0",
           value === "-" && "text-neutral-700",
         )}
       >
@@ -204,7 +204,7 @@ export function ConfigField({
 
   if (type === "toggle") {
     return (
-      <div className="group flex flex-col gap-1 py-1 px-2 rounded bg-neutral-900/20 hover:bg-neutral-800/40 transition-all duration-200 min-h-[1.75rem]">
+      <div className="group flex flex-col gap-1 py-1 px-2 rounded bg-neutral-900/20 hover:bg-neutral-800/40 transition-all duration-200 min-h-[1.75rem] min-w-0">
         {renderLabel()}
         {renderValue()}
       </div>
@@ -212,7 +212,7 @@ export function ConfigField({
   }
 
   return (
-    <div className="group flex flex-col gap-1 py-1 px-2 rounded bg-neutral-900/20 hover:bg-neutral-800/40 transition-all duration-200 min-h-[2rem]">
+    <div className="group flex flex-col gap-1 py-1 px-2 rounded bg-neutral-900/20 hover:bg-neutral-800/40 transition-all duration-200 min-h-[2rem] min-w-0">
       <div className="flex items-center justify-between gap-2">
         {renderLabel()}
         {hint && type !== "toggle" && (
@@ -221,7 +221,7 @@ export function ConfigField({
           </span>
         )}
       </div>
-      <div className="w-full">{renderValue()}</div>
+      <div className="w-full min-w-0">{renderValue()}</div>
     </div>
   );
 }

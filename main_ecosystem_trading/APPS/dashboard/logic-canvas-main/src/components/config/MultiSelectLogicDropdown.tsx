@@ -89,17 +89,17 @@ export function MultiSelectLogicDropdown({ value, onChange, currentLogicId }: Mu
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between h-auto min-h-[2.5rem] py-2 px-3 text-left font-normal bg-background/50 border-white/10 hover:bg-background/80"
+          className="w-full justify-between h-auto min-h-[2.5rem] py-2 px-3 text-left font-normal bg-background/50 border-white/10 hover:bg-background/80 value-data text-[12px]"
         >
           <div className="flex flex-wrap gap-1">
             {selectedLogics.length > 0 ? (
               selectedLogics.map(logic => (
-                <Badge key={logic} variant="secondary" className="mr-1 mb-1 text-[10px] px-1.5 py-0.5 h-5 bg-primary/10 text-primary border-primary/20">
+                <Badge key={logic} variant="secondary" className="mr-1 mb-1 text-[12px] px-1.5 py-0.5 h-5 bg-primary/10 text-primary border-primary/20">
                    {LOGIC_LABELS[logic] || logic}
                 </Badge>
               ))
             ) : (
-              <span className="text-muted-foreground text-xs">Select targets...</span>
+              <span className="value-data text-muted-foreground text-[12px]">Select targets...</span>
             )}
           </div>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
