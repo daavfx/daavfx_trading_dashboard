@@ -540,40 +540,6 @@ export function GeneralCategories({
           description: field.description,
           onChange: createHandler(field.id)
         }));
-        
-      case "trail":
-        // Trail uses logic config - extract from first logic of first group
-        const trailFields: any[] = [];
-        if (effectiveGeneralConfig) {
-          // Build trail fields from general config
-          const trailFieldDefs = [
-            { id: "trail_enabled", label: "Trail Enabled", type: "toggle" as const },
-            { id: "trail_value", label: "Trail Value", type: "number" as const, unit: "pips" },
-            { id: "trail_start", label: "Trail Start", type: "number" as const, unit: "pips" },
-            { id: "trail_method", label: "Trail Method", type: "select" as const, options: ["Points", "AVG %", "Profit %"] },
-            { id: "use_tp", label: "Use TP", type: "toggle" as const },
-            { id: "tp_value", label: "TP Value", type: "number" as const, unit: "pips" },
-            { id: "use_sl", label: "Use SL", type: "toggle" as const },
-            { id: "sl_value", label: "SL Value", type: "number" as const, unit: "pips" },
-          ];
-          
-          const tpslActive = effectiveGeneralConfig.use_tp || effectiveGeneralConfig.use_sl;
-          
-          trailFieldDefs.forEach(field => {
-            let value: any = (effectiveGeneralConfig as any)?.[field.id] ?? field.default ?? (field.type === "toggle" ? "OFF" : "");
-            if (field.type === "toggle") value = value ? "ON" : "OFF";
-            trailFields.push({
-              id: field.id,
-              label: field.label,
-              value,
-              type: field.type,
-              unit: (field as any).unit,
-              options: (field as any).options,
-              onChange: createHandler(field.id)
-            });
-          });
-        }
-        return trailFields;
 
       case "general":
         const baseFields = generalInputs.global_system.fields
