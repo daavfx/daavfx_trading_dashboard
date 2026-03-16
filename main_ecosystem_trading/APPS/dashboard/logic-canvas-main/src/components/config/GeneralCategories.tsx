@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ConfigField } from "./ConfigField";
-import type { GeneralConfig } from "@/types/mt-config";
+import type { GeneralConfig, MTConfig } from "@/types/mt-config";
 import { generalInputs } from "@/data/general-inputs";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,10 +34,12 @@ import type { Platform } from "@/components/layout/TopBar";
 
 interface GeneralCategoriesProps {
   allCollapsed?: boolean;
+  config?: MTConfig;
   generalConfig?: GeneralConfig;
   selectedCategory?: string;
   onSelectGeneralCategory?: (category: string | null) => void;
-  onConfigChange?: (config: GeneralConfig) => void;
+  onConfigChange?: (config: MTConfig) => void;
+  onGeneralConfigChange?: (config: GeneralConfig) => void;
   platform?: Platform;
   mtPlatform?: Platform;
   mode?: 1 | 2;
@@ -45,19 +47,30 @@ interface GeneralCategoriesProps {
   selectedEngines?: string[];
   selectedGroups?: string[];
   selectedLogics?: string[];
+  editScope?: "Buy" | "Sell";
+  onEditScopeChange?: (scope: "Buy" | "Sell") => void;
+  onJumpToLogic?: (payload: {
+    engines: string[];
+    groups: string[];
+    logics: string[];
+    direction: "Buy" | "Sell";
+  }) => void;
 }
 
 export const generalCategoriesList = [
   { id: "general", label: "Core", icon: Settings2, color: "text-slate-400", hasBuySell: false },
   { id: "risk_management", label: "Risk Management", icon: Shield, color: "text-red-400", hasBuySell: true },
+  { id: "trail", label: "Trail", icon: TrendingDown, color: "text-purple-400", hasBuySell: true },
 ] as const;
 
 export function GeneralCategories({ 
   allCollapsed, 
+  config,
   generalConfig, 
   selectedCategory,
   onSelectGeneralCategory,
   onConfigChange,
+  onGeneralConfigChange,
   platform,
   mtPlatform,
   mode = 1,
@@ -65,11 +78,18 @@ export function GeneralCategories({
   selectedEngines = [],
   selectedGroups = [],
   selectedLogics = [],
+  editScope,
+  onEditScopeChange,
+  onJumpToLogic,
 }: GeneralCategoriesProps) {
   const [expandedCategories, setExpandedCategories] = useState<string[]>(["general"]);
   const [generalEditScope, setGeneralEditScope] = useState<"Buy" | "Sell">(
-    "Buy",
+    editScope ?? "Buy",
   );
+
+  useEffect(() => {
+    if (editScope) setGeneralEditScope(editScope);
+  }, [editScope]);
   
   // Expanded sections within risk management view
   const [expandedRiskSections, setExpandedRiskSections] = useState<string[]>([
@@ -87,6 +107,9 @@ export function GeneralCategories({
   
   const isSingleEdit = enginesCount === 1 && groupsCount === 1 && logicsCount === 1;
   const isMultiEdit = !isSingleEdit && totalEditCount > 0;
+
+  const isControlView = Boolean(isHorizontal && config && onConfigChange);
+  const effectiveGeneralConfig = config?.general ?? generalConfig;
   
   const toggleCategory = (id: string) => {
     setExpandedCategories((prev) =>
@@ -110,85 +133,220 @@ export function GeneralCategories({
   
   const collapseAllRiskSections = () => setExpandedRiskSections([]);
 
-  const handleUpdate = (categoryId: string, fieldId: string, value: any) => {
-    if (!generalConfig || !onConfigChange) return;
+  const updateGeneralConfig = (nextGeneral: GeneralConfig) => {
+    if (config && onConfigChange) {
+      onConfigChange({ ...config, general: nextGeneral });
+      return;
+    }
+    onGeneralConfigChange?.(nextGeneral);
+  };
 
-    const newConfig = JSON.parse(JSON.stringify(generalConfig));
-    
+  const normalizeLogicName = (raw: string) => {
+    const upper = String(raw || "").trim().toUpperCase();
+    return upper === "SCALP" ? "SCALPER" : upper;
+  };
+
+  const resolveLogicDirection = (logic: any): "buy" | "sell" | null => {
+    const direction = String(logic?.direction || "").toUpperCase();
+    if (direction === "B" || direction === "BUY") return "buy";
+    if (direction === "S" || direction === "SELL") return "sell";
+
+    const logicId = String(logic?.logic_id || "").toUpperCase();
+    if (logicId.includes("_B_") || logicId.endsWith("_B")) return "buy";
+    if (logicId.includes("_S_") || logicId.endsWith("_S")) return "sell";
+
+    if (logic?.allow_buy === true && logic?.allow_sell !== true) return "buy";
+    if (logic?.allow_sell === true && logic?.allow_buy !== true) return "sell";
+
+    return null;
+  };
+
+  const getSelectedLogicRows = () => {
+    if (!config) return [] as Array<{
+      engineId: string;
+      groupNum: number;
+      logic: any;
+    }>;
+    if (selectedEngines.length === 0 || selectedGroups.length === 0 || selectedLogics.length === 0) {
+      return [] as Array<{ engineId: string; groupNum: number; logic: any }>;
+    }
+
+    const engineIds = selectedEngines
+      .map((e) => String(e).replace("Engine ", "").trim())
+      .filter(Boolean);
+    const groupNums = selectedGroups
+      .map((g) => parseInt(String(g).replace("Group ", ""), 10))
+      .filter((n) => Number.isFinite(n));
+    const logicNames = selectedLogics.map((l) => normalizeLogicName(String(l)));
+
+    const rows: Array<{ engineId: string; groupNum: number; logic: any }> = [];
+    for (const engine of config.engines) {
+      if (!engineIds.includes(String(engine.engine_id))) continue;
+      for (const group of engine.groups) {
+        if (!groupNums.includes(Number(group.group_number))) continue;
+        for (const logic of group.logics) {
+          const logicName = normalizeLogicName(String((logic as any)?.logic_name || ""));
+          if (!logicNames.includes(logicName)) continue;
+          rows.push({ engineId: String(engine.engine_id), groupNum: Number(group.group_number), logic });
+        }
+      }
+    }
+    return rows;
+  };
+
+  const pickScopedLogicConfig = (category: "risk" | "news" | "time") => {
+    const rows = getSelectedLogicRows();
+    if (rows.length === 0) return null;
+    const scopeKey =
+      generalEditScope === "Buy"
+        ? category === "risk"
+          ? "risk_management_b"
+          : category === "news"
+            ? "news_filter_b"
+            : "time_filters_b"
+        : category === "risk"
+          ? "risk_management_s"
+          : category === "news"
+            ? "news_filter_s"
+            : "time_filters_s";
+
+    for (const row of rows) {
+      const dir = resolveLogicDirection(row.logic);
+      if (generalEditScope === "Buy" && dir === "sell") continue;
+      if (generalEditScope === "Sell" && dir === "buy") continue;
+      const scoped = (row.logic as any)[scopeKey];
+      if (scoped) return scoped;
+    }
+    return (rows[0].logic as any)[scopeKey] ?? null;
+  };
+
+  const handleUpdate = (categoryId: string, fieldId: string, value: any) => {
+    if (!effectiveGeneralConfig) return;
+
+    const newGeneral = JSON.parse(JSON.stringify(effectiveGeneralConfig));
+
     if (fieldId === "grid_unit" && typeof value === "string") {
-        const n = parseInt(value, 10);
-        if (!Number.isNaN(n)) value = n;
+      const n = parseInt(value, 10);
+      if (!Number.isNaN(n)) value = n;
     }
-    
-    // Handle slippage fields at global level (not buy/sell scoped)
-    if (fieldId === "slippage_enabled") {
-        newConfig.slippage_enabled = value === "ON";
-        onConfigChange(newConfig);
-        return;
-    }
-    if (fieldId === "max_slippage_points") {
-        newConfig.max_slippage_points = typeof value === "string" ? parseInt(value, 10) : value;
-        onConfigChange(newConfig);
-        return;
+
+    // Control view: per-logic risk/news/time
+    if (isControlView && (categoryId === "risk_management" || categoryId === "news" || categoryId === "time")) {
+      if (!config || !onConfigChange) return;
+      const rows = getSelectedLogicRows();
+      if (rows.length === 0) return;
+
+      const updated = JSON.parse(JSON.stringify(config)) as MTConfig;
+
+      const targetScopeKey =
+        generalEditScope === "Buy"
+          ? categoryId === "risk_management"
+            ? "risk_management_b"
+            : categoryId === "news"
+              ? "news_filter_b"
+              : "time_filters_b"
+          : categoryId === "risk_management"
+            ? "risk_management_s"
+            : categoryId === "news"
+              ? "news_filter_s"
+              : "time_filters_s";
+
+      rows.forEach(({ engineId, groupNum, logic }) => {
+        const rowDirection = resolveLogicDirection(logic);
+        if (generalEditScope === "Buy" && rowDirection === "sell") return;
+        if (generalEditScope === "Sell" && rowDirection === "buy") return;
+
+        const engine = updated.engines.find((e) => String(e.engine_id) === engineId);
+        if (!engine) return;
+        const group = engine.groups.find((g) => Number(g.group_number) === groupNum);
+        if (!group) return;
+
+        group.logics = group.logics.map((l) => {
+          if (l !== logic) return l;
+          const nextLogic: any = { ...l };
+          if (!nextLogic[targetScopeKey]) nextLogic[targetScopeKey] = {};
+          if (categoryId === "time") {
+            if (fieldId.startsWith("session_")) {
+              const match = fieldId.match(/^session_(\d+)_(.+)$/);
+              if (!match) return nextLogic;
+              const idx = parseInt(match[1], 10) - 1;
+              const prop = match[2];
+              if (!nextLogic[targetScopeKey].sessions) nextLogic[targetScopeKey].sessions = [];
+              if (!nextLogic[targetScopeKey].sessions[idx]) nextLogic[targetScopeKey].sessions[idx] = {};
+              nextLogic[targetScopeKey].sessions[idx][prop] = value;
+            } else {
+              if (!nextLogic[targetScopeKey].priority_settings) nextLogic[targetScopeKey].priority_settings = {};
+              nextLogic[targetScopeKey].priority_settings[fieldId] = value;
+            }
+          } else {
+            nextLogic[targetScopeKey][fieldId] = value;
+          }
+          return nextLogic;
+        });
+      });
+
+      onConfigChange(updated);
+      return;
     }
 
     if (categoryId === "general" && (fieldId === "allow_buy" || fieldId === "allow_sell")) {
-        // Handle allow_buy and allow_sell as direct boolean toggles
-        const boolValue = value === "ON" || value === true || value === 1 || value === "true";
-        newConfig[fieldId] = boolValue;
-        onConfigChange(newConfig);
-        return;
+      const boolValue =
+        value === "ON" || value === true || value === 1 || value === "true";
+      newGeneral[fieldId] = boolValue;
+      updateGeneralConfig(newGeneral);
+      return;
     } else if (categoryId === "general" && (fieldId === "magic_number_buy" || fieldId === "magic_number_sell")) {
-        newConfig[fieldId] = typeof value === "string" ? parseInt(value, 10) : value;
+      newGeneral[fieldId] = typeof value === "string" ? parseInt(value, 10) : value;
     } else if (categoryId === "general" && (fieldId === "enable_logs" || fieldId.startsWith("log_"))) {
-        // Handle logging fields as boolean toggles
-        const boolValue = value === "ON" || value === true || value === 1 || value === "true";
-        newConfig[fieldId] = boolValue;
-        onConfigChange(newConfig);
-        return;
+      const boolValue =
+        value === "ON" || value === true || value === 1 || value === "true";
+      newGeneral[fieldId] = boolValue;
+      updateGeneralConfig(newGeneral);
+      return;
     } else if (categoryId === "risk_management") {
-        const setRisk = (key: "risk_management" | "risk_management_b" | "risk_management_s") => {
-          if (!newConfig[key]) newConfig[key] = {};
-          newConfig[key][fieldId] = value;
-        };
-        if (generalEditScope === "Buy") setRisk("risk_management_b");
-        else setRisk("risk_management_s");
+      const setRisk = (key: "risk_management" | "risk_management_b" | "risk_management_s") => {
+        if (!newGeneral[key]) newGeneral[key] = {};
+        newGeneral[key][fieldId] = value;
+      };
+      if (generalEditScope === "Buy") setRisk("risk_management_b");
+      else setRisk("risk_management_s");
     } else if (categoryId === "time") {
-        const setTime = (key: "time_filters" | "time_filters_b" | "time_filters_s") => {
-          if (!newConfig[key]) newConfig[key] = {};
-          if (fieldId.startsWith("session_")) {
-            const match = fieldId.match(/^session_(\d+)_(.+)$/);
-            if (!match) return;
-            const idx = parseInt(match[1]) - 1;
-            const prop = match[2];
-            if (!newConfig[key].sessions) newConfig[key].sessions = [];
-            if (!newConfig[key].sessions[idx]) newConfig[key].sessions[idx] = {};
-            newConfig[key].sessions[idx][prop] = value;
-          } else {
-            if (!newConfig[key].priority_settings) newConfig[key].priority_settings = {};
-            newConfig[key].priority_settings[fieldId] = value;
-          }
-        };
+      const setTime = (key: "time_filters" | "time_filters_b" | "time_filters_s") => {
+        if (!newGeneral[key]) newGeneral[key] = {};
+        if (fieldId.startsWith("session_")) {
+          const match = fieldId.match(/^session_(\d+)_(.+)$/);
+          if (!match) return;
+          const idx = parseInt(match[1]) - 1;
+          const prop = match[2];
+          if (!newGeneral[key].sessions) newGeneral[key].sessions = [];
+          if (!newGeneral[key].sessions[idx]) newGeneral[key].sessions[idx] = {};
+          newGeneral[key].sessions[idx][prop] = value;
+        } else {
+          if (!newGeneral[key].priority_settings) newGeneral[key].priority_settings = {};
+          newGeneral[key].priority_settings[fieldId] = value;
+        }
+      };
 
-        if (generalEditScope === "Buy") setTime("time_filters_b");
-        else setTime("time_filters_s");
+      if (generalEditScope === "Buy") setTime("time_filters_b");
+      else setTime("time_filters_s");
     } else if (categoryId === "news") {
-         const setNews = (key: "news_filter" | "news_filter_b" | "news_filter_s") => {
-           if (!newConfig[key]) newConfig[key] = {};
-           newConfig[key][fieldId] = value;
-         };
-         if (generalEditScope === "Buy") setNews("news_filter_b");
-         else setNews("news_filter_s");
+      const setNews = (key: "news_filter" | "news_filter_b" | "news_filter_s") => {
+        if (!newGeneral[key]) newGeneral[key] = {};
+        newGeneral[key][fieldId] = value;
+      };
+      if (generalEditScope === "Buy") setNews("news_filter_b");
+      else setNews("news_filter_s");
     } else if (categoryId === "compounding") {
-         newConfig[`compounding_${fieldId}`] = value;
+      newGeneral[`compounding_${fieldId}`] = value;
     } else if (categoryId === "logs") {
-         newConfig[fieldId] = value === "ON";
+      newGeneral[fieldId] = value === "ON";
     } else {
-         newConfig[fieldId] = value;
+      newGeneral[fieldId] = value;
     }
-    
-    onConfigChange(newConfig);
+
+    updateGeneralConfig(newGeneral);
   };
+
 
   const getScopedValue = <T,>(base: T | undefined, buy: T | undefined, sell: T | undefined): T | undefined => {
     if (generalEditScope === "Buy") return buy ?? base;
@@ -198,7 +356,7 @@ export function GeneralCategories({
   const renderModeSelectors = (showBuySell: boolean = true) => {
     if (!showBuySell) return null;
     return (
-    <div className="mb-3 p-3 bg-muted/30 rounded-lg border border-border/50">
+    <div className="mb-3 p-3 bg-white/[0.01] rounded-lg border border-white/[0.06] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.02)]">
       <div className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-2">
         <ArrowLeftRight className="w-3 h-3" />
         Buy / Sell Edit Side
@@ -208,16 +366,24 @@ export function GeneralCategories({
         value={generalEditScope === "Buy" ? "buy" : "sell"}
         onValueChange={(val) => {
           if (!val) return;
-          if (val === "buy") setGeneralEditScope("Buy");
-          else if (val === "sell") setGeneralEditScope("Sell");
+          if (val === "buy") {
+            setGeneralEditScope("Buy");
+            onEditScopeChange?.("Buy");
+          } else if (val === "sell") {
+            setGeneralEditScope("Sell");
+            onEditScopeChange?.("Sell");
+          }
         }}
         className="flex flex-col sm:flex-row justify-start gap-2 w-full"
       >
         <ToggleGroupItem
           value="buy"
           className={cn(
-            "flex-1 h-8 px-3 text-xs",
-            "data-[state=on]:bg-primary/15 data-[state=on]:text-primary border border-border/50 data-[state=on]:border-primary/40",
+            "flex-1 h-8 px-3 text-xs bg-white/[0.02]",
+            "border border-white/[0.06] text-muted-foreground transition-all",
+            "data-[state=on]:bg-white/[0.04] data-[state=on]:border-white/[0.1] data-[state=on]:border-b-primary/50",
+            "data-[state=on]:text-foreground data-[state=on]:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)]",
+            "hover:bg-white/[0.04] hover:text-foreground"
           )}
         >
           Buy
@@ -225,8 +391,11 @@ export function GeneralCategories({
         <ToggleGroupItem
           value="sell"
           className={cn(
-            "flex-1 h-8 px-3 text-xs",
-            "data-[state=on]:bg-primary/15 data-[state=on]:text-primary border border-border/50 data-[state=on]:border-primary/40",
+            "flex-1 h-8 px-3 text-xs bg-white/[0.02]",
+            "border border-white/[0.06] text-muted-foreground transition-all",
+            "data-[state=on]:bg-white/[0.04] data-[state=on]:border-white/[0.1] data-[state=on]:border-b-primary/50",
+            "data-[state=on]:text-foreground data-[state=on]:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)]",
+            "hover:bg-white/[0.04] hover:text-foreground"
           )}
         >
           Sell
@@ -234,7 +403,7 @@ export function GeneralCategories({
       </ToggleGroup>
     </div>
   );
-  }
+  };
 
   // Helper to map type string to "number" | "toggle" | "text" | "select"
   const mapType = (type: string): "number" | "toggle" | "text" | "select" | "header" => {
@@ -247,17 +416,24 @@ export function GeneralCategories({
 
   // Map real config to fields
   const getRealCategoryFields = (categoryId: string) => {
-    if (!generalConfig) return [];
+    if (!effectiveGeneralConfig) return [];
     
     const createHandler = (id: string) => (val: any) => handleUpdate(categoryId, id, val);
 
     switch (categoryId) {
       case "risk_management":
-        const riskScoped = getScopedValue(
-          generalConfig.risk_management,
-          generalConfig.risk_management_b,
-          generalConfig.risk_management_s,
-        );
+        const riskScoped = isControlView
+          ? pickScopedLogicConfig("risk") ??
+            getScopedValue(
+              effectiveGeneralConfig.risk_management,
+              effectiveGeneralConfig.risk_management_b,
+              effectiveGeneralConfig.risk_management_s,
+            )
+          : getScopedValue(
+              effectiveGeneralConfig.risk_management,
+              effectiveGeneralConfig.risk_management_b,
+              effectiveGeneralConfig.risk_management_s,
+            );
         // Get risk management fields from the risk_management object
         const riskFields = generalInputs.risk_management.fields.map(field => ({
           id: field.id,
@@ -270,40 +446,21 @@ export function GeneralCategories({
           onChange: createHandler(field.id)
         }));
         
-        // Add slippage fields at global level (not Buy/Sell scoped)
-        riskFields.push({
-          id: "slippage_header",
-          label: "Slippage Protection",
-          type: "header" as const,
-          value: "",
-          onChange: () => {}
-        });
-        riskFields.push({
-          id: "slippage_enabled",
-          label: "Enable Slippage Protection",
-          value: generalConfig.slippage_enabled ? "ON" : "OFF",
-          type: "toggle" as const,
-          description: "Enable maximum slippage protection",
-          onChange: createHandler("slippage_enabled")
-        });
-        riskFields.push({
-          id: "max_slippage_points",
-          label: "Max Slippage Points",
-          value: generalConfig.max_slippage_points ?? 30,
-          type: "number" as const,
-          unit: "pts",
-          description: "Maximum permitted slippage in points",
-          onChange: createHandler("max_slippage_points")
-        });
-        
         return riskFields;
 
       case "time":
-        const timeScoped = getScopedValue(
-          generalConfig.time_filters,
-          generalConfig.time_filters_b,
-          generalConfig.time_filters_s,
-        );
+        const timeScoped = isControlView
+          ? pickScopedLogicConfig("time") ??
+            getScopedValue(
+              effectiveGeneralConfig.time_filters,
+              effectiveGeneralConfig.time_filters_b,
+              effectiveGeneralConfig.time_filters_s,
+            )
+          : getScopedValue(
+              effectiveGeneralConfig.time_filters,
+              effectiveGeneralConfig.time_filters_b,
+              effectiveGeneralConfig.time_filters_s,
+            );
         return generalInputs.time_filters.fields.map(field => {
           let value;
           const sessionIdMatch = field.id.match(/^session_(\d+)_(.+)$/);
@@ -335,11 +492,18 @@ export function GeneralCategories({
         });
 
       case "news":
-        const newsScoped = getScopedValue(
-          generalConfig.news_filter,
-          generalConfig.news_filter_b,
-          generalConfig.news_filter_s,
-        );
+        const newsScoped = isControlView
+          ? pickScopedLogicConfig("news") ??
+            getScopedValue(
+              effectiveGeneralConfig.news_filter,
+              effectiveGeneralConfig.news_filter_b,
+              effectiveGeneralConfig.news_filter_s,
+            )
+          : getScopedValue(
+              effectiveGeneralConfig.news_filter,
+              effectiveGeneralConfig.news_filter_b,
+              effectiveGeneralConfig.news_filter_s,
+            );
         return generalInputs.news_filter.fields.map(field => ({
           id: field.id,
           label: field.mt4_variable.replace("gInput_", "").replace(/([A-Z])/g, ' $1').trim(),
@@ -355,22 +519,55 @@ export function GeneralCategories({
         return generalInputs.license.fields.map(field => ({
           id: field.id,
           label: field.mt4_variable.replace("gInput_", "").replace(/([A-Z])/g, ' $1').trim(),
-          value: generalConfig[field.id as keyof GeneralConfig] ?? field.default,
+          value: effectiveGeneralConfig[field.id as keyof GeneralConfig] ?? field.default,
           type: mapType(field.type),
           unit: (field as any).unit,
           description: field.description,
           onChange: createHandler(field.id)
         }));
         
+      case "trail":
+        // Trail uses logic config - extract from first logic of first group
+        const trailFields: any[] = [];
+        if (effectiveGeneralConfig) {
+          // Build trail fields from general config
+          const trailFieldDefs = [
+            { id: "trail_enabled", label: "Trail Enabled", type: "toggle" as const },
+            { id: "trail_value", label: "Trail Value", type: "number" as const, unit: "pips" },
+            { id: "trail_start", label: "Trail Start", type: "number" as const, unit: "pips" },
+            { id: "trail_method", label: "Trail Method", type: "select" as const, options: ["Points", "AVG %", "Profit %"] },
+            { id: "use_tp", label: "Use TP", type: "toggle" as const },
+            { id: "tp_value", label: "TP Value", type: "number" as const, unit: "pips" },
+            { id: "use_sl", label: "Use SL", type: "toggle" as const },
+            { id: "sl_value", label: "SL Value", type: "number" as const, unit: "pips" },
+          ];
+          
+          const tpslActive = effectiveGeneralConfig.use_tp || effectiveGeneralConfig.use_sl;
+          
+          trailFieldDefs.forEach(field => {
+            let value: any = (effectiveGeneralConfig as any)?.[field.id] ?? field.default ?? (field.type === "toggle" ? "OFF" : "");
+            if (field.type === "toggle") value = value ? "ON" : "OFF";
+            trailFields.push({
+              id: field.id,
+              label: field.label,
+              value,
+              type: field.type,
+              unit: (field as any).unit,
+              options: (field as any).options,
+              onChange: createHandler(field.id)
+            });
+          });
+        }
+        return trailFields;
+
       case "general":
         const baseFields = generalInputs.global_system.fields
             .filter(f => f.id !== "allow_buy" && f.id !== "allow_sell")
             .filter(f => f.id !== "magic_number_buy" && f.id !== "magic_number_sell")
-            .filter(f => f.id !== "max_slippage_points")
             .map(field => ({
               id: field.id,
               label: field.mt4_variable.replace("gInput_", "").replace(/([A-Z])/g, ' $1').trim(),
-              value: generalConfig[field.id as keyof GeneralConfig] ?? field.default,
+              value: effectiveGeneralConfig[field.id as keyof GeneralConfig] ?? field.default,
               type: mapType(field.type),
               unit: (field as any).unit,
               description: field.description,
@@ -385,7 +582,7 @@ export function GeneralCategories({
                 field.id === "magic_number_buy"
                   ? "Magic Number (Buy)"
                   : "Magic Number (Sell)",
-              value: generalConfig[field.id as keyof GeneralConfig] ?? field.default,
+              value: effectiveGeneralConfig[field.id as keyof GeneralConfig] ?? field.default,
               type: mapType(field.type),
               unit: (field as any).unit,
               description: field.description,
@@ -398,7 +595,7 @@ export function GeneralCategories({
         fields.unshift({
             id: "allow_sell",
             label: "Sell Enabled",
-            value: generalConfig.allow_sell ? "ON" : "OFF",
+            value: effectiveGeneralConfig.allow_sell ? "ON" : "OFF",
             type: "toggle" as const,
             description: "Enable EA to open SELL orders",
             onChange: createHandler("allow_sell")
@@ -406,7 +603,7 @@ export function GeneralCategories({
         fields.unshift({
             id: "allow_buy",
             label: "Buy Enabled",
-            value: generalConfig.allow_buy ? "ON" : "OFF",
+            value: effectiveGeneralConfig.allow_buy ? "ON" : "OFF",
             type: "toggle" as const,
             description: "Enable EA to open BUY orders",
             onChange: createHandler("allow_buy")
@@ -446,7 +643,7 @@ export function GeneralCategories({
         fields.push({
           id: "enable_logs",
           label: "Enable Logs",
-          value: generalConfig.enable_logs ? "ON" : "OFF",
+          value: effectiveGeneralConfig.enable_logs ? "ON" : "OFF",
           type: "toggle" as const,
           description: "Enable detailed logging",
           onChange: createHandler("enable_logs")
@@ -454,7 +651,7 @@ export function GeneralCategories({
         fields.push({
           id: "log_lifecycle",
           label: "Lifecycle",
-          value: generalConfig.log_lifecycle !== false ? "ON" : "OFF",
+          value: effectiveGeneralConfig.log_lifecycle !== false ? "ON" : "OFF",
           type: "toggle" as const,
           description: "Open/close events, init, deinit",
           onChange: createHandler("log_lifecycle")
@@ -462,7 +659,7 @@ export function GeneralCategories({
         fields.push({
           id: "log_trail",
           label: "Trail",
-          value: generalConfig.log_trail !== false ? "ON" : "OFF",
+          value: effectiveGeneralConfig.log_trail !== false ? "ON" : "OFF",
           type: "toggle" as const,
           description: "Trailing stop updates (high volume)",
           onChange: createHandler("log_trail")
@@ -470,7 +667,7 @@ export function GeneralCategories({
         fields.push({
           id: "log_grid",
           label: "Grid",
-          value: generalConfig.log_grid !== false ? "ON" : "OFF",
+          value: effectiveGeneralConfig.log_grid !== false ? "ON" : "OFF",
           type: "toggle" as const,
           description: "Grid entry add events",
           onChange: createHandler("log_grid")
@@ -478,7 +675,7 @@ export function GeneralCategories({
         fields.push({
           id: "log_start_level",
           label: "Start Level",
-          value: generalConfig.log_start_level !== false ? "ON" : "OFF",
+          value: effectiveGeneralConfig.log_start_level !== false ? "ON" : "OFF",
           type: "toggle" as const,
           description: "Start level gating decisions",
           onChange: createHandler("log_start_level")
@@ -486,7 +683,7 @@ export function GeneralCategories({
         fields.push({
           id: "log_risk",
           label: "Risk",
-          value: generalConfig.log_risk !== false ? "ON" : "OFF",
+          value: effectiveGeneralConfig.log_risk !== false ? "ON" : "OFF",
           type: "toggle" as const,
           description: "Risk checks, equity/balance protection",
           onChange: createHandler("log_risk")
@@ -494,7 +691,7 @@ export function GeneralCategories({
         fields.push({
           id: "log_session",
           label: "Session",
-          value: generalConfig.log_session !== false ? "ON" : "OFF",
+          value: effectiveGeneralConfig.log_session !== false ? "ON" : "OFF",
           type: "toggle" as const,
           description: "Session filter, news filter events",
           onChange: createHandler("log_session")
@@ -502,7 +699,7 @@ export function GeneralCategories({
         fields.push({
           id: "log_config",
           label: "Config",
-          value: generalConfig.log_config !== false ? "ON" : "OFF",
+          value: effectiveGeneralConfig.log_config !== false ? "ON" : "OFF",
           type: "toggle" as const,
           description: "Config loading, setfile parsing",
           onChange: createHandler("log_config")
@@ -515,7 +712,7 @@ export function GeneralCategories({
           id: field.id,
           label: field.mt4_variable.replace("gInput_", "").replace(/([A-Z])/g, ' $1').trim(),
           // Prefix with 'compounding_' because they are flattened in GeneralConfig but names in generalInputs are 'enabled', 'type' etc.
-          value: generalConfig[`compounding_${field.id}` as keyof GeneralConfig] ?? field.default,
+          value: effectiveGeneralConfig[`compounding_${field.id}` as keyof GeneralConfig] ?? field.default,
           type: mapType(field.type),
           unit: (field as any).unit,
           description: field.description,
@@ -607,7 +804,7 @@ export function GeneralCategories({
                 </CardHeader>
                 <CardContent className="pt-4 grid gap-4">
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="col-span-2 space-y-2 p-3 rounded-lg bg-background/30 border border-border/60">
+                    <div className="col-span-2 space-y-2 p-3 rounded-lg bg-white/[0.01] hover:bg-white/[0.02] border border-white/[0.06] transition-colors">
                       <h4 className="heading-card">Time Window</h4>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
@@ -627,7 +824,7 @@ export function GeneralCategories({
                         ))}
                       </div>
                     </div>
-                    <div className="col-span-2 space-y-2 p-3 rounded-lg bg-background/30 border border-border/60">
+                    <div className="col-span-2 space-y-2 p-3 rounded-lg bg-white/[0.01] hover:bg-white/[0.02] border border-white/[0.06] transition-colors">
                       <h4 className="heading-card">Session Actions</h4>
                       <div className="grid grid-cols-3 gap-2">
                         {session.fields.filter(f => 
@@ -860,7 +1057,7 @@ export function GeneralCategories({
              </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
-             <div className="p-4 rounded-lg bg-background/30 border border-border/60">
+             <div className="p-4 rounded-lg bg-white/[0.01] hover:bg-white/[0.02] border border-white/[0.06] transition-colors">
                 <h4 className="heading-card mb-3">Strategy Selection</h4>
                 <div className="grid grid-cols-2 gap-4">
                    {modeFields.map(f => (
@@ -869,7 +1066,7 @@ export function GeneralCategories({
                 </div>
              </div>
              
-             <div className="p-4 rounded-lg bg-background/30 border border-border/60">
+             <div className="p-4 rounded-lg bg-white/[0.01] hover:bg-white/[0.02] border border-white/[0.06] transition-colors">
                 <h4 className="heading-card mb-3">Risk Parameters</h4>
                 <div className="grid grid-cols-2 gap-4">
                    {paramFields.map(f => (
@@ -897,7 +1094,7 @@ export function GeneralCategories({
              </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">
-             <div className="p-4 rounded-lg bg-background/30 border border-border/60">
+             <div className="p-4 rounded-lg bg-white/[0.01] hover:bg-white/[0.02] border border-white/[0.06] transition-colors">
                 <div className="flex items-center gap-2 mb-3">
                    <Zap className="w-3 h-3 text-muted-foreground" />
                    <h4 className="heading-card">Trigger Conditions</h4>
@@ -909,7 +1106,7 @@ export function GeneralCategories({
                 </div>
              </div>
              
-             <div className="p-4 rounded-lg bg-background/30 border border-border/60 flex flex-col justify-center items-center text-center space-y-2">
+             <div className="p-4 rounded-lg bg-white/[0.01] hover:bg-white/[0.02] border border-white/[0.06] flex flex-col justify-center items-center text-center space-y-2 transition-colors">
                 <Activity className="w-8 h-8 text-muted-foreground/30" />
                 <p className="text-xs text-muted-foreground max-w-[200px]">
                    Proper restart policies ensure continuous operation without manual intervention.
@@ -943,7 +1140,7 @@ export function GeneralCategories({
              {/* Impact Selection */}
              <div className="grid md:grid-cols-3 gap-4">
                 {impactFields.map(f => (
-                   <div key={f.id} className="p-3 rounded-lg bg-background/30 border border-border/60 flex flex-col items-center text-center gap-2">
+                   <div key={f.id} className="p-3 rounded-lg bg-white/[0.01] hover:bg-white/[0.02] border border-white/[0.06] flex flex-col items-center text-center gap-2 transition-colors">
                       <AlertTriangle className="w-5 h-5 text-muted-foreground" />
                       <div className="w-full">
                          <ConfigField {...f} />
@@ -957,7 +1154,7 @@ export function GeneralCategories({
                    <h4 className="heading-card flex items-center gap-2">
                       <Clock className="w-3 h-3 text-muted-foreground" /> Timing Rules
                    </h4>
-                   <div className="p-3 rounded-lg bg-background/30 border border-border/60 grid gap-3">
+                   <div className="p-3 rounded-lg bg-white/[0.01] border border-white/[0.06] grid gap-3">
                       {timeFields.map(f => (
                          <ConfigField key={f.id} {...f} />
                       ))}
@@ -968,7 +1165,7 @@ export function GeneralCategories({
                    <h4 className="heading-card flex items-center gap-2">
                       <Globe className="w-3 h-3 text-muted-foreground" /> Filter Scope
                    </h4>
-                   <div className="p-3 rounded-lg bg-background/30 border border-border/60 grid gap-3">
+                   <div className="p-3 rounded-lg bg-white/[0.01] border border-white/[0.06] grid gap-3">
                       {otherFields.map(f => (
                          <ConfigField key={f.id} {...f} />
                       ))}
@@ -979,7 +1176,7 @@ export function GeneralCategories({
              {/* Action & Restart Controls */}
              <div className="grid md:grid-cols-3 gap-4">
                 {actionFields.map(f => (
-                   <div key={f.id} className="p-3 rounded-lg bg-background/30 border border-border/60">
+                   <div key={f.id} className="p-3 rounded-lg bg-white/[0.01] hover:bg-white/[0.02] border border-white/[0.06] transition-colors">
                       <ConfigField {...f} />
                    </div>
                 ))}
@@ -1010,9 +1207,9 @@ export function GeneralCategories({
                        <ConfigField key={f.id} {...f} />
                     ))}
                  </div>
-                 <div className="md:w-1/3 flex flex-col items-center justify-center p-6 rounded-xl bg-background/30 border border-border/60 text-center space-y-3">
-                    <div className="p-3 rounded-full bg-background/40 border border-border/60">
-                       <User className="w-8 h-8 text-muted-foreground" />
+                 <div className="md:w-1/3 flex flex-col items-center justify-center p-6 rounded-xl bg-white/[0.01] hover:bg-white/[0.02] border border-white/[0.06] text-center space-y-3 transition-colors">
+                    <div className="p-3 rounded-full bg-white/[0.03] border border-white/[0.06]">
+                       <User className="w-8 h-8 text-primary/40" />
                     </div>
                     <div>
                        <h4 className="text-sm font-medium text-foreground">Account Protection</h4>
@@ -1039,7 +1236,7 @@ export function GeneralCategories({
       <div className="space-y-4">
         {/* Core System Parameters */}
         <Card className="depth-card shadow-none overflow-hidden">
-          <div className="px-4 py-3 bg-background/40">
+          <div className="px-4 py-3 bg-white/[0.01] border-b border-white/[0.03]">
             <div className="flex items-center gap-2">
               <Settings2 className="w-4 h-4 text-muted-foreground" />
               <span className="heading-card">Core System Parameters</span>
@@ -1050,7 +1247,7 @@ export function GeneralCategories({
           <CardContent className="p-4">
              <div className="grid grid-cols-2 gap-3">
               {coreFields.map(f => (
-                <div key={f.id} className="p-3 rounded-lg bg-background/40 border border-border/60 hover:bg-background/50 transition-all">
+                <div key={f.id} className="p-3 rounded-lg bg-white/[0.01] hover:bg-white/[0.02] border border-white/[0.06] transition-colors">
                   <ConfigField {...f} />
                 </div>
               ))}
@@ -1060,7 +1257,7 @@ export function GeneralCategories({
 
         {/* UI Settings */}
         <Card className="depth-card shadow-none overflow-hidden">
-          <div className="px-4 py-3 bg-background/40">
+          <div className="px-4 py-3 bg-white/[0.01] border-b border-white/[0.03]">
             <div className="flex items-center gap-2">
               <Palette className="w-4 h-4 text-muted-foreground" />
               <span className="heading-card">Interface Settings</span>
@@ -1071,7 +1268,7 @@ export function GeneralCategories({
           <CardContent className="p-4">
              <div className="grid grid-cols-2 gap-3">
               {uiFields.filter(f => f.type !== "header").map(f => (
-                <div key={f.id} className="p-3 rounded-lg bg-background/40 border border-border/60 hover:bg-background/50 transition-all">
+                <div key={f.id} className="p-3 rounded-lg bg-white/[0.01] hover:bg-white/[0.02] border border-white/[0.06] transition-colors">
                   <ConfigField {...f} />
                 </div>
               ))}
@@ -1081,7 +1278,7 @@ export function GeneralCategories({
 
         {/* Logs */}
         <Card className="depth-card shadow-none overflow-hidden">
-          <div className="px-4 py-3 bg-background/40">
+          <div className="px-4 py-3 bg-white/[0.01] border-b border-white/[0.03]">
             <div className="flex items-center gap-2">
               <Terminal className="w-4 h-4 text-muted-foreground" />
               <span className="heading-card">Logging & Diagnostics</span>
@@ -1090,7 +1287,7 @@ export function GeneralCategories({
           </div>
           <div className="mx-4 h-px separator-subtle" />
           <CardContent className="p-4">
-            <div className="flex items-center justify-between p-4 rounded-lg bg-background/40 border border-border/60">
+            <div className="flex items-center justify-between p-4 rounded-lg bg-white/[0.01] hover:bg-white/[0.02] border border-white/[0.06] transition-colors">
               <div className="flex items-center gap-3">
                 <Activity className="w-5 h-5 text-muted-foreground" />
                 <div>
@@ -1111,7 +1308,7 @@ export function GeneralCategories({
               )}
             >
               {logFields.filter(f => f.id.startsWith("log_")).map(f => (
-                <div key={f.id} className="p-2.5 rounded-lg bg-background/40 border border-border/60 hover:bg-background/50 transition-all">
+                <div key={f.id} className="p-2.5 rounded-lg bg-white/[0.01] hover:bg-white/[0.02] border border-white/[0.06] transition-colors">
                   <ConfigField {...f} />
                 </div>
               ))}
@@ -1164,7 +1361,7 @@ export function GeneralCategories({
                  </CardDescription>
               </CardHeader>
               <CardContent>
-                 <div className="flex items-center justify-between p-4 rounded-lg bg-background/40 border border-border/60">
+                 <div className="flex items-center justify-between p-4 rounded-lg bg-white/[0.01] hover:bg-white/[0.02] border border-white/[0.06] transition-colors">
                     <div className="flex items-center gap-3">
                        <Activity className="w-5 h-5 text-muted-foreground" />
                        <div>
@@ -1242,11 +1439,29 @@ export function GeneralCategories({
                     {isSingleEdit ? "SINGLE EDIT MODE" : "MULTI-EDIT MODE"}
                   </span>
                 </div>
-                <span className={cn(
-                  "text-xs px-2 py-1 rounded font-mono bg-background/40 text-muted-foreground border border-border/60"
-                )}>
-                  {totalEditCount} configs
-                </span>
+                <div className="flex items-center gap-2">
+                  {onJumpToLogic && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onJumpToLogic({
+                          engines: selectedEngines,
+                          groups: selectedGroups,
+                          logics: selectedLogics,
+                          direction: generalEditScope,
+                        })
+                      }
+                      className="text-[10px] px-2 py-1 rounded border border-border/60 bg-background/40 text-muted-foreground hover:text-foreground hover:bg-background/60 transition-colors"
+                    >
+                      Go to Logic
+                    </button>
+                  )}
+                  <span className={cn(
+                    "text-xs px-2 py-1 rounded font-mono bg-background/40 text-muted-foreground border border-border/60"
+                  )}>
+                    {totalEditCount} configs
+                  </span>
+                </div>
               </div>
               
               {/* Applying To */}
@@ -1273,7 +1488,7 @@ export function GeneralCategories({
                   </span>
                 )}
                 <span className="px-2 py-1 rounded-md bg-background/40 text-muted-foreground text-xs font-medium border border-border/60">
-                  Buy + Sell
+                  {generalEditScope === "Buy" ? "Buy" : "Sell"}
                 </span>
               </div>
               
@@ -1289,8 +1504,13 @@ export function GeneralCategories({
                   value={generalEditScope === "Buy" ? "buy" : "sell"}
                   onValueChange={(val) => {
                     if (!val) return;
-                    if (val === "buy") setGeneralEditScope("Buy");
-                    else if (val === "sell") setGeneralEditScope("Sell");
+                    if (val === "buy") {
+                      setGeneralEditScope("Buy");
+                      onEditScopeChange?.("Buy");
+                    } else if (val === "sell") {
+                      setGeneralEditScope("Sell");
+                      onEditScopeChange?.("Sell");
+                    }
                   }}
                   className="flex gap-2 w-full"
                 >

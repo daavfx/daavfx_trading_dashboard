@@ -21,8 +21,6 @@ function invPartialTrigger(n: number): string { switch (n) { case 0: return "Par
 function invEntryTrigger(n: number): string { switch (n) { case 0: return "Trigger_Immediate"; case 1: return "Trigger_AfterBars"; case 2: return "Trigger_AfterSeconds"; case 3: return "Trigger_AfterPips"; case 4: return "Trigger_TimeFilter"; case 5: return "Trigger_NewsFilter"; default: return "Trigger_Immediate"; } }
 function invGridBehavior(n: number): string { return n === 1 ? "GridBehavior_TrendFollowing" : n === 2 ? "GridBehavior_Disabled" : "GridBehavior_CounterTrend"; }
 function invRestartPolicy(n: number): string { switch (n) { case 0: return "Restart_Default"; case 1: return "Restart_Cycle"; case 2: return "Continue_Cycle"; case 3: return "Stop_Trading"; default: return "Restart_Default"; } }
-function invNewsAction(n: number): string { switch (n) { case 0: return "TriggerAction_None"; case 1: return "TriggerAction_StopEA"; case 2: return "TriggerAction_StopEA_KeepTrades"; case 3: return "TriggerAction_CloseAll"; case 4: return "TriggerAction_KeepEA_CloseTrades"; case 5: return "TriggerAction_StopEA_CloseTrades"; case 6: return "TriggerAction_PauseEA_CloseTrades"; case 7: return "TriggerAction_PauseEA_KeepTrades"; default: return "TriggerAction_StopEA_KeepTrades"; } }
-function invRestartMode(n: number): string { switch (n) { case 0: return "RestartMode_Disable"; case 1: return "RestartMode_Stop"; case 2: return "RestartMode_Trigger"; default: return "RestartMode_Disable"; } }
 function invBreakevenMode(n: number): string { switch (n) { case 0: return "Breakeven_Disabled"; case 1: return "Breakeven_Points"; case 2: return "Breakeven_Percent"; case 3: return "Breakeven_Price"; default: return "Breakeven_Disabled"; } }
 
 function suffixInverse(): Record<string, { engine: "A" | "B" | "C"; logic: string }> {
@@ -229,14 +227,6 @@ export function computeSetChanges(config: MTConfigComplete, content: string): Ch
     }
   }
 
-  // News filter changes
-  if (parsed.globals.has("NewsAction")) {
-    const newVal = invNewsAction(Number(parsed.globals.get("NewsAction")!));
-    if (config.global.newsAction !== newVal) {
-      changes.push({ engine: "GLOBAL", group: 0, logic: "-", field: "newsAction", currentValue: config.global.newsAction, newValue: newVal });
-    }
-  }
-
   return changes;
 }
 
@@ -364,128 +354,6 @@ export function applySetContent(config: MTConfigComplete, content: string): MTCo
   }
   if (parsed.globals.has("MagicNumber")) {
     newConfig.global.baseMagicNumber = Number(parsed.globals.get("MagicNumber")!);
-  }
-
-  // Slippage settings
-  if (parsed.globals.has("SlippageEnabled")) {
-    newConfig.global.slippageEnabled = parsed.globals.get("SlippageEnabled") === "1";
-  }
-  if (parsed.globals.has("MaxSlippagePoints")) {
-    newConfig.global.maxSlippagePoints = Number(parsed.globals.get("MaxSlippagePoints")!);
-  }
-
-  // News filter settings
-  if (parsed.globals.has("NewsAction")) {
-    const val = parsed.globals.get("NewsAction")!;
-    newConfig.global.newsAction = invNewsAction(Number(val));
-  }
-  if (parsed.globals.has("NewsFilterEnabled")) {
-    newConfig.global.newsFilterEnabled = parsed.globals.get("NewsFilterEnabled") === "1";
-  }
-  if (parsed.globals.has("NewsFilterCountries")) {
-    newConfig.global.newsCountries = parsed.globals.get("NewsFilterCountries")!;
-  }
-  if (parsed.globals.has("NewsImpactLevel")) {
-    newConfig.global.newsImpactLevel = Number(parsed.globals.get("NewsImpactLevel")!);
-  }
-  if (parsed.globals.has("MinutesBeforeNews")) {
-    newConfig.global.newsMinutesBefore = Number(parsed.globals.get("MinutesBeforeNews")!);
-  }
-  if (parsed.globals.has("MinutesAfterNews")) {
-    newConfig.global.newsMinutesAfter = Number(parsed.globals.get("MinutesAfterNews")!);
-  }
-  if (parsed.globals.has("NewsCalendarFile")) {
-    newConfig.global.newsCalendarFile = parsed.globals.get("NewsCalendarFile")!;
-  }
-  if (parsed.globals.has("NewsRestartMode")) {
-    (newConfig.global as any).newsRestartMode = invRestartMode(Number(parsed.globals.get("NewsRestartMode")!));
-  }
-
-  // Equity Protection settings
-  if (parsed.globals.has("EquityProtectionEnabled")) {
-    (newConfig.global as any).equityProtectionEnabled = parsed.globals.get("EquityProtectionEnabled") === "1";
-  }
-  if (parsed.globals.has("EquityProtectionUseEquity")) {
-    (newConfig.global as any).equityProtectionUseEquity = parsed.globals.get("EquityProtectionUseEquity") === "1";
-  }
-  if (parsed.globals.has("EquityProtectionDrawdownEnabled")) {
-    (newConfig.global as any).equityProtectionDrawdownEnabled = parsed.globals.get("EquityProtectionDrawdownEnabled") === "1";
-  }
-  if (parsed.globals.has("EquityProtectionDrawdownValue")) {
-    (newConfig.global as any).equityProtectionDrawdownValue = Number(parsed.globals.get("EquityProtectionDrawdownValue")!);
-  }
-  if (parsed.globals.has("EquityProtectionProfitEnabled")) {
-    (newConfig.global as any).equityProtectionProfitEnabled = parsed.globals.get("EquityProtectionProfitEnabled") === "1";
-  }
-  if (parsed.globals.has("EquityProtectionProfitValue")) {
-    (newConfig.global as any).equityProtectionProfitValue = Number(parsed.globals.get("EquityProtectionProfitValue")!);
-  }
-  if (parsed.globals.has("EquityProtectionMarginEnabled")) {
-    (newConfig.global as any).equityProtectionMarginEnabled = parsed.globals.get("EquityProtectionMarginEnabled") === "1";
-  }
-  if (parsed.globals.has("EquityProtectionMarginValue")) {
-    (newConfig.global as any).equityProtectionMarginValue = Number(parsed.globals.get("EquityProtectionMarginValue")!);
-  }
-  if (parsed.globals.has("EquityProtectionStopEA")) {
-    (newConfig.global as any).equityProtectionStopEA = parsed.globals.get("EquityProtectionStopEA") === "1";
-  }
-  if (parsed.globals.has("EquityProtectionCloseTrades")) {
-    (newConfig.global as any).equityProtectionCloseTrades = parsed.globals.get("EquityProtectionCloseTrades") === "1";
-  }
-  if (parsed.globals.has("EquityProtectionRestartMode")) {
-    (newConfig.global as any).equityProtectionRestartMode = invRestartMode(Number(parsed.globals.get("EquityProtectionRestartMode")!));
-  }
-
-  // Balance Protection settings
-  if (parsed.globals.has("BalanceProtectionEnabled")) {
-    (newConfig.global as any).balanceProtectionEnabled = parsed.globals.get("BalanceProtectionEnabled") === "1";
-  }
-  if (parsed.globals.has("BalanceProtectionUseEquity")) {
-    (newConfig.global as any).balanceProtectionUseEquity = parsed.globals.get("BalanceProtectionUseEquity") === "1";
-  }
-  if (parsed.globals.has("BalanceProtectionDrawdownEnabled")) {
-    (newConfig.global as any).balanceProtectionDrawdownEnabled = parsed.globals.get("BalanceProtectionDrawdownEnabled") === "1";
-  }
-  if (parsed.globals.has("BalanceProtectionDrawdownValue")) {
-    (newConfig.global as any).balanceProtectionDrawdownValue = Number(parsed.globals.get("BalanceProtectionDrawdownValue")!);
-  }
-  if (parsed.globals.has("BalanceProtectionProfitEnabled")) {
-    (newConfig.global as any).balanceProtectionProfitEnabled = parsed.globals.get("BalanceProtectionProfitEnabled") === "1";
-  }
-  if (parsed.globals.has("BalanceProtectionProfitValue")) {
-    (newConfig.global as any).balanceProtectionProfitValue = Number(parsed.globals.get("BalanceProtectionProfitValue")!);
-  }
-  if (parsed.globals.has("BalanceProtectionMarginEnabled")) {
-    (newConfig.global as any).balanceProtectionMarginEnabled = parsed.globals.get("BalanceProtectionMarginEnabled") === "1";
-  }
-  if (parsed.globals.has("BalanceProtectionMarginValue")) {
-    (newConfig.global as any).balanceProtectionMarginValue = Number(parsed.globals.get("BalanceProtectionMarginValue")!);
-  }
-  if (parsed.globals.has("BalanceProtectionStopEA")) {
-    (newConfig.global as any).balanceProtectionStopEA = parsed.globals.get("BalanceProtectionStopEA") === "1";
-  }
-  if (parsed.globals.has("BalanceProtectionCloseTrades")) {
-    (newConfig.global as any).balanceProtectionCloseTrades = parsed.globals.get("BalanceProtectionCloseTrades") === "1";
-  }
-  if (parsed.globals.has("BalanceProtectionRestartMode")) {
-    (newConfig.global as any).balanceProtectionRestartMode = invRestartMode(Number(parsed.globals.get("BalanceProtectionRestartMode")!));
-  }
-
-  // Session settings
-  for (let i = 0; i < 10; i++) {
-    const prefix = `Session${i + 1}`;
-    if (parsed.globals.has(`${prefix}StopEA`)) {
-      if (!newConfig.global.sessions[i]) newConfig.global.sessions[i] = {} as any;
-      (newConfig.global.sessions[i] as any).stopEa = parsed.globals.get(`${prefix}StopEA`) === "1";
-    }
-    if (parsed.globals.has(`${prefix}CloseTrades`)) {
-      if (!newConfig.global.sessions[i]) newConfig.global.sessions[i] = {} as any;
-      (newConfig.global.sessions[i] as any).closeTrades = parsed.globals.get(`${prefix}CloseTrades`) === "1";
-    }
-    if (parsed.globals.has(`${prefix}RestartMode`)) {
-      if (!newConfig.global.sessions[i]) newConfig.global.sessions[i] = {} as any;
-      (newConfig.global.sessions[i] as any).restartMode = invRestartMode(Number(parsed.globals.get(`${prefix}RestartMode`)!));
-    }
   }
 
   // Restart Policy settings

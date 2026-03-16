@@ -3,6 +3,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { MTConfig } from '@/types/mt-config';
+import { safeGetItem, safeSetItem } from '@/utils/safe-storage';
 import {
   MemorySystemState,
   UserPreference,
@@ -44,7 +45,7 @@ export class MemorySystemManager {
   // Persist to localStorage
   private saveToStorage(): void {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+      safeSetItem(STORAGE_KEY, JSON.stringify(this.state));
     } catch (e) {
       console.warn('[MemorySystem] Failed to save to storage:', e);
     }
@@ -53,7 +54,7 @@ export class MemorySystemManager {
   // Load from localStorage
   private loadFromStorage(): MemorySystemState | null {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
+      const saved = safeGetItem(STORAGE_KEY);
       if (saved) {
         return JSON.parse(saved);
       }

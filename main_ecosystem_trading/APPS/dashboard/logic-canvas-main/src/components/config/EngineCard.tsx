@@ -109,7 +109,7 @@ export function EngineCard({
             </motion.div>
             <div className="text-left">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-foreground">
+                <span className="heading-group">
                   {engine}
                 </span>
                 {isEngineA && (

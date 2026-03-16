@@ -8,10 +8,13 @@ import type {
   EngineConfig,
   TradingMode,
 } from "@/types/mt-config";
+import { ENGINE_LOGICS, logicInputs } from "@/data/logic-inputs";
 
 const defaultRiskManagement: RiskManagementConfig = {
   spread_filter_enabled: false,
   max_spread_points: 25,
+  slippage_enabled: false,
+  max_slippage_points: 30,
   equity_stop_enabled: false,
   equity_stop_value: 35,
   drawdown_stop_enabled: false,
@@ -52,6 +55,10 @@ const defaultNewsFilter: NewsFilterConfig = {
   impact_level: 3,
   minutes_before: 30,
   minutes_after: 30,
+  stop_ea: true,
+  close_trades: false,
+  auto_restart: true,
+  restart_mode: "RestartMode_Disable",
   action: "TriggerAction_StopEA_KeepTrades",
   calendar_file: "DAAVFX_NEWS.csv",
   check_interval: 60,
@@ -78,6 +85,13 @@ const defaultGeneral: GeneralConfig = {
   allow_buy: true,
   allow_sell: true,
   enable_logs: false,
+  log_lifecycle: true,
+  log_trail: true,
+  log_grid: true,
+  log_start_level: true,
+  log_risk: true,
+  log_session: true,
+  log_config: true,
   use_direct_price_grid: false,
   grid_unit: 0,
   pip_factor: 0,
@@ -314,6 +328,32 @@ const normalizeLogicName = (raw: unknown): string => {
   return upper === "SCALP" ? "SCALPER" : upper;
 };
 
+const getLogicTemplate = (engineId: string, logicName: string) => {
+  const normalized = normalizeLogicName(logicName);
+  const engine = String(engineId || "A").trim().toUpperCase();
+  const key = engine === "A" ? normalized : `${engine}${normalized}`;
+  return logicInputs[key] ?? logicInputs[normalized];
+};
+
+const buildLogicDefaults = (
+  engineId: string,
+  logicName: string,
+  groupNumber: number,
+): Record<string, any> => {
+  const template = getLogicTemplate(engineId, logicName);
+  const fields = groupNumber === 1 ? template?.group_1 : template?.standard;
+  const base: Record<string, any> = {
+    logic_name: normalizeLogicName(logicName),
+    enabled: true,
+  };
+  if (fields) {
+    for (const field of fields) {
+      if (base[field.id] === undefined) base[field.id] = field.default;
+    }
+  }
+  return base;
+};
+
 const inferLogicDirection = (logic: Record<string, any>): "buy" | "sell" | null => {
   const direction = String(logic?.direction ?? "").trim().toUpperCase();
   if (direction === "B" || direction === "BUY") return "buy";
@@ -380,71 +420,130 @@ const normalizeGroupLogics = (
     };
   });
 
+  let materialized: any[] = [];
+
   // Already directional model: keep values as-is and only ensure direction flags/ids are coherent.
-  if (
-    rows.length > 0 &&
-    rows.every((row: any) => inferLogicDirection(row) !== null)
-  ) {
-    return rows.map((row: any) => {
+  if (rows.length > 0 && rows.every((row: any) => inferLogicDirection(row) !== null)) {
+    materialized = rows.map((row: any) => {
       const dir = inferLogicDirection(row);
       const side = dir === "sell" ? "sell" : "buy";
       const withDirectionalNumbers = applyDirectionalNumericValues(row, side);
-      return normalizeTrailContract(normalizeModeState({
-        ...withDirectionalNumbers,
-        allow_buy: side === "buy",
-        allow_sell: side === "sell",
-        logic_id: forceDirectionalLogicId(
-          row.logic_id,
+      return normalizeTrailContract(
+        normalizeModeState(
+          {
+            ...withDirectionalNumbers,
+            allow_buy: side === "buy",
+            allow_sell: side === "sell",
+            logic_id: forceDirectionalLogicId(
+              row.logic_id,
+              engineId,
+              String(row.logic_name ?? ""),
+              groupNumber,
+              side,
+            ),
+          },
           engineId,
-          String(row.logic_name ?? ""),
-          groupNumber,
-          side,
         ),
-      }, engineId));
+      );
     });
+  } else {
+    // Normalize any non-directional row shape into explicit buy/sell rows.
+    const grouped = new Map<string, any[]>();
+    for (const row of rows) {
+      const key = normalizeLogicName(row?.logic_name);
+      if (!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key)!.push(row);
+    }
+
+    for (const [, bucket] of grouped) {
+      const base = bucket[0];
+      if (!base) continue;
+      const buySource = bucket.find((row) => inferLogicDirection(row) === "buy") ?? base;
+      const sellSource = bucket.find((row) => inferLogicDirection(row) === "sell") ?? base;
+
+      const buyRow = applyDirectionalNumericValues({ ...buySource }, "buy");
+      buyRow.allow_buy = true;
+      buyRow.allow_sell = false;
+      buyRow.logic_id = forceDirectionalLogicId(
+        buySource.logic_id,
+        engineId,
+        String(buySource.logic_name ?? ""),
+        groupNumber,
+        "buy",
+      );
+
+      const sellRow = applyDirectionalNumericValues({ ...sellSource }, "sell");
+      sellRow.allow_buy = false;
+      sellRow.allow_sell = true;
+      sellRow.logic_id = forceDirectionalLogicId(
+        sellSource.logic_id,
+        engineId,
+        String(sellSource.logic_name ?? ""),
+        groupNumber,
+        "sell",
+      );
+
+      materialized.push(
+        normalizeTrailContract(normalizeModeState(buyRow, engineId)),
+        normalizeTrailContract(normalizeModeState(sellRow, engineId)),
+      );
+    }
   }
 
-  // Normalize any non-directional row shape into explicit buy/sell rows.
-  const grouped = new Map<string, any[]>();
-  for (const row of rows) {
-    const key = normalizeLogicName(row?.logic_name);
-    if (!grouped.has(key)) grouped.set(key, []);
-    grouped.get(key)!.push(row);
+  const required = ENGINE_LOGICS.A.map(normalizeLogicName);
+  const presence = new Map<string, { buy: boolean; sell: boolean }>();
+  for (const row of materialized) {
+    const name = normalizeLogicName(row?.logic_name);
+    if (!presence.has(name)) presence.set(name, { buy: false, sell: false });
+    const dir = inferLogicDirection(row);
+    if (dir === "buy") presence.get(name)!.buy = true;
+    if (dir === "sell") presence.get(name)!.sell = true;
   }
 
-  const materialized: any[] = [];
-  for (const [, bucket] of grouped) {
-    const base = bucket[0];
-    if (!base) continue;
-    const buySource = bucket.find((row) => inferLogicDirection(row) === "buy") ?? base;
-    const sellSource = bucket.find((row) => inferLogicDirection(row) === "sell") ?? base;
-
-    const buyRow = applyDirectionalNumericValues({ ...buySource }, "buy");
-    buyRow.allow_buy = true;
-    buyRow.allow_sell = false;
-    buyRow.logic_id = forceDirectionalLogicId(
-      buySource.logic_id,
-      engineId,
-      String(buySource.logic_name ?? ""),
-      groupNumber,
-      "buy",
-    );
-
-    const sellRow = applyDirectionalNumericValues({ ...sellSource }, "sell");
-    sellRow.allow_buy = false;
-    sellRow.allow_sell = true;
-    sellRow.logic_id = forceDirectionalLogicId(
-      sellSource.logic_id,
-      engineId,
-      String(sellSource.logic_name ?? ""),
-      groupNumber,
-      "sell",
-    );
-
-    materialized.push(
-      normalizeTrailContract(normalizeModeState(buyRow, engineId)),
-      normalizeTrailContract(normalizeModeState(sellRow, engineId)),
-    );
+  for (const logicName of required) {
+    const state = presence.get(logicName) ?? { buy: false, sell: false };
+    if (!state.buy) {
+      const base = buildLogicDefaults(engineId, logicName, groupNumber);
+      const buyRow = normalizeTrailContract(
+        normalizeModeState(
+          {
+            ...base,
+            allow_buy: true,
+            allow_sell: false,
+            logic_id: forceDirectionalLogicId(
+              null,
+              engineId,
+              logicName,
+              groupNumber,
+              "buy",
+            ),
+          },
+          engineId,
+        ),
+      );
+      materialized.push(buyRow);
+    }
+    if (!state.sell) {
+      const base = buildLogicDefaults(engineId, logicName, groupNumber);
+      const sellRow = normalizeTrailContract(
+        normalizeModeState(
+          {
+            ...base,
+            allow_buy: false,
+            allow_sell: true,
+            logic_id: forceDirectionalLogicId(
+              null,
+              engineId,
+              logicName,
+              groupNumber,
+              "sell",
+            ),
+          },
+          engineId,
+        ),
+      );
+      materialized.push(sellRow);
+    }
   }
 
   return materialized;
@@ -469,6 +568,36 @@ function normalizeEngines(engines: EngineConfig[] | undefined): EngineConfig[] {
   }));
 }
 
+const cloneDeep = <T,>(value: T): T => JSON.parse(JSON.stringify(value));
+
+function seedPerLogicFilters(
+  engines: EngineConfig[],
+  general: GeneralConfig,
+): EngineConfig[] {
+  const baseRiskB = general.risk_management_b ?? general.risk_management;
+  const baseRiskS = general.risk_management_s ?? general.risk_management;
+  const baseNewsB = general.news_filter_b ?? general.news_filter;
+  const baseNewsS = general.news_filter_s ?? general.news_filter;
+  const baseTimeB = general.time_filters_b ?? general.time_filters;
+  const baseTimeS = general.time_filters_s ?? general.time_filters;
+
+  return engines.map((engine) => ({
+    ...engine,
+    groups: engine.groups.map((group) => ({
+      ...group,
+      logics: group.logics.map((logic: any) => ({
+        ...logic,
+        risk_management_b: logic.risk_management_b ?? cloneDeep(baseRiskB),
+        risk_management_s: logic.risk_management_s ?? cloneDeep(baseRiskS),
+        news_filter_b: logic.news_filter_b ?? cloneDeep(baseNewsB),
+        news_filter_s: logic.news_filter_s ?? cloneDeep(baseNewsS),
+        time_filters_b: logic.time_filters_b ?? normalizeTimeFilters(baseTimeB),
+        time_filters_s: logic.time_filters_s ?? normalizeTimeFilters(baseTimeS),
+      })),
+    })),
+  }));
+}
+
 export function hydrateMTConfigDefaults(config: MTConfig): MTConfig {
   const general = config?.general ?? ({} as Partial<GeneralConfig>);
   const risk = general.risk_management ?? ({} as Partial<RiskManagementConfig>);
@@ -481,29 +610,34 @@ export function hydrateMTConfigDefaults(config: MTConfig): MTConfig {
   const newsB = general.news_filter_b;
   const newsS = general.news_filter_s;
 
+  const normalizedGeneral: GeneralConfig = {
+    ...defaultGeneral,
+    ...general,
+    risk_management: { ...defaultRiskManagement, ...risk },
+    risk_management_b: riskB
+      ? { ...defaultRiskManagement, ...riskB }
+      : undefined,
+    risk_management_s: riskS
+      ? { ...defaultRiskManagement, ...riskS }
+      : undefined,
+    time_filters: normalizeTimeFilters(time),
+    time_filters_b: timeB ? normalizeTimeFilters(timeB) : undefined,
+    time_filters_s: timeS ? normalizeTimeFilters(timeS) : undefined,
+    news_filter: { ...defaultNewsFilter, ...news },
+    news_filter_b: newsB ? { ...defaultNewsFilter, ...newsB } : undefined,
+    news_filter_s: newsS ? { ...defaultNewsFilter, ...newsS } : undefined,
+  };
+
+  const normalizedEngines = normalizeEngines(config?.engines);
+  const seededEngines = seedPerLogicFilters(normalizedEngines, normalizedGeneral);
+
   return {
     ...config,
     version: config?.version ?? "0",
     platform: config?.platform ?? "MT4",
     timestamp: config?.timestamp ?? new Date().toISOString(),
     total_inputs: config?.total_inputs ?? 0,
-    general: {
-      ...defaultGeneral,
-      ...general,
-      risk_management: { ...defaultRiskManagement, ...risk },
-      risk_management_b: riskB
-        ? { ...defaultRiskManagement, ...riskB }
-        : undefined,
-      risk_management_s: riskS
-        ? { ...defaultRiskManagement, ...riskS }
-        : undefined,
-      time_filters: normalizeTimeFilters(time),
-      time_filters_b: timeB ? normalizeTimeFilters(timeB) : undefined,
-      time_filters_s: timeS ? normalizeTimeFilters(timeS) : undefined,
-      news_filter: { ...defaultNewsFilter, ...news },
-      news_filter_b: newsB ? { ...defaultNewsFilter, ...newsB } : undefined,
-      news_filter_s: newsS ? { ...defaultNewsFilter, ...newsS } : undefined,
-    },
-    engines: normalizeEngines(config?.engines),
+    general: normalizedGeneral,
+    engines: seededEngines,
   };
 }

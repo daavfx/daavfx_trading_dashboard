@@ -52,6 +52,13 @@ interface LogicModuleProps {
   ) => void;
   mode?: 1 | 2;
   configLoadId?: number;
+  preferredDirection?: "buy" | "sell" | null;
+  onJumpToControl?: (payload: {
+    engine: string;
+    group?: string;
+    logic: string;
+    direction: "buy" | "sell";
+  }) => void;
 }
 
 const logicMeta: Record<
@@ -170,9 +177,24 @@ const logicMeta: Record<
 };
 
 // Category display order and icons
+// Group 1 uses the original layout
 const CATEGORY_ORDER = [
   "Triggers + Grid",
   "Lots",
+  "Logic",
+  "Trail",
+  "Trail Advanced",
+  "TPSL",
+  "Close Partial",
+  "Restart",
+  "Reverse/Hedge",
+  "Safety",
+];
+
+// Groups 2-20 use a reorganized layout
+const CATEGORY_ORDER_STANDARD = [
+  "Base Routing",
+  "Execution Logic",
   "Logic",
   "Trail",
   "Trail Advanced",
@@ -190,10 +212,21 @@ const CATEGORY_MERGE_MAP: Record<string, string> = {
   Grid: "Triggers + Grid",
 };
 
+// Groups 2-20: Mode Selectors -> Base Routing, everything else -> Execution Logic
+const CATEGORY_MERGE_MAP_STANDARD: Record<string, string> = {
+  "Mode Selectors": "Base Routing",
+  Core: "Execution Logic",
+  Triggers: "Execution Logic",
+  Grid: "Execution Logic",
+  Lots: "Execution Logic",
+};
+
 const categoryStyles: Record<string, { icon: any }> = {
   "Triggers + Grid": { icon: Settings2 },
+  "Base Routing": { icon: Settings2 },
   Core: { icon: Layers },
   Lots: { icon: Box },
+  "Execution Logic": { icon: Zap },
   Trail: { icon: ChevronRight },
   "Trail Advanced": { icon: Settings2 },
   Logic: { icon: Zap },
@@ -243,6 +276,8 @@ export function LogicModule({
   onUpdate,
   mode = 1,
   configLoadId,
+  preferredDirection,
+  onJumpToControl,
 }: LogicModuleProps) {
   const engineSafe = engine || "";
   const nameSafe = name || "";
@@ -327,8 +362,12 @@ export function LogicModule({
   // Initialize field values only once using useRef to store initial values
   const initialFieldsRef = useRef<any[]>([]);
 
+  useEffect(() => {
+    if (preferredDirection) setActiveDirection(preferredDirection);
+  }, [preferredDirection]);
+
   const logicConfigKey = logicConfig?.logic_id || 'no-config';
-  const initializedRef = useRef<string | null>(null);
+  const initializedRef = useRef<string | number | null>(null);
   const prevLogicConfigKeyRef = useRef<string | null>(null);
   // Track user-modified values to preserve them across logic switches
   const userModifiedRef = useRef<Record<string, Record<string, any>>>({});
@@ -752,15 +791,26 @@ export function LogicModule({
   ).length;
   const isPowerLogic = name === "POWER";
 
+  // Determine if this is a standard group (2-20) vs Group 1
+  const isCurrentGroup1 =
+    group === "Group 1" ||
+    (groups && groups.length > 0 && groups.some((g) => g === "Group 1"));
+  const activeMergeMap = isCurrentGroup1 ? CATEGORY_MERGE_MAP : CATEGORY_MERGE_MAP_STANDARD;
+  const activeCategoryOrder = isCurrentGroup1 ? CATEGORY_ORDER : CATEGORY_ORDER_STANDARD;
+
   const categoriesSet = new Set(
     filteredFields.map((f) => {
       const category = f.category || "General";
-      return CATEGORY_MERGE_MAP[category] || category;
+      return activeMergeMap[category] || category;
     }),
   );
-  // Always include Mode Selectors category for Buy/Sell toggle
-  categoriesSet.add("Mode Selectors");
-  const categories = CATEGORY_ORDER.filter((cat) =>
+  // Always include the mode selectors category
+  if (isCurrentGroup1) {
+    categoriesSet.add("Mode Selectors");
+  } else {
+    categoriesSet.add("Base Routing");
+  }
+  const categories = activeCategoryOrder.filter((cat) =>
     categoriesSet.has(cat as any),
   );
   categoriesSet.forEach((cat) => {
@@ -777,10 +827,10 @@ export function LogicModule({
         isPowerLogic && expanded && "ring-1 ring-white/10",
       )}
     >
-      <button
+      <div
         onClick={onToggle}
         className={cn(
-          "w-full px-4 py-3 flex items-center justify-between transition-colors",
+          "w-full px-4 py-3 flex items-center justify-between transition-colors text-left cursor-pointer",
           expanded ? "bg-[rgba(15,15,15,0.7)]" : "hover:bg-[rgba(15,15,15,0.5)]",
         )}
       >
@@ -822,6 +872,24 @@ export function LogicModule({
           </TooltipProvider>
         </div>
         <div className="flex items-center gap-3">
+          {onJumpToControl && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                const baseLogic = nameSafe.replace(/^(B|C)/i, "");
+                onJumpToControl({
+                  engine,
+                  group,
+                  logic: baseLogic,
+                  direction: activeDirection,
+                });
+              }}
+              className="text-[10px] px-2 py-1 rounded border border-border/60 bg-background/40 text-muted-foreground hover:text-foreground hover:bg-background/60 transition-colors"
+            >
+              Risk/Control
+            </button>
+          )}
           <div className="flex items-center gap-2">
             <div className="w-24 h-1.5 bg-muted rounded-full overflow-hidden">
               <div
@@ -837,7 +905,7 @@ export function LogicModule({
             </span>
           </div>
         </div>
-      </button>
+      </div>
 
       <AnimatePresence>
         {expanded && (
@@ -1077,7 +1145,7 @@ export function LogicModule({
                   const categoryFields = filteredFields.filter((f) => {
                     const rawCategory = f.category || "General";
                     const mergedCategory =
-                      CATEGORY_MERGE_MAP[rawCategory] || rawCategory;
+                      activeMergeMap[rawCategory] || rawCategory;
                     return mergedCategory === category;
                   });
                   const style = categoryStyles[category] || {
@@ -1089,6 +1157,8 @@ export function LogicModule({
 
                   const isClosePartial = category === "Close Partial";
                   const isCoreTriggers = category === "Triggers + Grid";
+                  const isBaseRouting = category === "Base Routing";
+                  const isExecutionLogic = category === "Execution Logic";
                   const isLogic = category === "Logic";
                   const isLots = category === "Lots";
                   const isRestart = category === "Restart";
@@ -1096,8 +1166,8 @@ export function LogicModule({
                   const isPowerEngineA = engineSafe.includes("Engine A") && nameSafe.toUpperCase() === "POWER";
                   const isGroup1 =
                     group === "Group 1" ||
-                    group === 1 ||
-                    (groups && groups.some((g) => g === "Group 1" || g === 1));
+                    String(group) === "1" ||
+                    (groups && groups.some((g) => g === "Group 1" || String(g) === "1"));
 
                   // Get current trigger type from field values
                   const rawTriggerType = fieldValues["trigger_type"] || "Trigger_Immediate";
@@ -1128,6 +1198,46 @@ export function LogicModule({
                           }
                           return level <= partialLevelsVisible;
                         })
+                      : isBaseRouting
+                        ? categoryFields.filter((f) => {
+                            // Base Routing (groups 2-20): only Mode Selectors
+                            return f.category === "Mode Selectors";
+                          })
+                      : isExecutionLogic
+                        ? categoryFields.filter((f) => {
+                            const fieldCategory = f.category || "General";
+
+                            if (fieldCategory === "Core") {
+                              // start_level and start_level_ref are Group 1 only
+                              if (f.id === "start_level") return false;
+                              if (f.id === "start_level_ref") return false;
+                              // Hide reverse_reference for Power Engine A
+                              if (f.id === "reverse_reference") return !isPowerEngineA;
+                              return true;
+                            }
+
+                            if (fieldCategory === "Triggers") {
+                              if (f.id === "trigger_type") return true;
+                              if (f.id === "group_power_start") return true;
+                              if (currentTriggerType === "Trigger_AfterBars" && f.id === "trigger_bars") return true;
+                              if (currentTriggerType === "Trigger_AfterSeconds" && f.id === "trigger_seconds") return true;
+                              if (currentTriggerType === "Trigger_AfterPips" && f.id === "trigger_points") return true;
+                              if (currentTriggerType === "Trigger_OpCount" && f.id === "opcount_ref") return true;
+                              if (currentTriggerType === "Trigger_OpCount" && f.id === "start_op_count") return true;
+                              if (currentTriggerType === "Trigger_TimeFilter" || currentTriggerType === "Trigger_NewsFilter") return true;
+                              return false;
+                            }
+
+                            if (fieldCategory === "Grid") return true;
+
+                            // Lots fields absorbed into Execution Logic
+                            if (fieldCategory === "Lots") {
+                              if (f.id === "reset_lot_on_restart") return !isPowerEngineA;
+                              return true;
+                            }
+
+                            return false;
+                          })
                       : isCoreTriggers
                         ? categoryFields.filter((f) => {
                             const fieldCategory = f.category || "General";
@@ -1144,12 +1254,6 @@ export function LogicModule({
                               // Hide reverse_reference for Power Engine A (doesn't use trading modes)
                               if (f.id === "reverse_reference") {
                                 return !isPowerEngineA;
-                              }
-                              // Filter start_level_ref based on direction (Buy/Sell)
-                              if (f.id === "start_level_ref") {
-                                const isBuyDirection = currentDirection.toLowerCase().includes("buy") || currentDirection === "Buy";
-                                // Filter options: show only matching direction + exclude self
-                                return true; // Let the dropdown handle filtering in the UI
                               }
                               return true;
                             }
@@ -1185,17 +1289,13 @@ export function LogicModule({
                             })
                         : isRestart
                           ? categoryFields.filter((f) => {
-                              // Power Engine A: show restart_policy_power, close_non_power_on_power_close, hold_timeout_seconds
-                              // Non-Power: show restart_policy_non_power, hold_timeout_seconds
                               // Only show for Group 1
                               if (!isGroup1) return false;
                               
                               if (isPowerEngineA) {
-                                // Hide non-power restart fields
                                 if (f.id === "restart_policy_non_power") return false;
                                 return true;
                               } else {
-                                // Hide power restart fields
                                 if (f.id === "restart_policy_power") return false;
                                 if (f.id === "close_non_power_on_power_close") return false;
                                 return true;
@@ -1206,12 +1306,13 @@ export function LogicModule({
                   // Skip Trail Advanced category if not enabled
                   if (category === "Trail Advanced" && !trailAdvancedEnabled) return null;
 
-                  // Skip if no fields to display (except Triggers + Grid which always renders for Buy/Sell toggle)
-                  if (displayFields.length === 0 && category !== "Triggers + Grid") return null;
+                  // Skip if no fields to display (except routing categories which always render for Buy/Sell toggle)
+                  if (displayFields.length === 0 && category !== "Triggers + Grid" && category !== "Base Routing") return null;
 
                   const bodyGridClass = cn(
                     "grid grid-cols-1 xl:grid-cols-2 gap-x-4 gap-y-2 items-start relative z-10 px-4 pt-3 pb-4",
-                    isCoreTriggers && "xl:grid-cols-1 gap-y-3",
+                    (isCoreTriggers || isBaseRouting) && "xl:grid-cols-1 gap-y-3",
+                    isExecutionLogic && "xl:grid-cols-1 gap-y-3",
                   );
 
                   const headerClass = "flex items-center gap-2 px-4 py-2.5";
@@ -1228,9 +1329,9 @@ export function LogicModule({
                       <div className={headerClass}>
                         <div className={cn(
                           "p-1 rounded",
-                          "bg-background/40 border border-border/60",
+                          "bg-primary/[0.06] border border-primary/[0.08]",
                         )}>
-                          <Icon className="w-3 h-3 text-muted-foreground" />
+                          <Icon className="w-3 h-3 text-primary/60" />
                         </div>
                         <h2 className="heading-card">{category}</h2>
 
@@ -1274,7 +1375,7 @@ export function LogicModule({
                               Levels
                             </span>
                             <select
-                              className="value-data text-[12px] bg-neutral-900/40 border border-neutral-800/50 rounded px-2 py-1 cursor-pointer hover:border-neutral-700 transition-colors text-neutral-300"
+                              className="value-data text-[12px] bg-white/[0.03] border border-white/[0.06] rounded px-2 py-1 cursor-pointer hover:border-primary/20 transition-colors text-foreground/70"
                               value={trailLevelsVisible}
                               onChange={(e) =>
                                 setTrailLevelsVisible(parseInt(e.target.value))
@@ -1311,11 +1412,11 @@ export function LogicModule({
 
                         {isClosePartial && (
                           <div className="flex items-center gap-2 ml-auto">
-                            <span className="text-[9px] text-neutral-500 uppercase tracking-wider">
+                              <span className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">
                               Levels
                             </span>
                             <select
-                              className="value-data text-[12px] bg-neutral-800/80 border border-neutral-700 rounded px-2 py-1 cursor-pointer hover:border-neutral-500 transition-colors text-neutral-300"
+                              className="value-data text-[12px] bg-white/[0.03] border border-white/[0.06] rounded px-2 py-1 cursor-pointer hover:border-primary/20 transition-colors text-foreground/70"
                               value={partialLevelsVisible}
                               onChange={(e) =>
                                 setPartialLevelsVisible(
@@ -1342,14 +1443,14 @@ export function LogicModule({
                       <div className="mx-4 h-px separator-subtle" />
                       <div className={bodyGridClass}>
                         {/* Custom Trading Direction & Exit Mode for Mode Selectors - COMPACT */}
-                        {category === "Triggers + Grid" && (
+                        {(category === "Triggers + Grid" || category === "Base Routing") && (
                           <div className="col-span-full flex flex-wrap items-center gap-x-4 gap-y-2">
-                            <span className="text-[10px] uppercase tracking-wider font-semibold text-neutral-400">
+                            <span className="text-[10px] uppercase tracking-wider font-semibold text-primary/50">
                               Mode Selectors
                             </span>
                             {/* Direction */}
                             <div className="flex items-center gap-1.5">
-                              <span className="text-[9px] text-neutral-500 uppercase tracking-wider">Dir</span>
+                              <span className="text-[9px] text-muted-foreground/60 uppercase tracking-wider">Dir</span>
                               <button
                                 type="button"
                                 onClick={() => {
@@ -1364,8 +1465,8 @@ export function LogicModule({
                                   "h-7 px-3 text-[10px] font-medium rounded transition-all duration-200",
                                   // Elegant dark green - very subtle, morphism effect
                                   activeDirection === "buy"
-                                    ? "bg-[rgba(45,79,79,0.3)] text-[#CFE0E0] shadow-[inset_0_1px_1px_rgba(255,255,255,0.03)]"
-                                    : "bg-neutral-900/20 text-neutral-400 hover:bg-[rgba(45,79,79,0.18)] hover:text-[#CFE0E0]"
+                                    ? "bg-[rgba(45,79,79,0.3)] text-[#CFE0E0] shadow-[inset_0_1px_1px_rgba(255,255,255,0.04),inset_0_-1px_0_rgba(45,79,79,0.3)]"
+                                    : "bg-white/[0.02] text-muted-foreground hover:bg-[rgba(45,79,79,0.18)] hover:text-[#CFE0E0]"
                                 )}
                               >
                                 Buy
@@ -1384,8 +1485,8 @@ export function LogicModule({
                                   "h-7 px-3 text-[10px] font-medium rounded transition-all duration-200",
                                   // Elegant dark red - very subtle, morphism effect
                                   activeDirection === "sell"
-                                    ? "bg-[rgba(93,46,46,0.3)] text-[#E0C8C8] shadow-[inset_0_1px_1px_rgba(255,255,255,0.03)]"
-                                    : "bg-neutral-900/20 text-neutral-400 hover:bg-[rgba(93,46,46,0.18)] hover:text-[#E0C8C8]"
+                                    ? "bg-[rgba(93,46,46,0.3)] text-[#E0C8C8] shadow-[inset_0_1px_1px_rgba(255,255,255,0.04),inset_0_-1px_0_rgba(93,46,46,0.3)]"
+                                    : "bg-white/[0.02] text-muted-foreground hover:bg-[rgba(93,46,46,0.18)] hover:text-[#E0C8C8]"
                                 )}
                               >
                                 Sell
@@ -1397,7 +1498,7 @@ export function LogicModule({
                             
                             {/* Exit */}
                             <div className="flex items-center gap-1.5">
-                              <span className="text-[9px] text-neutral-500 uppercase tracking-wider">Exit</span>
+                              <span className="text-[9px] text-muted-foreground/60 uppercase tracking-wider">Exit</span>
                               <button
                                 type="button"
                                 onClick={() => {
@@ -1409,8 +1510,8 @@ export function LogicModule({
                                 className={cn(
                                   "h-7 px-3 text-[10px] font-medium rounded transition-all duration-200",
                                   exitMode === "Trail"
-                                    ? "bg-[rgba(74,85,104,0.35)] text-[#C9D1DB] shadow-[inset_0_1px_1px_rgba(255,255,255,0.03)]"
-                                    : "bg-neutral-900/20 text-neutral-400 hover:bg-[rgba(74,85,104,0.2)] hover:text-[#C9D1DB]",
+                                    ? "bg-[rgba(74,85,104,0.35)] text-[#C9D1DB] shadow-[inset_0_1px_1px_rgba(255,255,255,0.04),inset_0_-1px_0_rgba(74,85,104,0.3)]"
+                                    : "bg-white/[0.02] text-muted-foreground hover:bg-[rgba(74,85,104,0.2)] hover:text-[#C9D1DB]",
                                 )}
                               >
                                 Trail
@@ -1425,8 +1526,8 @@ export function LogicModule({
                                 className={cn(
                                   "h-7 px-3 text-[10px] font-medium rounded transition-all duration-200",
                                   exitMode === "TPSL"
-                                    ? "bg-[rgba(93,46,46,0.35)] text-[#E0C8C8] shadow-[inset_0_1px_1px_rgba(255,255,255,0.03)]"
-                                    : "bg-neutral-900/20 text-neutral-400 hover:bg-[rgba(93,46,46,0.2)] hover:text-[#E0C8C8]",
+                                    ? "bg-[rgba(93,46,46,0.35)] text-[#E0C8C8] shadow-[inset_0_1px_1px_rgba(255,255,255,0.04),inset_0_-1px_0_rgba(93,46,46,0.3)]"
+                                    : "bg-white/[0.02] text-muted-foreground hover:bg-[rgba(93,46,46,0.2)] hover:text-[#E0C8C8]",
                                 )}
                               >
                                 TP/SL
@@ -1442,6 +1543,108 @@ export function LogicModule({
                             return true;
                           });
 
+                          // Execution Logic card (groups 2-20): structured sub-sections
+                          if (isExecutionLogic) {
+                            const isTriggerField = (id: string) =>
+                              id === "trigger_type" ||
+                              id === "trigger_bars" ||
+                              id === "trigger_seconds" ||
+                              id === "trigger_points" ||
+                              id === "opcount_ref" ||
+                              id === "start_op_count" ||
+                              id === "group_power_start";
+                            const isGridField = (id: string) =>
+                              id === "grid" || id === "grid_behavior";
+                            const isVolumeField = (id: string) =>
+                              id === "multiplier" ||
+                              id === "reset_lot_on_restart" ||
+                              id === "initial_lot" ||
+                              id === "last_lot";
+
+                            const coreFields = visibleFields.filter(
+                              (f) => f.category === "Core" || f.category === "Mode Selectors",
+                            );
+                            const triggerFields = visibleFields.filter((f) =>
+                              isTriggerField(f.id),
+                            );
+                            const gridFields = visibleFields.filter((f) =>
+                              isGridField(f.id),
+                            );
+                            const volumeFields = visibleFields.filter((f) =>
+                              isVolumeField(f.id),
+                            );
+
+                            const renderField = (field: any) => (
+                              <ConfigField
+                                key={field.id}
+                                label={field.label}
+                                value={field.value}
+                                type={field.type}
+                                unit={field.unit}
+                                description={field.description}
+                                fieldId={field.id}
+                                hint={getUnitHint(field.id, field.value)}
+                                options={(field as any).options}
+                                currentLogicId={currentLogicId}
+                                onChange={(val) => {
+                                  if ((field as any).onChange) {
+                                    (field as any).onChange(val);
+                                  } else {
+                                    handleFieldChange(field.id, val);
+                                  }
+                                }}
+                              />
+                            );
+
+                            return (
+                              <div className="space-y-3">
+                                {/* Core section - only for non-Power Engine A */}
+                                {coreFields.length > 0 && (
+                                  <div className="space-y-2">
+                                    <div className="text-[9px] uppercase tracking-wider font-semibold text-primary/40">
+                                      Core
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                                      {coreFields.map(renderField)}
+                                    </div>
+                                  </div>
+                                )}
+                                {/* Triggers + Grid side by side */}
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                  <div className="space-y-1">
+                                    <div className="text-[9px] uppercase tracking-wider font-semibold text-primary/40">
+                                      Triggers
+                                    </div>
+                                    {triggerFields.map(renderField)}
+                                  </div>
+                                  <div className="space-y-1">
+                                    <div className="text-[9px] uppercase tracking-wider font-semibold text-primary/40">
+                                      Grid
+                                    </div>
+                                    {gridFields.map(renderField)}
+                                  </div>
+                                </div>
+                                {/* Volume Dynamics */}
+                                {volumeFields.length > 0 && (
+                                  <div className="space-y-2">
+                                    <div className="text-[9px] uppercase tracking-wider font-semibold text-primary/40">
+                                      Volume Dynamics
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                                      {volumeFields.map(renderField)}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          }
+
+                          // Base Routing (groups 2-20): no extra fields, just the Mode Selectors buttons rendered above
+                          if (isBaseRouting) {
+                            return null;
+                          }
+
+                          // Triggers + Grid card (Group 1 original layout)
                           if (isCoreTriggers) {
                             const isTriggerField = (id: string) =>
                               id === "trigger_type" ||
@@ -1470,7 +1673,7 @@ export function LogicModule({
                             return (
                               <div className="space-y-3">
                                 <div className="space-y-2">
-                                  <div className="text-[9px] uppercase tracking-wider font-semibold text-neutral-400">
+                                  <div className="text-[9px] uppercase tracking-wider font-semibold text-primary/40">
                                     Core
                                   </div>
                                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
@@ -1499,7 +1702,7 @@ export function LogicModule({
                                 </div>
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                   <div className="space-y-1">
-                                    <div className="text-[9px] uppercase tracking-wider font-semibold text-neutral-400">
+                                    <div className="text-[9px] uppercase tracking-wider font-semibold text-primary/40">
                                       Triggers
                                     </div>
                                     {triggerFields.map((field) => (
@@ -1525,7 +1728,7 @@ export function LogicModule({
                                     ))}
                                   </div>
                                   <div className="space-y-1">
-                                    <div className="text-[9px] uppercase tracking-wider font-semibold text-neutral-400">
+                                    <div className="text-[9px] uppercase tracking-wider font-semibold text-primary/40">
                                       Grid
                                     </div>
                                     {gridFields.map((field) => (
@@ -1581,7 +1784,7 @@ export function LogicModule({
                          {/* Close Targets Multi-Select - show when trail_method = AVG_Percent */}
                          {isTrail && fieldValues["trail_method"] === "AVG_Percent" && (
                            <div className="col-span-2">
-                             <label className="text-[10px] text-neutral-400 block mb-1">
+                             <label className="text-[10px] text-primary/40 block mb-1">
                                {activeDirection === "buy" ? "Buy" : "Sell"} Close Targets
                              </label>
                              <MultiSelectLogicDropdown

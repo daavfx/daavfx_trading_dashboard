@@ -17,105 +17,112 @@
 
 @layer base {
   :root {
-    /* Metallic & Industrial Palette */
-    --background: 0 0% 6%;
-    --background-elevated: 0 0% 9%;
-    --background-subtle: 0 0% 10%;
+    /* ── Refined Dark Palette ── */
+    /* Backgrounds use a hint of warm undertone (2-4% saturation) */
+    --background: 30 3% 6%;
+    --background-elevated: 30 3% 9%;
+    --background-subtle: 30 2% 10.5%;
 
-    --foreground: 40 12% 92%;
-    --foreground-muted: 220 8% 56%;
+    --foreground: 38 10% 91%;
+    --foreground-muted: 30 5% 50%;
 
-    --card: 0 0% 9%;
-    --card-foreground: 40 12% 90%;
-    --card-hover: 0 0% 11%;
+    --card: 30 3% 9%;
+    --card-foreground: 38 10% 89%;
+    --card-hover: 30 3% 11.5%;
 
-    --popover: 0 0% 8%;
-    --popover-foreground: 45 10% 90%;
+    --popover: 30 4% 8.5%;
+    --popover-foreground: 38 8% 89%;
 
-    /* Primary (Bronze) */
-    --primary: 40 45% 56%;
-    --primary-foreground: 220 20% 8%;
-    --primary-glow: 40 35% 62%;
+    /* Primary (Warm Bronze — desaturated, never loud) */
+    --primary: 38 32% 46%;
+    --primary-foreground: 30 8% 8%;
+    --primary-glow: 38 28% 42%;
 
-    /* Secondary (Gunmetal / Steel) */
-    --accent: 214 20% 35%;
-    --accent-foreground: 40 12% 92%;
-    --accent-muted: 214 14% 28%;
+    /* Accent (Steel Blue — cooled down, contextual) */
+    --accent: 215 12% 28%;
+    --accent-foreground: 38 10% 88%;
+    --accent-muted: 215 8% 22%;
 
-    /* Secondary - Subtle UI */
-    --secondary: 0 0% 14%;
-    --secondary-foreground: 40 12% 82%;
+    /* Secondary (Elevated surface) */
+    --secondary: 30 3% 12.5%;
+    --secondary-foreground: 38 8% 76%;
 
-    --muted: 0 0% 16%;
-    --muted-foreground: 220 8% 55%;
+    --muted: 30 3% 16%;
+    --muted-foreground: 30 5% 48%;
 
-    /* Critical (Burnt Oxide) */
-    --destructive: 0 35% 27%;
-    --destructive-foreground: 40 12% 92%;
+    /* Destructive (Burnt Oxide — dark, not alarming) */
+    --destructive: 4 28% 26%;
+    --destructive-foreground: 38 10% 91%;
 
-    /* Status (Muted Forest / Manganese) */
-    --success: 180 18% 25%;
-    --success-foreground: 40 12% 92%;
+    /* Status */
+    --success: 160 14% 24%;
+    --success-foreground: 38 10% 91%;
 
-    --warning: 40 35% 50%;
-    --warning-foreground: 220 20% 8%;
+    --warning: 38 30% 46%;
+    --warning-foreground: 30 8% 8%;
 
-    --border: 0 0% 16%;
-    --border-subtle: 0 0% 12%;
-    --input: 0 0% 11%;
-    --ring: 40 45% 56%;
+    /* Borders — warm-tinted, very subtle */
+    --border: 30 4% 14%;
+    --border-subtle: 30 3% 10%;
+    --input: 30 3% 8.5%;
+    --ring: 38 24% 38%;
 
     --radius: 0.375rem;
 
-    /* Platform Canvas - Very subtle tints */
-    --canvas-default: 0 0% 5%;
-    --canvas-mt4: 0 0% 5%;
-    --canvas-mt5: 0 0% 5%;
-    --canvas-python: 0 0% 5%;
-    --canvas-c: 0 0% 5%;
-    --canvas-cpp: 0 0% 5%;
-    --canvas-rust: 0 0% 5%;
+    /* Canvas */
+    --canvas-default: 30 3% 5%;
+    --canvas-mt4: 30 3% 5%;
+    --canvas-mt5: 30 3% 5%;
+    --canvas-python: 30 3% 5%;
+    --canvas-c: 30 3% 5%;
+    --canvas-cpp: 30 3% 5%;
+    --canvas-rust: 30 3% 5%;
 
-    /* Platform Colors - Muted */
-    --platform-mt4: 214 20% 45%;
-    --platform-mt5: 205 18% 42%;
-    --platform-python: 40 30% 50%;
-    --platform-c: 260 18% 46%;
-    --platform-cpp: 340 18% 46%;
-    --platform-rust: 20 28% 48%;
+    /* Platform Colors — muted */
+    --platform-mt4: 214 16% 40%;
+    --platform-mt5: 205 14% 38%;
+    --platform-python: 38 24% 44%;
+    --platform-c: 260 14% 40%;
+    --platform-cpp: 340 14% 40%;
+    --platform-rust: 20 22% 42%;
 
-    /* Shadows - Subtle */
-    --shadow-xs: 0 1px 2px hsl(0 0% 0% / 0.08);
-    --shadow-sm: 0 2px 6px hsl(0 0% 0% / 0.12);
-    --shadow-md: 0 6px 16px hsl(0 0% 0% / 0.16);
-    --shadow-lg: 0 10px 24px hsl(0 0% 0% / 0.18);
-    --shadow-xl: 0 16px 40px hsl(0 0% 0% / 0.2);
+    /* Shadows — warm-tinted blacks */
+    --shadow-xs: 0 1px 2px hsl(30 6% 0% / 0.10);
+    --shadow-sm: 0 2px 6px hsl(30 6% 0% / 0.14);
+    --shadow-md: 0 6px 16px hsl(30 6% 0% / 0.18);
+    --shadow-lg: 0 10px 24px hsl(30 6% 0% / 0.22);
+    --shadow-xl: 0 16px 40px hsl(30 6% 0% / 0.26);
 
     /* Sidebar */
-    --sidebar-background: 0 0% 5%;
-    --sidebar-foreground: 40 12% 80%;
-    --sidebar-primary: 40 45% 56%;
-    --sidebar-primary-foreground: 220 20% 8%;
-    --sidebar-accent: 0 0% 12%;
-    --sidebar-accent-foreground: 40 12% 80%;
-    --sidebar-border: 0 0% 13%;
-    --sidebar-ring: 40 45% 56%;
+    --sidebar-background: 30 3% 5.5%;
+    --sidebar-foreground: 38 10% 76%;
+    --sidebar-primary: 38 32% 48%;
+    --sidebar-primary-foreground: 30 8% 8%;
+    --sidebar-accent: 30 3% 13%;
+    --sidebar-accent-foreground: 38 10% 76%;
+    --sidebar-border: 30 4% 14%;
+    --sidebar-ring: 38 28% 42%;
 
     /* Chart */
-    --chart-1: 180 18% 32%;
-    --chart-2: 40 45% 56%;
-    --chart-3: 40 10% 86%;
-    --chart-4: 0 35% 35%;
-    --chart-5: 214 22% 42%;
+    --chart-1: 160 14% 30%;
+    --chart-2: 38 32% 48%;
+    --chart-3: 38 8% 82%;
+    --chart-4: 4 28% 32%;
+    --chart-5: 215 18% 38%;
 
-    /* Logic Colors - Metallic */
-    --logic-power: 40 45% 56%;
-    --logic-repower: 214 20% 38%;
-    --logic-scalper: 180 18% 28%;
-    --logic-stopper: 0 35% 30%;
-    --logic-sto: 40 35% 50%;
-    --logic-sca: 214 16% 36%;
-    --logic-rpo: 175 20% 30%;
+    /* Logic Colors */
+    --logic-power: 38 32% 48%;
+    --logic-repower: 215 16% 34%;
+    --logic-scalper: 160 14% 26%;
+    --logic-stopper: 4 28% 28%;
+    --logic-sto: 38 28% 44%;
+    --logic-sca: 215 12% 32%;
+    --logic-rpo: 160 16% 28%;
+
+    /* ── Subtle Accent Tints (for interactive elements only) ── */
+    --interactive-border: 38 8% 18%;
+    --interactive-hover: 38 6% 14%;
+    --interactive-active: 38 10% 20%;
   }
 }
 
@@ -136,8 +143,8 @@
   }
 
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 5px;
+    height: 5px;
   }
 
   ::-webkit-scrollbar-track {
@@ -145,11 +152,12 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-border rounded-full;
+    background-color: hsl(30 4% 18%);
+    border-radius: 9999px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-muted-foreground/40;
+    background-color: hsl(30 5% 24%);
   }
 }
 
@@ -157,7 +165,7 @@
   /* ============================================
      TYPOGRAPHY HIERARCHY - Sutil Visual Weight
      ============================================ */
-  
+
   /* Group Header - Anchors the entire view */
   .heading-group {
     font-size: 14px;
@@ -171,7 +179,7 @@
     font-size: 11px;
     font-weight: 700;
     text-transform: uppercase;
-    color: #A0A0A0;
+    color: hsl(38 12% 55%);
     letter-spacing: 0.05em;
   }
 
@@ -180,7 +188,7 @@
     font-size: 11px;
     font-weight: 600;
     text-transform: capitalize;
-    color: #707070;
+    color: hsl(30 5% 48%);
     letter-spacing: 0;
   }
 
@@ -188,7 +196,7 @@
   .value-data {
     font-size: 12px;
     font-weight: 600;
-    color: #EAEAEA;
+    color: hsl(38 5% 90%);
     font-family: "JetBrains Mono", "Geist Mono", ui-monospace, monospace;
     font-feature-settings: "tnum";
     letter-spacing: -0.02em;
@@ -197,32 +205,44 @@
   /* ============================================
      DEPTH SYSTEM - Background Shifts
      ============================================ */
-  
-  /* Card - Slightly lighter than canvas */
+
+  /* Card — warm dark surface with subtle left accent */
   .depth-card {
-    background-color: #161616;
-    border: 1px solid #262626;
+    background-color: hsl(30 3% 9.5%);
+    border: 1px solid hsl(30 4% 14%);
+    border-left: 2px solid hsl(38 18% 20% / 0.3);
   }
 
-  /* Input - Recessed look */
+  /* Input — recessed, warm inset + bottom warmth hint */
   .depth-input {
-    background-color: #0A0A0A;
-    border: 1px solid #262626;
-    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
+    background-color: hsl(30 3% 7%);
+    border: 1px solid hsl(38 6% 13%);
+    border-bottom: 1px solid hsl(38 10% 16% / 0.4);
+    box-shadow: inset 0 1px 2px hsl(0 0% 0% / 0.12);
+    transition: border-color 100ms ease, box-shadow 100ms ease;
   }
 
-  /* Separator line */
+  .depth-input:focus-within,
+  .depth-input:focus {
+    border-color: hsl(38 12% 22% / 0.5);
+    border-left-color: hsl(38 24% 40% / 0.4);
+    box-shadow: inset 0 1px 2px hsl(0 0% 0% / 0.1), 0 0 0 1px hsl(38 12% 22% / 0.08);
+  }
+
+  /* Separator — warm tinted, as border-bottom */
   .separator-subtle {
-    background-color: #1F1F1F;
+    border-bottom: 1px solid hsl(38 6% 16% / 0.5);
+    background-color: transparent;
   }
 
-  /* Conditional field reveal — smooth slide */
+  /* Conditional field reveal */
   .conditional-reveal {
     overflow: hidden;
     transition: max-height 150ms ease-out, opacity 150ms ease-out;
     max-height: 0;
     opacity: 0;
   }
+
   .conditional-reveal.is-open {
     max-height: 500px;
     opacity: 1;
@@ -231,14 +251,14 @@
   /* Conditional field indent + track */
   .conditional-indent {
     padding-left: 14px;
-    border-left: 1px solid #262626;
+    border-left: 1px solid hsl(30 4% 14%);
     margin-left: 2px;
   }
 
   /* ============================================
      EXISTING COMPONENTS
      ============================================ */
-  
+
   .font-mono-data {
     font-family: "JetBrains Mono", "Geist Mono", ui-monospace, monospace;
     font-feature-settings: "tnum";
@@ -246,15 +266,15 @@
   }
 
   .text-gradient-gold {
-    background: linear-gradient(135deg, hsl(43 65% 52%), hsl(43 50% 62%));
+    background: linear-gradient(135deg, hsl(38 30% 48%), hsl(38 22% 56%));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
   .card-elevated {
-    @apply bg-card border border-white/5 rounded-lg;
-    box-shadow: var(--shadow-sm);
+    @apply bg-card border border-white/[0.03] rounded-lg;
+    box-shadow: var(--shadow-xs);
   }
 
   .card-elevated:hover {
@@ -263,8 +283,8 @@
   }
 
   .card-premium {
-    @apply bg-gradient-to-b from-card to-background border border-white/5 rounded-lg;
-    box-shadow: var(--shadow-md), inset 0 1px 0 hsl(0 0% 100% / 0.03);
+    @apply bg-gradient-to-b from-card to-background border border-white/[0.03] rounded-lg;
+    box-shadow: var(--shadow-md), inset 0 1px 0 hsl(38 8% 100% / 0.02);
   }
 
   .status-filled {
@@ -280,42 +300,71 @@
   }
 
   .input-refined {
-    @apply bg-input border border-border/70 text-foreground rounded-md;
-    @apply focus:border-primary/70 focus:ring-2 focus:ring-primary/15;
-    @apply placeholder:text-muted-foreground/50;
+    @apply bg-input border border-white/[0.04] text-foreground rounded-md;
+    @apply focus:border-white/[0.08] focus:ring-1 focus:ring-white/[0.04];
+    @apply placeholder:text-muted-foreground/40;
     @apply transition-all duration-150;
   }
 
   .input-refined:hover {
-    @apply border-border;
+    border-color: hsl(var(--interactive-border));
   }
 
   .btn-gold {
-    @apply bg-gradient-to-b from-primary to-primary/90 text-primary-foreground font-medium;
-    @apply hover:from-primary/90 hover:to-primary/80;
-    @apply shadow-sm;
+    @apply bg-primary text-primary-foreground font-medium;
+    @apply hover:brightness-110;
+    box-shadow: 0 1px 2px hsl(0 0% 0% / 0.2), inset 0 1px 0 hsl(38 20% 60% / 0.08);
   }
 
   .logic-indicator {
     @apply w-1 h-full rounded-full;
   }
 
-  .logic-power { background-color: hsl(var(--logic-power)); }
-  .logic-repower { background-color: hsl(var(--logic-repower)); }
-  .logic-scalper { background-color: hsl(var(--logic-scalper)); }
-  .logic-stopper { background-color: hsl(var(--logic-stopper)); }
-  .logic-sto { background-color: hsl(var(--logic-sto)); }
-  .logic-sca { background-color: hsl(var(--logic-sca)); }
-  .logic-rpo { background-color: hsl(var(--logic-rpo)); }
+  .logic-power {
+    background-color: hsl(var(--logic-power));
+  }
 
-  /* Divider */
+  .logic-repower {
+    background-color: hsl(var(--logic-repower));
+  }
+
+  .logic-scalper {
+    background-color: hsl(var(--logic-scalper));
+  }
+
+  .logic-stopper {
+    background-color: hsl(var(--logic-stopper));
+  }
+
+  .logic-sto {
+    background-color: hsl(var(--logic-sto));
+  }
+
+  .logic-sca {
+    background-color: hsl(var(--logic-sca));
+  }
+
+  .logic-rpo {
+    background-color: hsl(var(--logic-rpo));
+  }
+
+  /* Divider — fades at edges (60% width coverage) */
   .divider {
-    @apply h-px bg-gradient-to-r from-transparent via-border to-transparent;
+    height: 1px;
+    background: linear-gradient(90deg,
+      transparent 15%,
+      hsl(30 4% 16%) 35%,
+      hsl(30 4% 16%) 65%,
+      transparent 85%
+    );
   }
 
   /* Glass effect */
   .glass {
-    @apply bg-[rgba(10,10,10,0.8)] backdrop-blur-2xl border border-white/5;
+    background-color: hsl(30 3% 7% / 0.85);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid hsl(38 4% 14% / 0.6);
   }
 
   /* Highlight animation */
@@ -324,13 +373,50 @@
   }
 
   @keyframes highlight-pulse {
-    0% { background-color: hsl(40 45% 56% / 0.2); }
-    100% { background-color: transparent; }
+    0% {
+      background-color: hsl(38 20% 40% / 0.12);
+    }
+
+    100% {
+      background-color: transparent;
+    }
   }
 
   /* Search highlight */
   .search-match {
-    @apply bg-primary/20 text-primary px-0.5 rounded;
+    @apply bg-primary/15 text-primary px-0.5 rounded;
+  }
+
+  /* ── Interactive Element Accents ── */
+
+  /* Subtle warm-tinted hover for any interactive surface */
+  .interactive-surface {
+    transition: background-color 120ms ease, border-color 120ms ease;
+  }
+
+  .interactive-surface:hover {
+    background-color: hsl(var(--interactive-hover));
+  }
+
+  /* Icon subtle tint — muted foreground that warms on hover */
+  .icon-subtle {
+    color: hsl(30 5% 44%);
+    transition: color 120ms ease;
+  }
+
+  .icon-subtle:hover {
+    color: hsl(38 12% 58%);
+  }
+
+  /* Separator with partial-width fade (75% coverage) */
+  .separator-fade {
+    height: 1px;
+    background: linear-gradient(90deg,
+      transparent 12%,
+      hsl(30 4% 15%) 30%,
+      hsl(30 4% 15%) 70%,
+      transparent 88%
+    );
   }
 }
 
@@ -363,12 +449,29 @@
     color: hsl(var(--warning));
   }
 
-  .canvas-mt4 { background-color: hsl(var(--canvas-mt4)); }
-  .canvas-mt5 { background-color: hsl(var(--canvas-mt5)); }
-  .canvas-python { background-color: hsl(var(--canvas-python)); }
-  .canvas-c { background-color: hsl(var(--canvas-c)); }
-  .canvas-cpp { background-color: hsl(var(--canvas-cpp)); }
-  .canvas-rust { background-color: hsl(var(--canvas-rust)); }
+  .canvas-mt4 {
+    background-color: hsl(var(--canvas-mt4));
+  }
+
+  .canvas-mt5 {
+    background-color: hsl(var(--canvas-mt5));
+  }
+
+  .canvas-python {
+    background-color: hsl(var(--canvas-python));
+  }
+
+  .canvas-c {
+    background-color: hsl(var(--canvas-c));
+  }
+
+  .canvas-cpp {
+    background-color: hsl(var(--canvas-cpp));
+  }
+
+  .canvas-rust {
+    background-color: hsl(var(--canvas-rust));
+  }
 
   .shadow-soft {
     box-shadow: var(--shadow-sm);
@@ -388,8 +491,18 @@
     text-orientation: mixed;
   }
 
-  /* Focus visible ring */
+  /* Focus visible ring — very subtle */
   .focus-ring {
-    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+    @apply focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/[0.06] focus-visible:ring-offset-1 focus-visible:ring-offset-background;
+  }
+
+  /* Border accent — partial coverage (75% of edge) */
+  .border-accent-partial {
+    border-image: linear-gradient(90deg,
+      transparent 12%,
+      hsl(38 12% 24%) 30%,
+      hsl(38 12% 24%) 70%,
+      transparent 88%
+    ) 1;
   }
 }

@@ -26,6 +26,7 @@ import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import { searchInputs, type SearchableItem } from "@/utils/input-search";
 import type { MTConfig } from "@/types/mt-config";
+import type { ViewMode } from "@/components/layout/Sidebar";
 
 export type Platform = "mt4" | "mt5" | "python" | "c" | "cpp" | "rust";
 
@@ -48,6 +49,8 @@ interface TopBarProps {
   onFavoritesOnlyChange?: (value: boolean) => void;
   favoriteFields?: string[];
   onToggleFavorite?: (fieldId: string) => void;
+  checkedFavorites?: string[];
+  onCheckedFavoritesChange?: (favorites: string[]) => void;
 }
 
  

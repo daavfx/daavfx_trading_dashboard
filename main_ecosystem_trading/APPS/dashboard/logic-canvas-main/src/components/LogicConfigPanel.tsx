@@ -108,15 +108,15 @@ const LabeledField = ({
   className?: string;
 }) => (
   <div className={cn("space-y-1.5", className)}>
-    <Label className="text-[11px] font-medium text-muted-foreground">
+    <Label className="label-field">
       {label}
     </Label>
     {children}
-    {hint && <p className="text-[10px] text-muted-foreground/60">{hint}</p>}
+    {hint && <p className="text-[10px] text-muted-foreground/50">{hint}</p>}
   </div>
 );
 
-// Category card component - Metallic Terminal Style
+// Category card component - Sutil Depth Style
 const CategoryCard = ({
   title,
   icon: Icon,
@@ -135,14 +135,14 @@ const CategoryCard = ({
     { accent: string; text: string }
   > = {
     sky: { accent: "#C5A059", text: "#C5A059" },
-    blue: { accent: "#4A5568", text: "#4A5568" },
-    indigo: { accent: "#2D4F4F", text: "#2D4F4F" },
-    purple: { accent: "#5D2E2E", text: "#5D2E2E" },
+    blue: { accent: "#4A5568", text: "#A0A0A0" },
+    indigo: { accent: "#2D4F4F", text: "#A0A0A0" },
+    purple: { accent: "#5D2E2E", text: "#A0A0A0" },
     fuchsia: { accent: "#C5A059", text: "#C5A059" },
-    cyan: { accent: "#4A5568", text: "#4A5568" },
-    rose: { accent: "#C5A059", text: "#C5A059" },
-    emerald: { accent: "#2D4F4F", text: "#2D4F4F" },
-    amber: { accent: "#C5A059", text: "#C5A059" },
+    cyan: { accent: "#4A5568", text: "#A0A0A0" },
+    rose: { accent: "#C5A059", text: "#A0A0A0" },
+    emerald: { accent: "#2D4F4F", text: "#A0A0A0" },
+    amber: { accent: "#C5A059", text: "#A0A0A0" },
   };
 
   const colors = colorClasses[color] || colorClasses.blue;
@@ -150,37 +150,26 @@ const CategoryCard = ({
   return (
     <div
       className={cn(
-        "rounded-lg border relative overflow-hidden transition-all duration-300",
-        "bg-[rgba(10,10,10,0.8)] backdrop-blur-2xl",
-        "border-t border-white/[0.05]",
-        "before:absolute before:inset-x-0 before:top-0 before:h-[1px] before:bg-gradient-to-r before:from-transparent before:via-white/5 before:to-transparent",
-        "shadow-[0_4px_12px_rgba(0,0,0,0.08)]",
+        "rounded-lg border relative overflow-hidden",
+        "depth-card",
       )}
     >
-      <div
-        className="absolute inset-y-0 left-0 w-px bg-gradient-to-b from-white/[0.05] via-white/[0.03] to-transparent pointer-events-none"
-      />
-
-      <div className="flex items-center gap-2.5 p-5 pb-3 relative z-10">
+      <div className="flex items-center gap-2.5 p-5 pb-3 border-b separator-subtle">
         <div
-          className="p-1 rounded border transition-all duration-300"
+          className="p-1 rounded"
           style={{
             backgroundColor: `${colors.accent}15`,
-            borderColor: `${colors.accent}30`,
           }}
         >
           <Icon className="w-3.5 h-3.5" style={{ color: colors.text }} />
         </div>
-        <div
-          className="text-[11px] uppercase tracking-wider font-medium"
-          style={{ color: colors.text, letterSpacing: "-0.02em" }}
-        >
+        <div className="heading-card" style={{ color: colors.text }}>
           {title}
         </div>
         {rightContent && <div className="ml-auto">{rightContent}</div>}
       </div>
 
-      <div className="p-5 pt-0 relative z-10">{children}</div>
+      <div className="p-5">{children}</div>
     </div>
   );
 };
@@ -405,7 +394,7 @@ const CounterTrendAndReverseUI = ({
 
       {/* Core Category */}
       <CategoryCard title="Core" icon={Layers} color="blue">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 items-start">
           <LabeledField label="Initial Lot" hint="lots">
             <Input
               type="number"
@@ -415,7 +404,7 @@ const CounterTrendAndReverseUI = ({
               }
               step={0.01}
               min={0.01}
-              className="bg-background/50"
+              className="bg-background/50 value-data"
             />
           </LabeledField>
           <LabeledField label="Last Lot" hint="lots">
@@ -427,7 +416,7 @@ const CounterTrendAndReverseUI = ({
               }
               step={0.01}
               min={0.01}
-              className="bg-background/50"
+              className="bg-background/50 value-data"
             />
           </LabeledField>
           {localConfig.logic_name && !localConfig.logic_name.toUpperCase().includes("POWER") && (
@@ -469,7 +458,7 @@ const CounterTrendAndReverseUI = ({
               }
               step={0.1}
               min={1.0}
-              className="bg-background/50"
+              className="bg-background/50 value-data"
             />
           </LabeledField>
           <div className="flex items-center justify-between pt-5">
@@ -488,7 +477,7 @@ const CounterTrendAndReverseUI = ({
 
       {/* Triggers + Grid Category - merged */}
       <CategoryCard title="Triggers & Grid" icon={Settings2} color="rose">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
           <div className="space-y-3">
             <LabeledField label="Trigger Type">
               <Select
@@ -555,7 +544,7 @@ const CounterTrendAndReverseUI = ({
 
       {/* Logic Category */}
       <CategoryCard title="Logic" icon={Zap} color="emerald">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-4 items-start">
           <LabeledField label="Order Count Ref" hint="Reference logic used by Start Level">
             <Select
               value={localConfig.order_count_reference || "Logic_Self"}
@@ -626,7 +615,7 @@ const CounterTrendAndReverseUI = ({
 
       {!tpslActive && (
         <CategoryCard title="Trail" icon={ChevronRight} color="purple">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 items-start">
             <LabeledField label="Trail Value" hint="FX: 50 pips">
               <Input
                 type="number"
@@ -734,7 +723,7 @@ const CounterTrendAndReverseUI = ({
               </>
             )}
           </div>
-          <div className="grid grid-cols-1 gap-4 mt-4">
+          <div className="grid grid-cols-1 gap-4 mt-4 items-start">
             <LabeledField label="Trail Step Method">
               <Select
                 value={localConfig.trail_step_method || "Step_Points"}
@@ -798,7 +787,7 @@ const CounterTrendAndReverseUI = ({
             </div>
           }
         >
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4 items-start">
             <LabeledField label="Trail Step Cycle">
               <Input
                 type="number"
@@ -837,7 +826,7 @@ const CounterTrendAndReverseUI = ({
           </div>
         }
       >
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 items-start">
           <div className="flex items-center justify-between">
             <Label className="text-[11px] font-medium text-muted-foreground">
               Close Partial
@@ -884,7 +873,7 @@ const CounterTrendAndReverseUI = ({
 
       {tpslActive && (
         <CategoryCard title="TPSL" icon={Shield} color="amber">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 items-start">
             <div className="flex items-center justify-between pt-5">
               <Label className="text-[11px] font-medium text-muted-foreground">
                 Use TP

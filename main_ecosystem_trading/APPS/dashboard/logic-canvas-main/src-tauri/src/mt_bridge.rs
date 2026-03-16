@@ -311,12 +311,62 @@ pub struct RiskManagementConfig {
     pub enabled: bool,
     pub spread_filter_enabled: bool,
     pub max_spread_points: f64,
+    #[serde(default)]
+    pub slippage_enabled: bool,
+    #[serde(default)]
+    pub max_slippage_points: f64,
     pub equity_stop_enabled: bool,
     pub equity_stop_value: f64,
     pub drawdown_stop_enabled: bool,
     pub max_drawdown_percent: f64,
     #[serde(default)]
     pub risk_action: Option<String>,
+    // Equity Protection (extended)
+    #[serde(default)]
+    pub equity_protection_enabled: bool,
+    #[serde(default)]
+    pub equity_protection_use_equity: bool,
+    #[serde(default)]
+    pub equity_protection_drawdown_enabled: bool,
+    #[serde(default)]
+    pub equity_protection_drawdown_value: f64,
+    #[serde(default)]
+    pub equity_protection_profit_enabled: bool,
+    #[serde(default)]
+    pub equity_protection_profit_value: f64,
+    #[serde(default)]
+    pub equity_protection_margin_enabled: bool,
+    #[serde(default)]
+    pub equity_protection_margin_value: f64,
+    #[serde(default)]
+    pub equity_protection_stop_ea: bool,
+    #[serde(default)]
+    pub equity_protection_close_trades: bool,
+    #[serde(default = "default_restart_mode")]
+    pub equity_protection_restart_mode: String,
+    // Balance Protection (extended)
+    #[serde(default)]
+    pub balance_protection_enabled: bool,
+    #[serde(default)]
+    pub balance_protection_use_equity: bool,
+    #[serde(default)]
+    pub balance_protection_drawdown_enabled: bool,
+    #[serde(default)]
+    pub balance_protection_drawdown_value: f64,
+    #[serde(default)]
+    pub balance_protection_profit_enabled: bool,
+    #[serde(default)]
+    pub balance_protection_profit_value: f64,
+    #[serde(default)]
+    pub balance_protection_margin_enabled: bool,
+    #[serde(default)]
+    pub balance_protection_margin_value: f64,
+    #[serde(default)]
+    pub balance_protection_stop_ea: bool,
+    #[serde(default)]
+    pub balance_protection_close_trades: bool,
+    #[serde(default = "default_restart_mode")]
+    pub balance_protection_restart_mode: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -345,6 +395,10 @@ pub struct SessionConfig {
     pub start_minute: i32,
     pub end_hour: i32,
     pub end_minute: i32,
+    #[serde(default)]
+    pub stop_ea: bool,
+    #[serde(default)]
+    pub close_trades: bool,
     #[serde(default)]
     pub action: String,
     #[serde(default)]
@@ -381,6 +435,8 @@ pub struct NewsFilterConfig {
     pub close_trades: bool,
     #[serde(default = "default_true")]
     pub auto_restart: bool,
+    #[serde(default = "default_restart_mode")]
+    pub restart_mode: String,
     #[serde(default)]
     pub calendar_file: String,
     #[serde(default)]
@@ -410,6 +466,27 @@ pub struct NewsFilterConfig {
 }
 
 fn default_3600() -> i32 { 3600 }
+fn default_restart_mode() -> String { "RestartMode_Disable".to_string() }
+
+fn default_session_config(session_number: i32) -> SessionConfig {
+    SessionConfig {
+        session_number,
+        enabled: false,
+        day: session_number % 7,
+        start_hour: 9,
+        start_minute: 30,
+        end_hour: 17,
+        end_minute: 0,
+        stop_ea: false,
+        close_trades: false,
+        action: "Action_Default".to_string(),
+        auto_restart: false,
+        restart_mode: "RestartMode_Disable".to_string(),
+        restart_bars: 0,
+        restart_minutes: 0,
+        restart_pips: 0,
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EngineConfig {
@@ -1025,6 +1102,20 @@ pub struct LogicConfig {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub close_partial_profit_threshold_4_s: Option<f64>,
 
+    // ===== RISK / NEWS / TIME (per-logic) =====
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub risk_management_b: Option<RiskManagementConfig>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub risk_management_s: Option<RiskManagementConfig>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub news_filter_b: Option<NewsFilterConfig>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub news_filter_s: Option<NewsFilterConfig>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub time_filters_b: Option<TimeFiltersConfig>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub time_filters_s: Option<TimeFiltersConfig>,
+
     // ===== TRIGGERS (optional) + Buy/Sell variants =====
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub trigger_type: Option<String>,
@@ -1557,60 +1648,6 @@ pub fn export_set_file(
     ));
     lines.push(String::new());
 
-    // Risk Management
-    lines.push("; === RISK MANAGEMENT ===".to_string());
-    lines.push(format!(
-        "gInput_MaxSlippage={}",
-        (config.general.max_slippage_points.round() as i32)
-    ));
-    lines.push(format!(
-        "gInput_MaxSlippagePoints={:.1}",
-        config.general.max_slippage_points
-    ));
-    lines.push(format!(
-        "gInput_UseSpreadFilter={}",
-        if config.general.risk_management.spread_filter_enabled {
-            1
-        } else {
-            0
-        }
-    ));
-    lines.push(format!(
-        "gInput_MaxSpreadPoints={:.1}",
-        config.general.risk_management.max_spread_points
-    ));
-    lines.push(format!(
-        "gInput_UseEquityStop={}",
-        if config.general.risk_management.equity_stop_enabled {
-            1
-        } else {
-            0
-        }
-    ));
-    lines.push(format!(
-        "gInput_EquityStopValue={:.1}",
-        config.general.risk_management.equity_stop_value
-    ));
-    lines.push(format!(
-        "gInput_UseDrawdownStop={}",
-        if config.general.risk_management.drawdown_stop_enabled {
-            1
-        } else {
-            0
-        }
-    ));
-    lines.push(format!(
-        "gInput_MaxDrawdownPercent={:.1}",
-        config.general.risk_management.max_drawdown_percent
-    ));
-    if let Some(risk_action) = config.general.risk_management.risk_action.as_deref() {
-        lines.push(format!(
-            "gInput_RiskAction={}",
-            trigger_action_to_int(risk_action)
-        ));
-    }
-    lines.push(String::new());
-
     lines.push("; === CLEAN MATH ===".to_string());
     lines.push(format!(
         "gInput_GridUnit={}",
@@ -1628,213 +1665,6 @@ pub fn export_set_file(
             .map(|v| v.to_string())
             .unwrap_or_default()
     ));
-    lines.push(String::new());
-
-    // News Filter
-    lines.push("; === NEWS FILTER ===".to_string());
-    lines.push(format!(
-        "gInput_EnableNewsFilter={}",
-        if config.general.news_filter.enabled {
-            1
-        } else {
-            0
-        }
-    ));
-    lines.push(format!(
-        "gInput_NewsFilterEnabled={}",
-        if config.general.news_filter.enabled {
-            1
-        } else {
-            0
-        }
-    ));
-    lines.push(format!(
-        "gInput_NewsAPIKey={}",
-        config.general.news_filter.api_key
-    ));
-    lines.push(format!(
-        "gInput_NewsAPIURL={}",
-        config.general.news_filter.api_url
-    ));
-    lines.push(format!(
-        "gInput_NewsFilterCountries={}",
-        config.general.news_filter.countries
-    ));
-    lines.push(format!(
-        "gInput_NewsImpactLevel={}",
-        config.general.news_filter.impact_level
-    ));
-    lines.push(format!(
-        "gInput_MinutesBeforeNews={}",
-        config.general.news_filter.minutes_before
-    ));
-    lines.push(format!(
-        "gInput_MinutesAfterNews={}",
-        config.general.news_filter.minutes_after
-    ));
-    // Convert 3 boolean fields to news action enum
-    let nf = &config.general.news_filter;
-    let news_action = if !nf.stop_ea {
-        0
-    } else if nf.close_trades && nf.auto_restart {
-        6
-    } else if nf.close_trades && !nf.auto_restart {
-        5
-    } else if !nf.close_trades && nf.auto_restart {
-        7
-    } else {
-        2
-    };
-    lines.push(format!("gInput_NewsAction={}", news_action));
-    lines.push(format!("gInput_NewsStopEA={}", if nf.stop_ea { 1 } else { 0 }));
-    lines.push(format!("gInput_NewsCloseTrades={}", if nf.close_trades { 1 } else { 0 }));
-    lines.push(format!("gInput_NewsAutoRestart={}", if nf.auto_restart { 1 } else { 0 }));
-    lines.push(format!(
-        "gInput_NewsCheckInterval={}",
-        config.general.news_filter.check_interval
-    ));
-    lines.push(format!(
-        "gInput_FilterHighImpactOnly={}",
-        if config.general.news_filter.filter_high_only { 1 } else { 0 }
-    ));
-    lines.push(format!(
-        "gInput_FilterWeekendNews={}",
-        if config.general.news_filter.filter_weekends { 1 } else { 0 }
-    ));
-    lines.push(format!(
-        "gInput_UseLocalNewsCache={}",
-        if config.general.news_filter.use_local_cache { 1 } else { 0 }
-    ));
-    lines.push(format!(
-        "gInput_NewsCacheDuration={}",
-        config.general.news_filter.cache_duration
-    ));
-    lines.push(format!(
-        "gInput_NewsFallbackOnError={}",
-        config.general.news_filter.fallback_on_error
-    ));
-    lines.push(format!(
-        "gInput_FilterCurrencies={}",
-        config.general.news_filter.filter_currencies
-    ));
-    lines.push(format!(
-        "gInput_IncludeSpeeches={}",
-        if config.general.news_filter.include_speeches { 1 } else { 0 }
-    ));
-    lines.push(format!(
-        "gInput_IncludeReports={}",
-        if config.general.news_filter.include_reports { 1 } else { 0 }
-    ));
-    lines.push(format!(
-        "gInput_NewsVisualIndicator={}",
-        if config.general.news_filter.visual_indicator { 1 } else { 0 }
-    ));
-    lines.push(format!(
-        "gInput_AlertBeforeNews={}",
-        if config.general.news_filter.alert_before_news { 1 } else { 0 }
-    ));
-    lines.push(format!(
-        "gInput_AlertMinutesBefore={}",
-        config.general.news_filter.alert_minutes
-    ));
-    let cf = &config.general.news_filter.calendar_file;
-    if !cf.is_empty() {
-        lines.push(format!("gInput_NewsCalendarFile={}", cf));
-    }
-    lines.push(String::new());
-
-    // Time Filters / Sessions
-    lines.push("; === TIME FILTERS ===".to_string());
-    lines.push(format!(
-        "gInput_NewsFilterOverridesSession={}",
-        if config
-            .general
-            .time_filters
-            .priority_settings
-            .news_filter_overrides_session
-        {
-            1
-        } else {
-            0
-        }
-    ));
-    lines.push(format!(
-        "gInput_SessionFilterOverridesNews={}",
-        if config
-            .general
-            .time_filters
-            .priority_settings
-            .session_filter_overrides_news
-        {
-            1
-        } else {
-            0
-        }
-    ));
-    lines.push(format!(
-        "gInput_NewsOverridesSession={}",
-        if config
-            .general
-            .time_filters
-            .priority_settings
-            .news_filter_overrides_session
-        {
-            1
-        } else {
-            0
-        }
-    ));
-    lines.push(format!(
-        "gInput_SessionOverridesNews={}",
-        if config
-            .general
-            .time_filters
-            .priority_settings
-            .session_filter_overrides_news
-        {
-            1
-        } else {
-            0
-        }
-    ));
-    let any_session_enabled = config
-        .general
-        .time_filters
-        .sessions
-        .iter()
-        .any(|s| s.enabled);
-    lines.push(format!(
-        "gInput_SessionFilterEnabled={}",
-        if any_session_enabled { 1 } else { 0 }
-    ));
-
-    for (i, session) in config.general.time_filters.sessions.iter().enumerate() {
-        let session_num = i + 1;
-        let n = session.enabled as i32; // 0 or 1
-        lines.push(format!("gInput_Session{}Enabled={}", session_num, n));
-        lines.push(format!("gInput_Session{}Day={}", session_num, session.day));
-        lines.push(format!(
-            "gInput_Session{}StartHour={}",
-            session_num, session.start_hour
-        ));
-        lines.push(format!(
-            "gInput_Session{}StartMinute={}",
-            session_num, session.start_minute
-        ));
-        lines.push(format!(
-            "gInput_Session{}EndHour={}",
-            session_num, session.end_hour
-        ));
-        lines.push(format!(
-            "gInput_Session{}EndMinute={}",
-            session_num, session.end_minute
-        ));
-        lines.push(format!(
-            "gInput_Session{}Action={}",
-            session_num,
-            trigger_action_to_int(&session.action)
-        ));
-    }
     lines.push(String::new());
 
     // Engine and Logic configs
@@ -2592,9 +2422,9 @@ pub fn export_massive_v19_setfile(
     lines.push(format!("; Generated: {}", chrono::Local::now().format("%Y-%m-%d %H:%M:%S")));
     lines.push(format!("; Format: gInput_{{Group}}_{{Engine}}{{Logic}}_{{Direction}}_{{Param}}"));
     lines.push(format!("; Total Logic Inputs: {}", V19_TOTAL_LOGIC_INPUTS));
-    lines.push(format!(
-        "; Contract: 630 logic-directions, Group 1 Power=80 fields, other Group 1 rows=81, Groups 2-15=83"
-    ));
+                    lines.push(format!(
+                        "; Contract: 630 logic-directions, Group 1 Power=203-204 fields, Group 1 non-power=205, Groups 2-15=201"
+                    ));
     lines.push(String::new());
 
     // General settings
@@ -2705,240 +2535,39 @@ pub fn export_massive_v19_setfile(
         }
     }
     
-    // ===== RISK MANAGEMENT =====
     lines.push(String::new());
-    lines.push("; === RISK MANAGEMENT ===".to_string());
-    lines.push(format!(
-        "gInput_MaxSlippage={}",
-        (config.general.max_slippage_points.round() as i32)
-    ));
-    lines.push(format!(
-        "gInput_MaxSlippagePoints={:.1}",
-        config.general.max_slippage_points
-    ));
-    let rm = &config.general.risk_management;
-    lines.push(format!("gInput_RiskManagementEnabled={}", if rm.enabled { 1 } else { 0 }));
-    lines.push(format!("gInput_UseSpreadFilter={}", if rm.spread_filter_enabled { 1 } else { 0 }));
-    lines.push(format!("gInput_MaxSpreadPoints={:.1}", rm.max_spread_points));
-    lines.push(format!("gInput_UseEquityStop={}", if rm.equity_stop_enabled { 1 } else { 0 }));
-    lines.push(format!("gInput_EquityStopValue={:.1}", rm.equity_stop_value));
-    lines.push(format!("gInput_UseDrawdownStop={}", if rm.drawdown_stop_enabled { 1 } else { 0 }));
-    lines.push(format!("gInput_MaxDrawdownPercent={:.1}", rm.max_drawdown_percent));
-    let risk_action_raw = rm
-        .risk_action
+
+    // Defaults for per-logic Risk/News/Time (fallback to global when per-logic is missing)
+    let default_risk_b = config
+        .general
+        .risk_management_b
         .as_ref()
-        .map(|s| trigger_action_to_int(s).to_string())
-        .unwrap_or_else(|| "".to_string());
-    let key_risk_action = "gInput_RiskAction".to_string();
-    lines.push(format!("{}={}", key_risk_action, risk_action_raw));
-    
-    // ===== RISK MANAGEMENT BUY/SELL =====
-    if let Some(rm_b) = &config.general.risk_management_b {
-        lines.push(String::new());
-        lines.push("; === RISK MANAGEMENT BUY ===".to_string());
-        lines.push(format!("gInput_RiskManagementEnabled_Buy={}", if rm_b.enabled { 1 } else { 0 }));
-        lines.push(format!("gInput_UseSpreadFilter_Buy={}", if rm_b.spread_filter_enabled { 1 } else { 0 }));
-        lines.push(format!("gInput_MaxSpreadPoints_Buy={:.1}", rm_b.max_spread_points));
-        lines.push(format!("gInput_UseEquityStop_Buy={}", if rm_b.equity_stop_enabled { 1 } else { 0 }));
-        lines.push(format!("gInput_EquityStopValue_Buy={:.1}", rm_b.equity_stop_value));
-        lines.push(format!("gInput_UseDrawdownStop_Buy={}", if rm_b.drawdown_stop_enabled { 1 } else { 0 }));
-        lines.push(format!("gInput_MaxDrawdownPercent_Buy={:.1}", rm_b.max_drawdown_percent));
-    }
-    if let Some(rm_s) = &config.general.risk_management_s {
-        lines.push(String::new());
-        lines.push("; === RISK MANAGEMENT SELL ===".to_string());
-        lines.push(format!("gInput_RiskManagementEnabled_Sell={}", if rm_s.enabled { 1 } else { 0 }));
-        lines.push(format!("gInput_UseSpreadFilter_Sell={}", if rm_s.spread_filter_enabled { 1 } else { 0 }));
-        lines.push(format!("gInput_MaxSpreadPoints_Sell={:.1}", rm_s.max_spread_points));
-        lines.push(format!("gInput_UseEquityStop_Sell={}", if rm_s.equity_stop_enabled { 1 } else { 0 }));
-        lines.push(format!("gInput_EquityStopValue_Sell={:.1}", rm_s.equity_stop_value));
-        lines.push(format!("gInput_UseDrawdownStop_Sell={}", if rm_s.drawdown_stop_enabled { 1 } else { 0 }));
-        lines.push(format!("gInput_MaxDrawdownPercent_Sell={:.1}", rm_s.max_drawdown_percent));
-    }
-    
-    // ===== NEWS FILTER =====
-    lines.push(String::new());
-    lines.push("; === NEWS FILTER ===".to_string());
-    let nf = &config.general.news_filter;
-    lines.push(format!("gInput_EnableNewsFilter={}", if nf.enabled { 1 } else { 0 }));
-    lines.push(format!("gInput_NewsFilterEnabled={}", if nf.enabled { 1 } else { 0 }));
-    lines.push(format!("gInput_NewsAPIKey={}", nf.api_key));
-    lines.push(format!("gInput_NewsAPIURL={}", nf.api_url));
-    lines.push(format!("gInput_NewsFilterCountries={}", nf.countries));
-    lines.push(format!("gInput_NewsImpactLevel={}", nf.impact_level));
-    lines.push(format!("gInput_MinutesBeforeNews={}", nf.minutes_before));
-    lines.push(format!("gInput_MinutesAfterNews={}", nf.minutes_after));
-    // Convert 3 boolean fields to news action enum
-    // stop_ea=false -> 0 (None)
-    // stop_ea=true, close=false, restart=false -> 2 (StopEA_KeepTrades)
-    // stop_ea=true, close=false, restart=true -> 7 (PauseEA_KeepTrades)
-    // stop_ea=true, close=true, restart=false -> 5 (StopEA_CloseTrades)
-    // stop_ea=true, close=true, restart=true -> 6 (PauseEA_CloseTrades)
-    let news_action = if !nf.stop_ea {
-        0 // TriggerAction_None
-    } else if nf.close_trades && nf.auto_restart {
-        6 // TriggerAction_PauseEA_CloseTrades
-    } else if nf.close_trades && !nf.auto_restart {
-        5 // TriggerAction_StopEA_CloseTrades
-    } else if !nf.close_trades && nf.auto_restart {
-        7 // TriggerAction_PauseEA_KeepTrades
-    } else {
-        2 // TriggerAction_StopEA_KeepTrades (default)
-    };
-    lines.push(format!("gInput_NewsAction={}", news_action));
-    lines.push(format!("gInput_NewsStopEA={}", if nf.stop_ea { 1 } else { 0 }));
-    lines.push(format!("gInput_NewsCloseTrades={}", if nf.close_trades { 1 } else { 0 }));
-    lines.push(format!("gInput_NewsAutoRestart={}", if nf.auto_restart { 1 } else { 0 }));
-    lines.push(format!("gInput_NewsCheckInterval={}", nf.check_interval));
-    lines.push(format!("gInput_FilterHighImpactOnly={}", if nf.filter_high_only { 1 } else { 0 }));
-    lines.push(format!("gInput_FilterWeekendNews={}", if nf.filter_weekends { 1 } else { 0 }));
-    lines.push(format!("gInput_UseLocalNewsCache={}", if nf.use_local_cache { 1 } else { 0 }));
-    lines.push(format!("gInput_NewsCacheDuration={}", nf.cache_duration));
-    lines.push(format!("gInput_NewsFallbackOnError={}", nf.fallback_on_error));
-    lines.push(format!("gInput_FilterCurrencies={}", nf.filter_currencies));
-    lines.push(format!("gInput_IncludeSpeeches={}", if nf.include_speeches { 1 } else { 0 }));
-    lines.push(format!("gInput_IncludeReports={}", if nf.include_reports { 1 } else { 0 }));
-    lines.push(format!("gInput_NewsVisualIndicator={}", if nf.visual_indicator { 1 } else { 0 }));
-    lines.push(format!("gInput_AlertBeforeNews={}", if nf.alert_before_news { 1 } else { 0 }));
-    lines.push(format!("gInput_AlertMinutesBefore={}", nf.alert_minutes));
-    let key_news_calendar = "gInput_NewsCalendarFile".to_string();
-    let news_calendar_fallback = nf.calendar_file.clone();
-    lines.push(format!("{}={}", key_news_calendar, news_calendar_fallback));
-    
-    // ===== NEWS FILTER BUY/SELL =====
-    if let Some(nf_b) = &config.general.news_filter_b {
-        lines.push(String::new());
-        lines.push("; === NEWS FILTER BUY ===".to_string());
-        lines.push(format!("gInput_NewsFilterEnabled_Buy={}", if nf_b.enabled { 1 } else { 0 }));
-        lines.push(format!("gInput_MinutesBeforeNews_Buy={}", nf_b.minutes_before));
-        lines.push(format!("gInput_MinutesAfterNews_Buy={}", nf_b.minutes_after));
-        lines.push(format!("gInput_NewsImpactLevel_Buy={}", nf_b.impact_level));
-        lines.push(format!("gInput_NewsStopEA_Buy={}", if nf_b.stop_ea { 1 } else { 0 }));
-        lines.push(format!("gInput_NewsCloseTrades_Buy={}", if nf_b.close_trades { 1 } else { 0 }));
-        lines.push(format!("gInput_NewsAutoRestart_Buy={}", if nf_b.auto_restart { 1 } else { 0 }));
-        lines.push(format!("gInput_IncludeReports_Buy={}", if nf_b.include_reports { 1 } else { 0 }));
-        lines.push(format!("gInput_NewsVisualIndicator_Buy={}", if nf_b.visual_indicator { 1 } else { 0 }));
-        lines.push(format!("gInput_AlertBeforeNews_Buy={}", if nf_b.alert_before_news { 1 } else { 0 }));
-        lines.push(format!("gInput_AlertMinutesBefore_Buy={}", nf_b.alert_minutes));
-        let news_calendar_b = nf_b.calendar_file.clone();
-        lines.push(format!("gInput_NewsCalendarFile_Buy={}", news_calendar_b));
-    }
-    if let Some(nf_s) = &config.general.news_filter_s {
-        lines.push(String::new());
-        lines.push("; === NEWS FILTER SELL ===".to_string());
-        lines.push(format!("gInput_NewsFilterEnabled_Sell={}", if nf_s.enabled { 1 } else { 0 }));
-        lines.push(format!("gInput_MinutesBeforeNews_Sell={}", nf_s.minutes_before));
-        lines.push(format!("gInput_MinutesAfterNews_Sell={}", nf_s.minutes_after));
-        lines.push(format!("gInput_NewsImpactLevel_Sell={}", nf_s.impact_level));
-        lines.push(format!("gInput_NewsStopEA_Sell={}", if nf_s.stop_ea { 1 } else { 0 }));
-        lines.push(format!("gInput_NewsCloseTrades_Sell={}", if nf_s.close_trades { 1 } else { 0 }));
-        lines.push(format!("gInput_NewsAutoRestart_Sell={}", if nf_s.auto_restart { 1 } else { 0 }));
-        lines.push(format!("gInput_IncludeReports_Sell={}", if nf_s.include_reports { 1 } else { 0 }));
-        lines.push(format!("gInput_NewsVisualIndicator_Sell={}", if nf_s.visual_indicator { 1 } else { 0 }));
-        lines.push(format!("gInput_AlertBeforeNews_Sell={}", if nf_s.alert_before_news { 1 } else { 0 }));
-        lines.push(format!("gInput_AlertMinutesBefore_Sell={}", nf_s.alert_minutes));
-        let news_calendar_s = nf_s.calendar_file.clone();
-        lines.push(format!("gInput_NewsCalendarFile_Sell={}", news_calendar_s));
-    }
-    
-    // ===== TIME FILTERS =====
-    lines.push(String::new());
-    lines.push("; === TIME FILTERS ===".to_string());
-    let tf = &config.general.time_filters;
-    lines.push(format!("gInput_TimeFiltersEnabled={}", if tf.enabled { 1 } else { 0 }));
-    lines.push(format!(
-        "gInput_NewsFilterOverridesSession={}",
-        if tf.priority_settings.news_filter_overrides_session { 1 } else { 0 }
-    ));
-    lines.push(format!(
-        "gInput_SessionFilterOverridesNews={}",
-        if tf.priority_settings.session_filter_overrides_news { 1 } else { 0 }
-    ));
-    lines.push(format!("gInput_NewsOverridesSession={}", if tf.priority_settings.news_filter_overrides_session { 1 } else { 0 }));
-    lines.push(format!("gInput_SessionOverridesNews={}", if tf.priority_settings.session_filter_overrides_news { 1 } else { 0 }));
-    lines.push(format!("gInput_SessionFilterEnabled={}", if !tf.sessions.is_empty() { 1 } else { 0 }));
-    
-    // Sessions 1-7
-    for session in &tf.sessions {
-        let s = session;
-        lines.push(format!("gInput_Session{}Enabled={}", s.session_number, if s.enabled { 1 } else { 0 }));
-        lines.push(format!("gInput_Session{}Day={}", s.session_number, s.day));
-        lines.push(format!("gInput_Session{}StartHour={}", s.session_number, s.start_hour));
-        lines.push(format!("gInput_Session{}StartMinute={}", s.session_number, s.start_minute));
-        lines.push(format!("gInput_Session{}EndHour={}", s.session_number, s.end_hour));
-        lines.push(format!("gInput_Session{}EndMinute={}", s.session_number, s.end_minute));
-        lines.push(format!(
-            "gInput_Session{}Action={}",
-            s.session_number,
-            trigger_action_to_int(&s.action)
-        ));
-    }
-    
-    // ===== TIME FILTERS BUY/SELL =====
-    if let Some(tf_b) = &config.general.time_filters_b {
-        lines.push(String::new());
-        lines.push("; === TIME FILTERS BUY ===".to_string());
-        lines.push(format!("gInput_TimeFiltersEnabled_Buy={}", if tf_b.enabled { 1 } else { 0 }));
-        lines.push(format!(
-            "gInput_NewsFilterOverridesSession_Buy={}",
-            if tf_b.priority_settings.news_filter_overrides_session { 1 } else { 0 }
-        ));
-        lines.push(format!(
-            "gInput_SessionFilterOverridesNews_Buy={}",
-            if tf_b.priority_settings.session_filter_overrides_news { 1 } else { 0 }
-        ));
-        lines.push(format!(
-            "gInput_SessionFilterEnabled_Buy={}",
-            if !tf_b.sessions.is_empty() { 1 } else { 0 }
-        ));
-        for session in &tf_b.sessions {
-            let s = session;
-            lines.push(format!("gInput_Session{}Enabled_Buy={}", s.session_number, if s.enabled { 1 } else { 0 }));
-            lines.push(format!("gInput_Session{}Day_Buy={}", s.session_number, s.day));
-            lines.push(format!("gInput_Session{}StartHour_Buy={}", s.session_number, s.start_hour));
-            lines.push(format!("gInput_Session{}StartMinute_Buy={}", s.session_number, s.start_minute));
-            lines.push(format!("gInput_Session{}EndHour_Buy={}", s.session_number, s.end_hour));
-            lines.push(format!("gInput_Session{}EndMinute_Buy={}", s.session_number, s.end_minute));
-            lines.push(format!(
-                "gInput_Session{}Action_Buy={}",
-                s.session_number,
-                trigger_action_to_int(&s.action)
-            ));
-        }
-    }
-    if let Some(tf_s) = &config.general.time_filters_s {
-        lines.push(String::new());
-        lines.push("; === TIME FILTERS SELL ===".to_string());
-        lines.push(format!("gInput_TimeFiltersEnabled_Sell={}", if tf_s.enabled { 1 } else { 0 }));
-        lines.push(format!(
-            "gInput_NewsFilterOverridesSession_Sell={}",
-            if tf_s.priority_settings.news_filter_overrides_session { 1 } else { 0 }
-        ));
-        lines.push(format!(
-            "gInput_SessionFilterOverridesNews_Sell={}",
-            if tf_s.priority_settings.session_filter_overrides_news { 1 } else { 0 }
-        ));
-        lines.push(format!(
-            "gInput_SessionFilterEnabled_Sell={}",
-            if !tf_s.sessions.is_empty() { 1 } else { 0 }
-        ));
-        for session in &tf_s.sessions {
-            let s = session;
-            lines.push(format!("gInput_Session{}Enabled_Sell={}", s.session_number, if s.enabled { 1 } else { 0 }));
-            lines.push(format!("gInput_Session{}Day_Sell={}", s.session_number, s.day));
-            lines.push(format!("gInput_Session{}StartHour_Sell={}", s.session_number, s.start_hour));
-            lines.push(format!("gInput_Session{}StartMinute_Sell={}", s.session_number, s.start_minute));
-            lines.push(format!("gInput_Session{}EndHour_Sell={}", s.session_number, s.end_hour));
-            lines.push(format!("gInput_Session{}EndMinute_Sell={}", s.session_number, s.end_minute));
-            lines.push(format!(
-                "gInput_Session{}Action_Sell={}",
-                s.session_number,
-                trigger_action_to_int(&s.action)
-            ));
-        }
-    }
-    
-    lines.push(String::new());
+        .unwrap_or(&config.general.risk_management);
+    let default_risk_s = config
+        .general
+        .risk_management_s
+        .as_ref()
+        .unwrap_or(&config.general.risk_management);
+    let default_news_b = config
+        .general
+        .news_filter_b
+        .as_ref()
+        .unwrap_or(&config.general.news_filter);
+    let default_news_s = config
+        .general
+        .news_filter_s
+        .as_ref()
+        .unwrap_or(&config.general.news_filter);
+    let default_time_b = config
+        .general
+        .time_filters_b
+        .as_ref()
+        .unwrap_or(&config.general.time_filters);
+    let default_time_s = config
+        .general
+        .time_filters_s
+        .as_ref()
+        .unwrap_or(&config.general.time_filters);
 
     let encode_trail_method = |raw: &str| -> i32 {
         let upper = raw.to_uppercase();
@@ -3348,115 +2977,64 @@ pub fn export_massive_v19_setfile(
 
                     let key_trigger_type =
                         format!("gInput_{}_{}_{}_TriggerType", group_num, v19_suffix, direction);
-                    let trigger_type_fallback = logic
-                        .trigger_type
-                        .as_deref()
-                        .map(normalize_trigger_type)
-                        .unwrap_or_else(|| "".to_string());
-                    if trigger_type_fallback == "0" {
-                        trigger_type_immediate_count += 1;
+                    if let Some(raw) = logic.trigger_type.as_deref() {
+                        let trigger_type_val = normalize_trigger_type(raw);
+                        if trigger_type_val == "0" {
+                            trigger_type_immediate_count += 1;
+                        }
+                        lines.push(format!("{}={}", key_trigger_type, trigger_type_val));
                     }
-                    lines.push(format!(
-                        "{}={}",
-                        key_trigger_type,
-                        trigger_type_fallback
-                    ));
                     let key_trigger_mode =
                         format!("gInput_{}_{}_{}_TriggerMode", group_num, v19_suffix, direction);
-                    let trigger_mode_fallback = logic
-                        .trigger_mode
-                        .as_deref()
-                        .map(encode_trigger_mode)
-                        .map(|v| v.to_string())
-                        .unwrap_or_else(|| encode_trigger_mode("TriggerMode_OnTick").to_string());
-                    if trigger_mode_fallback == "0" {
-                        trigger_mode_ontick_count += 1;
+                    if let Some(raw) = logic.trigger_mode.as_deref() {
+                        let trigger_mode_val = encode_trigger_mode(raw).to_string();
+                        if trigger_mode_val == "0" {
+                            trigger_mode_ontick_count += 1;
+                        }
+                        lines.push(format!("{}={}", key_trigger_mode, trigger_mode_val));
                     }
-                    lines.push(format!(
-                        "{}={}",
-                        key_trigger_mode,
-                        trigger_mode_fallback
-                    ));
                     let key_trigger_bars =
                         format!("gInput_{}_{}_{}_TriggerBars", group_num, v19_suffix, direction);
-                    let trigger_bars_fallback = logic
-                        .trigger_bars
-                        .map(|v| v.to_string())
-                        .unwrap_or_else(|| "".to_string());
-                    lines.push(format!(
-                        "{}={}",
-                        key_trigger_bars,
-                        trigger_bars_fallback
-                    ));
+                    if let Some(v) = logic.trigger_bars {
+                        lines.push(format!("{}={}", key_trigger_bars, v));
+                    }
                     let key_trigger_seconds =
                         format!("gInput_{}_{}_{}_TriggerSeconds", group_num, v19_suffix, direction);
-                    let trigger_seconds_fallback = logic
-                        .trigger_seconds
-                        .map(|v| v.to_string())
-                        .unwrap_or_else(|| "".to_string());
-                    lines.push(format!(
-                        "{}={}",
-                        key_trigger_seconds,
-                        trigger_seconds_fallback
-                    ));
+                    if let Some(v) = logic.trigger_seconds {
+                        lines.push(format!("{}={}", key_trigger_seconds, v));
+                    }
                     let key_trigger_pips =
                         format!("gInput_{}_{}_{}_TriggerPips", group_num, v19_suffix, direction);
-                    let trigger_pips_fallback = logic
-                        .trigger_pips
-                        .map(|v| format!("{:.1}", v))
-                        .unwrap_or_else(|| "".to_string());
-                    lines.push(format!(
-                        "{}={}",
-                        key_trigger_pips,
-                        trigger_pips_fallback
-                    ));
+                    if let Some(v) = logic.trigger_pips {
+                        lines.push(format!("{}={:.1}", key_trigger_pips, v));
+                    }
                     let key_trigger_points =
                         format!("gInput_{}_{}_{}_TriggerPoints", group_num, v19_suffix, direction);
-                    let trigger_points_fallback = logic
-                        .trigger_points
-                        .map(|v| format!("{:.1}", v))
-                        .unwrap_or_else(|| "".to_string());
-                    lines.push(format!(
-                        "{}={}",
-                        key_trigger_points,
-                        trigger_points_fallback
-                    ));
+                    if let Some(v) = logic.trigger_points {
+                        lines.push(format!("{}={:.1}", key_trigger_points, v));
+                    }
                     let key_start_op_count =
                         format!("gInput_{}_{}_{}_StartOpCount", group_num, v19_suffix, direction);
-                    let start_op_count_fallback = logic
-                        .start_op_count
-                        .map(|v| v.to_string())
-                        .unwrap_or_else(|| "".to_string());
-                    lines.push(format!(
-                        "{}={}",
-                        key_start_op_count,
-                        start_op_count_fallback
-                    ));
+                    if let Some(v) = logic.start_op_count {
+                        lines.push(format!("{}={}", key_start_op_count, v));
+                    }
                     let key_opcount_ref =
                         format!("gInput_{}_{}_{}_OpCountRef", group_num, v19_suffix, direction);
-                    let opcount_ref_fallback = logic
-                        .opcount_ref
-                        .clone()
-                        .unwrap_or_else(|| "".to_string());
-                    lines.push(format!(
-                        "{}={}",
-                        key_opcount_ref,
-                        opcount_ref_fallback
-                    ));
+                    if let Some(v) = logic.opcount_ref.as_ref() {
+                        if !v.trim().is_empty() {
+                            lines.push(format!("{}={}", key_opcount_ref, v));
+                        }
+                    }
                     if group_num == 1 && !is_engine_a_power(&engine.engine_id, logic_name) {
                         let key_start_level_ref = format!(
                             "gInput_{}_{}_{}_StartLevelRef",
                             group_num, v19_suffix, direction
                         );
-                        let start_level_ref_fallback = logic
-                            .start_level_ref
-                            .clone()
-                            .unwrap_or_else(|| "".to_string());
-                        lines.push(format!(
-                            "{}={}",
-                            key_start_level_ref,
-                            start_level_ref_fallback
-                        ));
+                        if let Some(v) = logic.start_level_ref.as_ref() {
+                            if !v.trim().is_empty() {
+                                lines.push(format!("{}={}", key_start_level_ref, v));
+                            }
+                        }
                     }
 
                     let order_count_reference_export = if group_num == 1 {
@@ -3464,10 +3042,12 @@ pub fn export_massive_v19_setfile(
                     } else {
                         "".to_string()
                     };
-                    lines.push(format!(
-                        "gInput_{}_{}_{}_OrderCountReferenceLogic={}",
-                        group_num, v19_suffix, direction, order_count_reference_export
-                    ));
+                    if !order_count_reference_export.trim().is_empty() {
+                        lines.push(format!(
+                            "gInput_{}_{}_{}_OrderCountReferenceLogic={}",
+                            group_num, v19_suffix, direction, order_count_reference_export
+                        ));
+                    }
                     // StartLevel is a Group 1-only field for NON-POWER logics.
                     // Power logics use TriggerType only - they do NOT use StartLevel.
                     // Single source of truth: only export StartLevel for non-Power logics when explicitly present.
@@ -3647,44 +3227,6 @@ pub fn export_massive_v19_setfile(
                         lines.push(format!("{}={}", key_partial_profit_threshold, threshold_value));
                     }
 
-                    let key_profit_enabled = format!(
-                        "gInput_{}_{}_{}_ProfitTrailEnabled",
-                        group_num, v19_suffix, direction
-                    );
-                    lines.push(format!(
-                        "{}={}",
-                        key_profit_enabled,
-                        "".to_string()
-                    ));
-                    let key_profit_peak_drop = format!(
-                        "gInput_{}_{}_{}_ProfitTrailPeakDropPercent",
-                        group_num, v19_suffix, direction
-                    );
-                    lines.push(format!(
-                        "{}={}",
-                        key_profit_peak_drop,
-                        "".to_string()
-                    ));
-                    let key_profit_lock_percent = format!(
-                        "gInput_{}_{}_{}_ProfitTrailLockPercent",
-                        group_num, v19_suffix, direction
-                    );
-                    lines.push(format!(
-                        "{}={}",
-                        key_profit_lock_percent,
-                        "".to_string()
-                    ));
-                    let key_profit_close_on_trigger = format!(
-                        "gInput_{}_{}_{}_ProfitTrailCloseOnTrigger",
-                        group_num, v19_suffix, direction
-                    );
-                    lines.push(format!(
-                        "{}={}",
-                        key_profit_close_on_trigger,
-                        "".to_string()
-                    ));
-
-
                     lines.push(format!(
                         "gInput_{}_{}_{}_ReverseEnabled={}",
                         group_num,
@@ -3733,6 +3275,527 @@ pub fn export_massive_v19_setfile(
                         "gInput_{}_{}_{}_CloseTargets={}",
                         group_num, v19_suffix, direction, logic.close_targets
                     ));
+
+                    // ===== PER-LOGIC RISK / NEWS / TIME (directional) =====
+                    let risk_cfg = if is_buy {
+                        logic.risk_management_b.as_ref().unwrap_or(default_risk_b)
+                    } else {
+                        logic.risk_management_s.as_ref().unwrap_or(default_risk_s)
+                    };
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_RiskManagementEnabled={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        if risk_cfg.enabled { 1 } else { 0 }
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_SpreadFilterEnabled={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        if risk_cfg.spread_filter_enabled { 1 } else { 0 }
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_MaxSpreadPoints={:.1}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        risk_cfg.max_spread_points
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_SlippageEnabled={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        if risk_cfg.slippage_enabled { 1 } else { 0 }
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_MaxSlippagePoints={:.1}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        risk_cfg.max_slippage_points
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_EquityStopEnabled={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        if risk_cfg.equity_stop_enabled { 1 } else { 0 }
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_EquityStopValue={:.1}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        risk_cfg.equity_stop_value
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_DrawdownStopEnabled={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        if risk_cfg.drawdown_stop_enabled { 1 } else { 0 }
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_MaxDrawdownPercent={:.1}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        risk_cfg.max_drawdown_percent
+                    ));
+                    let risk_action_raw = risk_cfg
+                        .risk_action
+                        .as_deref()
+                        .unwrap_or("TriggerAction_StopEA_KeepTrades");
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_RiskAction={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        trigger_action_to_int(risk_action_raw)
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_EquityProtectionEnabled={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        if risk_cfg.equity_protection_enabled { 1 } else { 0 }
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_EquityProtectionUseEquity={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        if risk_cfg.equity_protection_use_equity { 1 } else { 0 }
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_EquityProtectionDrawdownEnabled={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        if risk_cfg.equity_protection_drawdown_enabled { 1 } else { 0 }
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_EquityProtectionDrawdownValue={:.1}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        risk_cfg.equity_protection_drawdown_value
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_EquityProtectionProfitEnabled={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        if risk_cfg.equity_protection_profit_enabled { 1 } else { 0 }
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_EquityProtectionProfitValue={:.1}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        risk_cfg.equity_protection_profit_value
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_EquityProtectionMarginEnabled={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        if risk_cfg.equity_protection_margin_enabled { 1 } else { 0 }
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_EquityProtectionMarginValue={:.1}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        risk_cfg.equity_protection_margin_value
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_EquityProtectionStopEA={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        if risk_cfg.equity_protection_stop_ea { 1 } else { 0 }
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_EquityProtectionCloseTrades={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        if risk_cfg.equity_protection_close_trades { 1 } else { 0 }
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_EquityProtectionRestartMode={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        restart_mode_to_int(&risk_cfg.equity_protection_restart_mode)
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_BalanceProtectionEnabled={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        if risk_cfg.balance_protection_enabled { 1 } else { 0 }
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_BalanceProtectionUseEquity={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        if risk_cfg.balance_protection_use_equity { 1 } else { 0 }
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_BalanceProtectionDrawdownEnabled={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        if risk_cfg.balance_protection_drawdown_enabled { 1 } else { 0 }
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_BalanceProtectionDrawdownValue={:.1}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        risk_cfg.balance_protection_drawdown_value
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_BalanceProtectionProfitEnabled={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        if risk_cfg.balance_protection_profit_enabled { 1 } else { 0 }
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_BalanceProtectionProfitValue={:.1}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        risk_cfg.balance_protection_profit_value
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_BalanceProtectionMarginEnabled={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        if risk_cfg.balance_protection_margin_enabled { 1 } else { 0 }
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_BalanceProtectionMarginValue={:.1}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        risk_cfg.balance_protection_margin_value
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_BalanceProtectionStopEA={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        if risk_cfg.balance_protection_stop_ea { 1 } else { 0 }
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_BalanceProtectionCloseTrades={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        if risk_cfg.balance_protection_close_trades { 1 } else { 0 }
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_BalanceProtectionRestartMode={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        restart_mode_to_int(&risk_cfg.balance_protection_restart_mode)
+                    ));
+
+                    let news_cfg = if is_buy {
+                        logic.news_filter_b.as_ref().unwrap_or(default_news_b)
+                    } else {
+                        logic.news_filter_s.as_ref().unwrap_or(default_news_s)
+                    };
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_NewsFilterEnabled={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        if news_cfg.enabled { 1 } else { 0 }
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_NewsImpactLevel={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        news_cfg.impact_level
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_NewsMinutesBefore={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        news_cfg.minutes_before
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_NewsMinutesAfter={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        news_cfg.minutes_after
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_NewsCountries={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        news_cfg.countries
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_NewsApiUrl={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        news_cfg.api_url
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_NewsApiKey={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        news_cfg.api_key
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_NewsStopEA={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        if news_cfg.stop_ea { 1 } else { 0 }
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_NewsCloseTrades={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        if news_cfg.close_trades { 1 } else { 0 }
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_NewsAutoRestart={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        if news_cfg.auto_restart { 1 } else { 0 }
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_NewsRestartMode={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        restart_mode_to_int(&news_cfg.restart_mode)
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_NewsCalendarFile={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        news_cfg.calendar_file
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_NewsCheckInterval={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        news_cfg.check_interval
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_AlertMinutesBefore={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        news_cfg.alert_minutes
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_FilterHighImpactOnly={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        if news_cfg.filter_high_only { 1 } else { 0 }
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_FilterWeekendNews={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        if news_cfg.filter_weekends { 1 } else { 0 }
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_UseLocalNewsCache={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        if news_cfg.use_local_cache { 1 } else { 0 }
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_NewsCacheDuration={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        news_cfg.cache_duration
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_NewsFallbackOnError={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        news_cfg.fallback_on_error
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_FilterCurrencies={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        news_cfg.filter_currencies
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_IncludeSpeeches={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        if news_cfg.include_speeches { 1 } else { 0 }
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_IncludeReports={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        if news_cfg.include_reports { 1 } else { 0 }
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_NewsVisualIndicator={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        if news_cfg.visual_indicator { 1 } else { 0 }
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_AlertBeforeNews={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        if news_cfg.alert_before_news { 1 } else { 0 }
+                    ));
+
+                    let time_cfg = if is_buy {
+                        logic.time_filters_b.as_ref().unwrap_or(default_time_b)
+                    } else {
+                        logic.time_filters_s.as_ref().unwrap_or(default_time_s)
+                    };
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_TimeFiltersEnabled={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        if time_cfg.enabled { 1 } else { 0 }
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_NewsFilterOverridesSession={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        if time_cfg.priority_settings.news_filter_overrides_session { 1 } else { 0 }
+                    ));
+                    lines.push(format!(
+                        "gInput_{}_{}_{}_SessionFilterOverridesNews={}",
+                        group_num,
+                        v19_suffix,
+                        direction,
+                        if time_cfg.priority_settings.session_filter_overrides_news { 1 } else { 0 }
+                    ));
+                    for session_num in 1..=7 {
+                        let session = time_cfg
+                            .sessions
+                            .iter()
+                            .find(|s| s.session_number == session_num)
+                            .cloned()
+                            .unwrap_or_else(|| default_session_config(session_num));
+                        let session_id = if session.session_number > 0 {
+                            session.session_number
+                        } else {
+                            session_num
+                        };
+                        lines.push(format!(
+                            "gInput_{}_{}_{}_Session{}Enabled={}",
+                            group_num,
+                            v19_suffix,
+                            direction,
+                            session_id,
+                            if session.enabled { 1 } else { 0 }
+                        ));
+                        lines.push(format!(
+                            "gInput_{}_{}_{}_Session{}Day={}",
+                            group_num,
+                            v19_suffix,
+                            direction,
+                            session_id,
+                            session.day
+                        ));
+                        lines.push(format!(
+                            "gInput_{}_{}_{}_Session{}StartHour={}",
+                            group_num,
+                            v19_suffix,
+                            direction,
+                            session_id,
+                            session.start_hour
+                        ));
+                        lines.push(format!(
+                            "gInput_{}_{}_{}_Session{}StartMinute={}",
+                            group_num,
+                            v19_suffix,
+                            direction,
+                            session_id,
+                            session.start_minute
+                        ));
+                        lines.push(format!(
+                            "gInput_{}_{}_{}_Session{}EndHour={}",
+                            group_num,
+                            v19_suffix,
+                            direction,
+                            session_id,
+                            session.end_hour
+                        ));
+                        lines.push(format!(
+                            "gInput_{}_{}_{}_Session{}EndMinute={}",
+                            group_num,
+                            v19_suffix,
+                            direction,
+                            session_id,
+                            session.end_minute
+                        ));
+                        lines.push(format!(
+                            "gInput_{}_{}_{}_Session{}StopEA={}",
+                            group_num,
+                            v19_suffix,
+                            direction,
+                            session_id,
+                            if session.stop_ea { 1 } else { 0 }
+                        ));
+                        lines.push(format!(
+                            "gInput_{}_{}_{}_Session{}CloseTrades={}",
+                            group_num,
+                            v19_suffix,
+                            direction,
+                            session_id,
+                            if session.close_trades { 1 } else { 0 }
+                        ));
+                        lines.push(format!(
+                            "gInput_{}_{}_{}_Session{}RestartMode={}",
+                            group_num,
+                            v19_suffix,
+                            direction,
+                            session_id,
+                            restart_mode_to_int(&session.restart_mode)
+                        ));
+                    }
 
                     lines.push(String::new());
                 }
@@ -4438,6 +4501,41 @@ pub async fn import_json_file(file_path: String) -> Result<MTConfig, String> {
     config.deobfuscate_sensitive_fields(); // Deobfuscate
 
     Ok(config)
+}
+
+fn get_appdata_config_path() -> Result<PathBuf, String> {
+    let base = dirs::data_dir().ok_or_else(|| "Failed to resolve app data directory".to_string())?;
+    let dir = base.join("DAAVFX_Dashboard");
+    if !dir.exists() {
+        fs::create_dir_all(&dir)
+            .map_err(|e| format!("Failed to create app data directory: {}", e))?;
+    }
+    Ok(dir.join("last_config.json"))
+}
+
+/// Save current config to AppData JSON (avoids localStorage quotas)
+#[cfg_attr(feature = "tauri-app", tauri::command(rename_all = "camelCase"))]
+pub async fn save_appdata_config(config: MTConfig) -> Result<String, String> {
+    let path = get_appdata_config_path()?;
+    let json_str =
+        serde_json::to_string_pretty(&config).map_err(|e| format!("Failed to serialize config: {}", e))?;
+    atomic_write(&path, &json_str)?;
+    Ok(path.to_string_lossy().to_string())
+}
+
+/// Load last config from AppData JSON (returns None if missing)
+#[cfg_attr(feature = "tauri-app", tauri::command(rename_all = "camelCase"))]
+pub async fn load_appdata_config() -> Result<Option<MTConfig>, String> {
+    let path = get_appdata_config_path()?;
+    if !path.exists() {
+        return Ok(None);
+    }
+    let json_str = fs::read_to_string(&path)
+        .map_err(|e| format!("Failed to read AppData config: {}", e))?;
+    let mut config: MTConfig =
+        serde_json::from_str(&json_str).map_err(|e| format!("Failed to parse AppData config: {}", e))?;
+    config.deobfuscate_sensitive_fields();
+    Ok(Some(config))
 }
 
 /// Write text content to a file (for exporting generated setfile content)
@@ -5266,6 +5364,42 @@ fn trigger_action_from_raw(raw: &str) -> String {
     }
 }
 
+fn restart_mode_to_int(mode: &str) -> i32 {
+    let s = mode.trim();
+    if let Ok(n) = s.parse::<i32>() {
+        return n;
+    }
+    match s {
+        "RestartMode_Disable" => 0,
+        "RestartMode_Stop" => 1,
+        "RestartMode_Trigger" => 2,
+        _ => 0,
+    }
+}
+
+fn restart_mode_from_raw(raw: &str) -> String {
+    let s = raw.trim();
+    if s.is_empty() {
+        return "RestartMode_Disable".to_string();
+    }
+    if let Ok(n) = s.parse::<i32>() {
+        return match n {
+            0 => "RestartMode_Disable",
+            1 => "RestartMode_Stop",
+            2 => "RestartMode_Trigger",
+            _ => "RestartMode_Disable",
+        }
+        .to_string();
+    }
+    let lower = s.to_ascii_lowercase();
+    match lower.as_str() {
+        "restartmode_disable" => "RestartMode_Disable".to_string(),
+        "restartmode_stop" => "RestartMode_Stop".to_string(),
+        "restartmode_trigger" => "RestartMode_Trigger".to_string(),
+        _ => "RestartMode_Disable".to_string(),
+    }
+}
+
 fn news_flags_from_action_int(action: i32) -> (bool, bool, bool) {
     match action {
         0 => (false, false, false),
@@ -5551,39 +5685,8 @@ fn build_config_from_values(
         );
     }
 
-    // Build sessions
-    let mut sessions = Vec::new();
-    for i in 1..=7 {
-        sessions.push(SessionConfig {
-            session_number: i,
-            enabled: get_bool(values, &format!("gInput_Session{}Enabled", i)),
-            day: get_i32(values, &format!("gInput_Session{}Day", i), i % 7),
-            start_hour: get_i32(values, &format!("gInput_Session{}StartHour", i), 9),
-            start_minute: get_i32(values, &format!("gInput_Session{}StartMinute", i), 30),
-            end_hour: get_i32(values, &format!("gInput_Session{}EndHour", i), 17),
-            end_minute: get_i32(values, &format!("gInput_Session{}EndMinute", i), 0),
-            action: get_string(
-                values,
-                &format!("gInput_Session{}Action", i),
-                "Action_Default",
-            ),
-            auto_restart: get_bool(values, &format!("gInput_Session{}AutoRestart", i)),
-            restart_mode: get_string(
-                values,
-                &format!("gInput_Session{}RestartMode", i),
-                "Restart_Default",
-            ),
-            restart_bars: get_i32(values, &format!("gInput_Session{}RestartBars", i), 0),
-            restart_minutes: get_i32(values, &format!("gInput_Session{}RestartMinutes", i), 0),
-            restart_pips: get_i32(values, &format!("gInput_Session{}RestartPips", i), 0),
-        });
-    }
-
-    let news_action_flags = values
-        .get("gInput_NewsAction")
-        .and_then(|v| v.trim().parse::<i32>().ok())
-        .map(news_flags_from_action_int)
-        .unwrap_or((true, false, true));
+    // Default sessions (legacy global session keys removed)
+    let sessions: Vec<SessionConfig> = (1..=7).map(default_session_config).collect();
 
     // Build general config
     let general = GeneralConfig {
@@ -5632,208 +5735,84 @@ fn build_config_from_values(
             &["gInput_MagicNumberSell", "gInput_MagicNumberPowerSell"],
             8988,
         ),
-        max_slippage_points: get_f64_first(values, &["gInput_MaxSlippagePoints", "gInput_MaxSlippage"], 30.0),
+        max_slippage_points: 30.0,
         reverse_magic_base: get_i32(values, "gInput_MagicNumberReverseBase", 20000),
         hedge_magic_base: get_i32(values, "gInput_MagicNumberHedgeBase", 30000),
         hedge_magic_independent: get_bool_first(values, &["gInput_HedgeMagicIndependent"]),
         risk_management: RiskManagementConfig {
-            enabled: get_bool(values, "gInput_RiskManagementEnabled"),
-            spread_filter_enabled: get_bool(values, "gInput_UseSpreadFilter"),
-            max_spread_points: get_f64(values, "gInput_MaxSpreadPoints", 25.0),
-            equity_stop_enabled: get_bool(values, "gInput_UseEquityStop"),
-            equity_stop_value: get_f64(values, "gInput_EquityStopValue", 35.0),
-            drawdown_stop_enabled: get_bool(values, "gInput_UseDrawdownStop"),
-            max_drawdown_percent: get_f64(values, "gInput_MaxDrawdownPercent", 35.0),
-            risk_action: {
-                let s = get_string(values, "gInput_RiskAction", "");
-                if s.is_empty() {
-                    None
-                } else {
-                    Some(s)
-                }
-            },
+            enabled: false,
+            spread_filter_enabled: false,
+            max_spread_points: 25.0,
+            slippage_enabled: false,
+            max_slippage_points: 30.0,
+            equity_stop_enabled: false,
+            equity_stop_value: 35.0,
+            drawdown_stop_enabled: false,
+            max_drawdown_percent: 35.0,
+            risk_action: None,
+            equity_protection_enabled: false,
+            equity_protection_use_equity: true,
+            equity_protection_drawdown_enabled: false,
+            equity_protection_drawdown_value: 35.0,
+            equity_protection_profit_enabled: false,
+            equity_protection_profit_value: 100.0,
+            equity_protection_margin_enabled: false,
+            equity_protection_margin_value: 150.0,
+            equity_protection_stop_ea: true,
+            equity_protection_close_trades: false,
+            equity_protection_restart_mode: "RestartMode_Disable".to_string(),
+            balance_protection_enabled: false,
+            balance_protection_use_equity: false,
+            balance_protection_drawdown_enabled: false,
+            balance_protection_drawdown_value: 35.0,
+            balance_protection_profit_enabled: false,
+            balance_protection_profit_value: 100.0,
+            balance_protection_margin_enabled: false,
+            balance_protection_margin_value: 150.0,
+            balance_protection_stop_ea: true,
+            balance_protection_close_trades: false,
+            balance_protection_restart_mode: "RestartMode_Disable".to_string(),
         },
         time_filters: TimeFiltersConfig {
-            enabled: get_bool(values, "gInput_TimeFiltersEnabled"),
+            enabled: false,
             priority_settings: TimePrioritySettings {
-                news_filter_overrides_session: get_bool(values, "gInput_NewsFilterOverridesSession"),
-                session_filter_overrides_news: get_bool(values, "gInput_SessionFilterOverridesNews"),
+                news_filter_overrides_session: false,
+                session_filter_overrides_news: false,
             },
             sessions,
         },
         news_filter: NewsFilterConfig {
-            enabled: get_bool_first(values, &["gInput_EnableNewsFilter", "gInput_NewsFilterEnabled"]),
-            api_key: get_string(values, "gInput_NewsAPIKey", ""),
-            api_url: get_string(values, "gInput_NewsAPIURL", "https://www.jblanked.com/news/api/calendar/"),
-            countries: get_string(values, "gInput_NewsFilterCountries", "US,GB,EU"),
-            impact_level: get_i32(values, "gInput_NewsImpactLevel", 3),
-            minutes_before: get_i32(values, "gInput_MinutesBeforeNews", 30),
-            minutes_after: get_i32(values, "gInput_MinutesAfterNews", 30),
-            // Convert action enum to 3 boolean fields
-            stop_ea: get_bool_with_default(values, "gInput_NewsStopEA", news_action_flags.0),
-            close_trades: get_bool_with_default(values, "gInput_NewsCloseTrades", news_action_flags.1),
-            auto_restart: get_bool_with_default(values, "gInput_NewsAutoRestart", news_action_flags.2),
-            check_interval: get_i32(values, "gInput_NewsCheckInterval", 60),
-            alert_minutes: get_i32(values, "gInput_AlertMinutesBefore", 5),
-            filter_high_only: get_bool_with_default(values, "gInput_FilterHighImpactOnly", true),
-            filter_weekends: get_bool_with_default(values, "gInput_FilterWeekendNews", false),
-            use_local_cache: get_bool_with_default(values, "gInput_UseLocalNewsCache", true),
-            cache_duration: get_i32(values, "gInput_NewsCacheDuration", 3600),
-            fallback_on_error: get_string(values, "gInput_NewsFallbackOnError", "Fallback_Continue"),
-            filter_currencies: get_string(values, "gInput_FilterCurrencies", ""),
-            include_speeches: get_bool_with_default(values, "gInput_IncludeSpeeches", true),
-            include_reports: get_bool_with_default(values, "gInput_IncludeReports", true),
-            visual_indicator: get_bool_with_default(values, "gInput_NewsVisualIndicator", true),
-            alert_before_news: get_bool_with_default(values, "gInput_AlertBeforeNews", false),
-            calendar_file: get_string(values, "gInput_NewsCalendarFile", ""),
+            enabled: false,
+            api_key: String::new(),
+            api_url: "https://www.jblanked.com/news/api/calendar/".to_string(),
+            countries: "US,GB,EU".to_string(),
+            impact_level: 3,
+            minutes_before: 30,
+            minutes_after: 30,
+            stop_ea: true,
+            close_trades: false,
+            auto_restart: true,
+            restart_mode: "RestartMode_Disable".to_string(),
+            calendar_file: String::new(),
+            check_interval: 60,
+            alert_minutes: 5,
+            filter_high_only: true,
+            filter_weekends: false,
+            use_local_cache: true,
+            cache_duration: 3600,
+            fallback_on_error: "Fallback_Continue".to_string(),
+            filter_currencies: String::new(),
+            include_speeches: true,
+            include_reports: true,
+            visual_indicator: true,
+            alert_before_news: false,
         },
-        // ===== RISK MANAGEMENT BUY/SELL =====
-        risk_management_b: if values.contains_key("gInput_RiskManagementEnabled_Buy") {
-            Some(RiskManagementConfig {
-                enabled: get_bool(values, "gInput_RiskManagementEnabled_Buy"),
-                spread_filter_enabled: get_bool(values, "gInput_UseSpreadFilter_Buy"),
-                max_spread_points: get_f64(values, "gInput_MaxSpreadPoints_Buy", 25.0),
-                equity_stop_enabled: get_bool(values, "gInput_UseEquityStop_Buy"),
-                equity_stop_value: get_f64(values, "gInput_EquityStopValue_Buy", 35.0),
-                drawdown_stop_enabled: get_bool(values, "gInput_UseDrawdownStop_Buy"),
-                max_drawdown_percent: get_f64(values, "gInput_MaxDrawdownPercent_Buy", 35.0),
-                risk_action: {
-                    let s = get_string(values, "gInput_RiskAction_Buy", "");
-                    if s.is_empty() { None } else { Some(s) }
-                },
-            })
-        } else { None },
-        risk_management_s: if values.contains_key("gInput_RiskManagementEnabled_Sell") {
-            Some(RiskManagementConfig {
-                enabled: get_bool(values, "gInput_RiskManagementEnabled_Sell"),
-                spread_filter_enabled: get_bool(values, "gInput_UseSpreadFilter_Sell"),
-                max_spread_points: get_f64(values, "gInput_MaxSpreadPoints_Sell", 25.0),
-                equity_stop_enabled: get_bool(values, "gInput_UseEquityStop_Sell"),
-                equity_stop_value: get_f64(values, "gInput_EquityStopValue_Sell", 35.0),
-                drawdown_stop_enabled: get_bool(values, "gInput_UseDrawdownStop_Sell"),
-                max_drawdown_percent: get_f64(values, "gInput_MaxDrawdownPercent_Sell", 35.0),
-                risk_action: {
-                    let s = get_string(values, "gInput_RiskAction_Sell", "");
-                    if s.is_empty() { None } else { Some(s) }
-                },
-            })
-        } else { None },
-        // ===== NEWS FILTER BUY/SELL =====
-        news_filter_b: if values.contains_key("gInput_NewsFilterEnabled_Buy") {
-            Some(NewsFilterConfig {
-                enabled: get_bool(values, "gInput_NewsFilterEnabled_Buy"),
-                api_key: get_string(values, "gInput_NewsAPIKey_Buy", ""),
-                api_url: get_string(values, "gInput_NewsAPIURL_Buy", "https://www.jblanked.com/news/api/calendar/"),
-                countries: get_string(values, "gInput_NewsFilterCountries_Buy", "US,GB,EU"),
-                impact_level: get_i32(values, "gInput_NewsImpactLevel_Buy", 3),
-                minutes_before: get_i32(values, "gInput_MinutesBeforeNews_Buy", 30),
-                minutes_after: get_i32(values, "gInput_MinutesAfterNews_Buy", 30),
-                stop_ea: get_bool(values, "gInput_NewsStopEA_Buy"),
-                close_trades: get_bool(values, "gInput_NewsCloseTrades_Buy"),
-                auto_restart: get_bool(values, "gInput_NewsAutoRestart_Buy"),
-                check_interval: get_i32(values, "gInput_NewsCheckInterval_Buy", 60),
-                alert_minutes: get_i32(values, "gInput_AlertMinutesBefore_Buy", 5),
-                filter_high_only: get_bool(values, "gInput_FilterHighImpactOnly_Buy"),
-                filter_weekends: get_bool(values, "gInput_FilterWeekendNews_Buy"),
-                use_local_cache: get_bool(values, "gInput_UseLocalNewsCache_Buy"),
-                cache_duration: get_i32(values, "gInput_NewsCacheDuration_Buy", 3600),
-                fallback_on_error: get_string(values, "gInput_NewsFallbackOnError_Buy", "Fallback_Continue"),
-                filter_currencies: get_string(values, "gInput_FilterCurrencies_Buy", ""),
-                include_speeches: get_bool(values, "gInput_IncludeSpeeches_Buy"),
-                include_reports: get_bool(values, "gInput_IncludeReports_Buy"),
-                visual_indicator: get_bool(values, "gInput_NewsVisualIndicator_Buy"),
-                alert_before_news: get_bool(values, "gInput_AlertBeforeNews_Buy"),
-                calendar_file: get_string(values, "gInput_NewsCalendarFile_Buy", ""),
-            })
-        } else { None },
-        news_filter_s: if values.contains_key("gInput_NewsFilterEnabled_Sell") {
-            Some(NewsFilterConfig {
-                enabled: get_bool(values, "gInput_NewsFilterEnabled_Sell"),
-                api_key: get_string(values, "gInput_NewsAPIKey_Sell", ""),
-                api_url: get_string(values, "gInput_NewsAPIURL_Sell", "https://www.jblanked.com/news/api/calendar/"),
-                countries: get_string(values, "gInput_NewsFilterCountries_Sell", "US,GB,EU"),
-                impact_level: get_i32(values, "gInput_NewsImpactLevel_Sell", 3),
-                minutes_before: get_i32(values, "gInput_MinutesBeforeNews_Sell", 30),
-                minutes_after: get_i32(values, "gInput_MinutesAfterNews_Sell", 30),
-                stop_ea: get_bool(values, "gInput_NewsStopEA_Sell"),
-                close_trades: get_bool(values, "gInput_NewsCloseTrades_Sell"),
-                auto_restart: get_bool(values, "gInput_NewsAutoRestart_Sell"),
-                check_interval: get_i32(values, "gInput_NewsCheckInterval_Sell", 60),
-                alert_minutes: get_i32(values, "gInput_AlertMinutesBefore_Sell", 5),
-                filter_high_only: get_bool(values, "gInput_FilterHighImpactOnly_Sell"),
-                filter_weekends: get_bool(values, "gInput_FilterWeekendNews_Sell"),
-                use_local_cache: get_bool(values, "gInput_UseLocalNewsCache_Sell"),
-                cache_duration: get_i32(values, "gInput_NewsCacheDuration_Sell", 3600),
-                fallback_on_error: get_string(values, "gInput_NewsFallbackOnError_Sell", "Fallback_Continue"),
-                filter_currencies: get_string(values, "gInput_FilterCurrencies_Sell", ""),
-                include_speeches: get_bool(values, "gInput_IncludeSpeeches_Sell"),
-                include_reports: get_bool(values, "gInput_IncludeReports_Sell"),
-                visual_indicator: get_bool(values, "gInput_NewsVisualIndicator_Sell"),
-                alert_before_news: get_bool(values, "gInput_AlertBeforeNews_Sell"),
-                calendar_file: get_string(values, "gInput_NewsCalendarFile_Sell", ""),
-            })
-        } else { None },
-        // ===== TIME FILTERS BUY/SELL =====
-        time_filters_b: if values.contains_key("gInput_TimeFiltersEnabled_Buy") {
-            Some({
-                let mut sessions_b = Vec::new();
-                for i in 1..=7 {
-                    sessions_b.push(SessionConfig {
-                        session_number: i,
-                        enabled: get_bool(values, &format!("gInput_Session{}Enabled_Buy", i)),
-                        day: get_i32(values, &format!("gInput_Session{}Day_Buy", i), i % 7),
-                        start_hour: get_i32(values, &format!("gInput_Session{}StartHour_Buy", i), 9),
-                        start_minute: get_i32(values, &format!("gInput_Session{}StartMinute_Buy", i), 30),
-                        end_hour: get_i32(values, &format!("gInput_Session{}EndHour_Buy", i), 17),
-                        end_minute: get_i32(values, &format!("gInput_Session{}EndMinute_Buy", i), 0),
-                        action: get_string(values, &format!("gInput_Session{}Action_Buy", i), "Action_Default"),
-                        auto_restart: get_bool(values, &format!("gInput_Session{}AutoRestart_Buy", i)),
-                        restart_mode: get_string(values, &format!("gInput_Session{}RestartMode_Buy", i), "Restart_Default"),
-                        restart_bars: get_i32(values, &format!("gInput_Session{}RestartBars_Buy", i), 0),
-                        restart_minutes: get_i32(values, &format!("gInput_Session{}RestartMinutes_Buy", i), 0),
-                        restart_pips: get_i32(values, &format!("gInput_Session{}RestartPips_Buy", i), 0),
-                    });
-                }
-                TimeFiltersConfig {
-                    enabled: get_bool(values, "gInput_TimeFiltersEnabled_Buy"),
-                    priority_settings: TimePrioritySettings {
-                        news_filter_overrides_session: get_bool(values, "gInput_NewsFilterOverridesSession_Buy"),
-                        session_filter_overrides_news: get_bool(values, "gInput_SessionFilterOverridesNews_Buy"),
-                    },
-                    sessions: sessions_b,
-                }
-            })
-        } else { None },
-        time_filters_s: if values.contains_key("gInput_TimeFiltersEnabled_Sell") {
-            Some({
-                let mut sessions_s = Vec::new();
-                for i in 1..=7 {
-                    sessions_s.push(SessionConfig {
-                        session_number: i,
-                        enabled: get_bool(values, &format!("gInput_Session{}Enabled_Sell", i)),
-                        day: get_i32(values, &format!("gInput_Session{}Day_Sell", i), i % 7),
-                        start_hour: get_i32(values, &format!("gInput_Session{}StartHour_Sell", i), 9),
-                        start_minute: get_i32(values, &format!("gInput_Session{}StartMinute_Sell", i), 30),
-                        end_hour: get_i32(values, &format!("gInput_Session{}EndHour_Sell", i), 17),
-                        end_minute: get_i32(values, &format!("gInput_Session{}EndMinute_Sell", i), 0),
-                        action: get_string(values, &format!("gInput_Session{}Action_Sell", i), "Action_Default"),
-                        auto_restart: get_bool(values, &format!("gInput_Session{}AutoRestart_Sell", i)),
-                        restart_mode: get_string(values, &format!("gInput_Session{}RestartMode_Sell", i), "Restart_Default"),
-                        restart_bars: get_i32(values, &format!("gInput_Session{}RestartBars_Sell", i), 0),
-                        restart_minutes: get_i32(values, &format!("gInput_Session{}RestartMinutes_Sell", i), 0),
-                        restart_pips: get_i32(values, &format!("gInput_Session{}RestartPips_Sell", i), 0),
-                    });
-                }
-                TimeFiltersConfig {
-                    enabled: get_bool(values, "gInput_TimeFiltersEnabled_Sell"),
-                    priority_settings: TimePrioritySettings {
-                        news_filter_overrides_session: get_bool(values, "gInput_NewsFilterOverridesSession_Sell"),
-                        session_filter_overrides_news: get_bool(values, "gInput_SessionFilterOverridesNews_Sell"),
-                    },
-                    sessions: sessions_s,
-                }
-            })
-        } else { None },
+        risk_management_b: None,
+        risk_management_s: None,
+        news_filter_b: None,
+        news_filter_s: None,
+        time_filters_b: None,
+        time_filters_s: None,
     };
 
     // Build engines with full V4 DAAVFX parameter parsing
@@ -6951,6 +6930,476 @@ fn build_logic_config(
     let close_partial_profit_threshold_4_b = get_dir_f64(&["PartialProfitThreshold4", "ClosePartialProfitThreshold4"], "Buy");
     let close_partial_profit_threshold_4_s = get_dir_f64(&["PartialProfitThreshold4", "ClosePartialProfitThreshold4"], "Sell");
 
+    // Parse per-logic Risk/News/Time configs (directional)
+    let risk_enabled_b = get_dir_bool(&["RiskManagementEnabled"], "Buy");
+    let risk_enabled_s = get_dir_bool(&["RiskManagementEnabled"], "Sell");
+    let spread_enabled_b = get_dir_bool(&["SpreadFilterEnabled"], "Buy");
+    let spread_enabled_s = get_dir_bool(&["SpreadFilterEnabled"], "Sell");
+    let max_spread_b = get_dir_f64(&["MaxSpreadPoints"], "Buy");
+    let max_spread_s = get_dir_f64(&["MaxSpreadPoints"], "Sell");
+    let slippage_enabled_b = get_dir_bool(&["SlippageEnabled"], "Buy");
+    let slippage_enabled_s = get_dir_bool(&["SlippageEnabled"], "Sell");
+    let max_slippage_b = get_dir_f64(&["MaxSlippagePoints"], "Buy");
+    let max_slippage_s = get_dir_f64(&["MaxSlippagePoints"], "Sell");
+    let equity_stop_enabled_b = get_dir_bool(&["EquityStopEnabled"], "Buy");
+    let equity_stop_enabled_s = get_dir_bool(&["EquityStopEnabled"], "Sell");
+    let equity_stop_value_b = get_dir_f64(&["EquityStopValue"], "Buy");
+    let equity_stop_value_s = get_dir_f64(&["EquityStopValue"], "Sell");
+    let drawdown_stop_enabled_b = get_dir_bool(&["DrawdownStopEnabled"], "Buy");
+    let drawdown_stop_enabled_s = get_dir_bool(&["DrawdownStopEnabled"], "Sell");
+    let max_drawdown_b = get_dir_f64(&["MaxDrawdownPercent"], "Buy");
+    let max_drawdown_s = get_dir_f64(&["MaxDrawdownPercent"], "Sell");
+    let risk_action_b = get_dir_string(&["RiskAction"], "Buy");
+    let risk_action_s = get_dir_string(&["RiskAction"], "Sell");
+    let eq_protect_enabled_b = get_dir_bool(&["EquityProtectionEnabled"], "Buy");
+    let eq_protect_enabled_s = get_dir_bool(&["EquityProtectionEnabled"], "Sell");
+    let eq_protect_use_equity_b = get_dir_bool(&["EquityProtectionUseEquity"], "Buy");
+    let eq_protect_use_equity_s = get_dir_bool(&["EquityProtectionUseEquity"], "Sell");
+    let eq_protect_dd_enabled_b = get_dir_bool(&["EquityProtectionDrawdownEnabled"], "Buy");
+    let eq_protect_dd_enabled_s = get_dir_bool(&["EquityProtectionDrawdownEnabled"], "Sell");
+    let eq_protect_dd_value_b = get_dir_f64(&["EquityProtectionDrawdownValue"], "Buy");
+    let eq_protect_dd_value_s = get_dir_f64(&["EquityProtectionDrawdownValue"], "Sell");
+    let eq_protect_profit_enabled_b = get_dir_bool(&["EquityProtectionProfitEnabled"], "Buy");
+    let eq_protect_profit_enabled_s = get_dir_bool(&["EquityProtectionProfitEnabled"], "Sell");
+    let eq_protect_profit_value_b = get_dir_f64(&["EquityProtectionProfitValue"], "Buy");
+    let eq_protect_profit_value_s = get_dir_f64(&["EquityProtectionProfitValue"], "Sell");
+    let eq_protect_margin_enabled_b = get_dir_bool(&["EquityProtectionMarginEnabled"], "Buy");
+    let eq_protect_margin_enabled_s = get_dir_bool(&["EquityProtectionMarginEnabled"], "Sell");
+    let eq_protect_margin_value_b = get_dir_f64(&["EquityProtectionMarginValue"], "Buy");
+    let eq_protect_margin_value_s = get_dir_f64(&["EquityProtectionMarginValue"], "Sell");
+    let eq_protect_stop_ea_b = get_dir_bool(&["EquityProtectionStopEA"], "Buy");
+    let eq_protect_stop_ea_s = get_dir_bool(&["EquityProtectionStopEA"], "Sell");
+    let eq_protect_close_b = get_dir_bool(&["EquityProtectionCloseTrades"], "Buy");
+    let eq_protect_close_s = get_dir_bool(&["EquityProtectionCloseTrades"], "Sell");
+    let eq_protect_restart_b = get_dir_string(&["EquityProtectionRestartMode"], "Buy");
+    let eq_protect_restart_s = get_dir_string(&["EquityProtectionRestartMode"], "Sell");
+    let bal_protect_enabled_b = get_dir_bool(&["BalanceProtectionEnabled"], "Buy");
+    let bal_protect_enabled_s = get_dir_bool(&["BalanceProtectionEnabled"], "Sell");
+    let bal_protect_use_equity_b = get_dir_bool(&["BalanceProtectionUseEquity"], "Buy");
+    let bal_protect_use_equity_s = get_dir_bool(&["BalanceProtectionUseEquity"], "Sell");
+    let bal_protect_dd_enabled_b = get_dir_bool(&["BalanceProtectionDrawdownEnabled"], "Buy");
+    let bal_protect_dd_enabled_s = get_dir_bool(&["BalanceProtectionDrawdownEnabled"], "Sell");
+    let bal_protect_dd_value_b = get_dir_f64(&["BalanceProtectionDrawdownValue"], "Buy");
+    let bal_protect_dd_value_s = get_dir_f64(&["BalanceProtectionDrawdownValue"], "Sell");
+    let bal_protect_profit_enabled_b = get_dir_bool(&["BalanceProtectionProfitEnabled"], "Buy");
+    let bal_protect_profit_enabled_s = get_dir_bool(&["BalanceProtectionProfitEnabled"], "Sell");
+    let bal_protect_profit_value_b = get_dir_f64(&["BalanceProtectionProfitValue"], "Buy");
+    let bal_protect_profit_value_s = get_dir_f64(&["BalanceProtectionProfitValue"], "Sell");
+    let bal_protect_margin_enabled_b = get_dir_bool(&["BalanceProtectionMarginEnabled"], "Buy");
+    let bal_protect_margin_enabled_s = get_dir_bool(&["BalanceProtectionMarginEnabled"], "Sell");
+    let bal_protect_margin_value_b = get_dir_f64(&["BalanceProtectionMarginValue"], "Buy");
+    let bal_protect_margin_value_s = get_dir_f64(&["BalanceProtectionMarginValue"], "Sell");
+    let bal_protect_stop_ea_b = get_dir_bool(&["BalanceProtectionStopEA"], "Buy");
+    let bal_protect_stop_ea_s = get_dir_bool(&["BalanceProtectionStopEA"], "Sell");
+    let bal_protect_close_b = get_dir_bool(&["BalanceProtectionCloseTrades"], "Buy");
+    let bal_protect_close_s = get_dir_bool(&["BalanceProtectionCloseTrades"], "Sell");
+    let bal_protect_restart_b = get_dir_string(&["BalanceProtectionRestartMode"], "Buy");
+    let bal_protect_restart_s = get_dir_string(&["BalanceProtectionRestartMode"], "Sell");
+
+    let risk_action_b_clean = risk_action_b.clone().and_then(|s| {
+        if s.trim().is_empty() { None } else { Some(trigger_action_from_raw(&s)) }
+    });
+    let risk_action_s_clean = risk_action_s.clone().and_then(|s| {
+        if s.trim().is_empty() { None } else { Some(trigger_action_from_raw(&s)) }
+    });
+    let eq_protect_restart_b_clean = eq_protect_restart_b.clone().map(|s| restart_mode_from_raw(&s));
+    let eq_protect_restart_s_clean = eq_protect_restart_s.clone().map(|s| restart_mode_from_raw(&s));
+    let bal_protect_restart_b_clean = bal_protect_restart_b.clone().map(|s| restart_mode_from_raw(&s));
+    let bal_protect_restart_s_clean = bal_protect_restart_s.clone().map(|s| restart_mode_from_raw(&s));
+
+    let has_risk_b = risk_enabled_b.is_some()
+        || spread_enabled_b.is_some()
+        || max_spread_b.is_some()
+        || slippage_enabled_b.is_some()
+        || max_slippage_b.is_some()
+        || equity_stop_enabled_b.is_some()
+        || equity_stop_value_b.is_some()
+        || drawdown_stop_enabled_b.is_some()
+        || max_drawdown_b.is_some()
+        || risk_action_b_clean.is_some()
+        || eq_protect_enabled_b.is_some()
+        || eq_protect_use_equity_b.is_some()
+        || eq_protect_dd_enabled_b.is_some()
+        || eq_protect_dd_value_b.is_some()
+        || eq_protect_profit_enabled_b.is_some()
+        || eq_protect_profit_value_b.is_some()
+        || eq_protect_margin_enabled_b.is_some()
+        || eq_protect_margin_value_b.is_some()
+        || eq_protect_stop_ea_b.is_some()
+        || eq_protect_close_b.is_some()
+        || eq_protect_restart_b_clean.is_some()
+        || bal_protect_enabled_b.is_some()
+        || bal_protect_use_equity_b.is_some()
+        || bal_protect_dd_enabled_b.is_some()
+        || bal_protect_dd_value_b.is_some()
+        || bal_protect_profit_enabled_b.is_some()
+        || bal_protect_profit_value_b.is_some()
+        || bal_protect_margin_enabled_b.is_some()
+        || bal_protect_margin_value_b.is_some()
+        || bal_protect_stop_ea_b.is_some()
+        || bal_protect_close_b.is_some()
+        || bal_protect_restart_b_clean.is_some();
+    let has_risk_s = risk_enabled_s.is_some()
+        || spread_enabled_s.is_some()
+        || max_spread_s.is_some()
+        || slippage_enabled_s.is_some()
+        || max_slippage_s.is_some()
+        || equity_stop_enabled_s.is_some()
+        || equity_stop_value_s.is_some()
+        || drawdown_stop_enabled_s.is_some()
+        || max_drawdown_s.is_some()
+        || risk_action_s_clean.is_some()
+        || eq_protect_enabled_s.is_some()
+        || eq_protect_use_equity_s.is_some()
+        || eq_protect_dd_enabled_s.is_some()
+        || eq_protect_dd_value_s.is_some()
+        || eq_protect_profit_enabled_s.is_some()
+        || eq_protect_profit_value_s.is_some()
+        || eq_protect_margin_enabled_s.is_some()
+        || eq_protect_margin_value_s.is_some()
+        || eq_protect_stop_ea_s.is_some()
+        || eq_protect_close_s.is_some()
+        || eq_protect_restart_s_clean.is_some()
+        || bal_protect_enabled_s.is_some()
+        || bal_protect_use_equity_s.is_some()
+        || bal_protect_dd_enabled_s.is_some()
+        || bal_protect_dd_value_s.is_some()
+        || bal_protect_profit_enabled_s.is_some()
+        || bal_protect_profit_value_s.is_some()
+        || bal_protect_margin_enabled_s.is_some()
+        || bal_protect_margin_value_s.is_some()
+        || bal_protect_stop_ea_s.is_some()
+        || bal_protect_close_s.is_some()
+        || bal_protect_restart_s_clean.is_some();
+
+    let risk_management_b = if has_risk_b {
+        Some(RiskManagementConfig {
+            enabled: risk_enabled_b.unwrap_or(false),
+            spread_filter_enabled: spread_enabled_b.unwrap_or(false),
+            max_spread_points: max_spread_b.unwrap_or(25.0),
+            slippage_enabled: slippage_enabled_b.unwrap_or(false),
+            max_slippage_points: max_slippage_b.unwrap_or(30.0),
+            equity_stop_enabled: equity_stop_enabled_b.unwrap_or(false),
+            equity_stop_value: equity_stop_value_b.unwrap_or(35.0),
+            drawdown_stop_enabled: drawdown_stop_enabled_b.unwrap_or(false),
+            max_drawdown_percent: max_drawdown_b.unwrap_or(35.0),
+            risk_action: risk_action_b_clean,
+            equity_protection_enabled: eq_protect_enabled_b.unwrap_or(false),
+            equity_protection_use_equity: eq_protect_use_equity_b.unwrap_or(true),
+            equity_protection_drawdown_enabled: eq_protect_dd_enabled_b.unwrap_or(false),
+            equity_protection_drawdown_value: eq_protect_dd_value_b.unwrap_or(35.0),
+            equity_protection_profit_enabled: eq_protect_profit_enabled_b.unwrap_or(false),
+            equity_protection_profit_value: eq_protect_profit_value_b.unwrap_or(100.0),
+            equity_protection_margin_enabled: eq_protect_margin_enabled_b.unwrap_or(false),
+            equity_protection_margin_value: eq_protect_margin_value_b.unwrap_or(150.0),
+            equity_protection_stop_ea: eq_protect_stop_ea_b.unwrap_or(true),
+            equity_protection_close_trades: eq_protect_close_b.unwrap_or(false),
+            equity_protection_restart_mode: eq_protect_restart_b_clean
+                .unwrap_or_else(|| "RestartMode_Disable".to_string()),
+            balance_protection_enabled: bal_protect_enabled_b.unwrap_or(false),
+            balance_protection_use_equity: bal_protect_use_equity_b.unwrap_or(false),
+            balance_protection_drawdown_enabled: bal_protect_dd_enabled_b.unwrap_or(false),
+            balance_protection_drawdown_value: bal_protect_dd_value_b.unwrap_or(35.0),
+            balance_protection_profit_enabled: bal_protect_profit_enabled_b.unwrap_or(false),
+            balance_protection_profit_value: bal_protect_profit_value_b.unwrap_or(100.0),
+            balance_protection_margin_enabled: bal_protect_margin_enabled_b.unwrap_or(false),
+            balance_protection_margin_value: bal_protect_margin_value_b.unwrap_or(150.0),
+            balance_protection_stop_ea: bal_protect_stop_ea_b.unwrap_or(true),
+            balance_protection_close_trades: bal_protect_close_b.unwrap_or(false),
+            balance_protection_restart_mode: bal_protect_restart_b_clean
+                .unwrap_or_else(|| "RestartMode_Disable".to_string()),
+        })
+    } else {
+        None
+    };
+    let risk_management_s = if has_risk_s {
+        Some(RiskManagementConfig {
+            enabled: risk_enabled_s.unwrap_or(false),
+            spread_filter_enabled: spread_enabled_s.unwrap_or(false),
+            max_spread_points: max_spread_s.unwrap_or(25.0),
+            slippage_enabled: slippage_enabled_s.unwrap_or(false),
+            max_slippage_points: max_slippage_s.unwrap_or(30.0),
+            equity_stop_enabled: equity_stop_enabled_s.unwrap_or(false),
+            equity_stop_value: equity_stop_value_s.unwrap_or(35.0),
+            drawdown_stop_enabled: drawdown_stop_enabled_s.unwrap_or(false),
+            max_drawdown_percent: max_drawdown_s.unwrap_or(35.0),
+            risk_action: risk_action_s_clean,
+            equity_protection_enabled: eq_protect_enabled_s.unwrap_or(false),
+            equity_protection_use_equity: eq_protect_use_equity_s.unwrap_or(true),
+            equity_protection_drawdown_enabled: eq_protect_dd_enabled_s.unwrap_or(false),
+            equity_protection_drawdown_value: eq_protect_dd_value_s.unwrap_or(35.0),
+            equity_protection_profit_enabled: eq_protect_profit_enabled_s.unwrap_or(false),
+            equity_protection_profit_value: eq_protect_profit_value_s.unwrap_or(100.0),
+            equity_protection_margin_enabled: eq_protect_margin_enabled_s.unwrap_or(false),
+            equity_protection_margin_value: eq_protect_margin_value_s.unwrap_or(150.0),
+            equity_protection_stop_ea: eq_protect_stop_ea_s.unwrap_or(true),
+            equity_protection_close_trades: eq_protect_close_s.unwrap_or(false),
+            equity_protection_restart_mode: eq_protect_restart_s_clean
+                .unwrap_or_else(|| "RestartMode_Disable".to_string()),
+            balance_protection_enabled: bal_protect_enabled_s.unwrap_or(false),
+            balance_protection_use_equity: bal_protect_use_equity_s.unwrap_or(false),
+            balance_protection_drawdown_enabled: bal_protect_dd_enabled_s.unwrap_or(false),
+            balance_protection_drawdown_value: bal_protect_dd_value_s.unwrap_or(35.0),
+            balance_protection_profit_enabled: bal_protect_profit_enabled_s.unwrap_or(false),
+            balance_protection_profit_value: bal_protect_profit_value_s.unwrap_or(100.0),
+            balance_protection_margin_enabled: bal_protect_margin_enabled_s.unwrap_or(false),
+            balance_protection_margin_value: bal_protect_margin_value_s.unwrap_or(150.0),
+            balance_protection_stop_ea: bal_protect_stop_ea_s.unwrap_or(true),
+            balance_protection_close_trades: bal_protect_close_s.unwrap_or(false),
+            balance_protection_restart_mode: bal_protect_restart_s_clean
+                .unwrap_or_else(|| "RestartMode_Disable".to_string()),
+        })
+    } else {
+        None
+    };
+
+    let news_enabled_b = get_dir_bool(&["NewsFilterEnabled"], "Buy");
+    let news_enabled_s = get_dir_bool(&["NewsFilterEnabled"], "Sell");
+    let news_impact_b = get_dir_i32(&["NewsImpactLevel"], "Buy");
+    let news_impact_s = get_dir_i32(&["NewsImpactLevel"], "Sell");
+    let news_minutes_before_b = get_dir_i32(&["NewsMinutesBefore"], "Buy");
+    let news_minutes_before_s = get_dir_i32(&["NewsMinutesBefore"], "Sell");
+    let news_minutes_after_b = get_dir_i32(&["NewsMinutesAfter"], "Buy");
+    let news_minutes_after_s = get_dir_i32(&["NewsMinutesAfter"], "Sell");
+    let news_countries_b = get_dir_string(&["NewsCountries"], "Buy");
+    let news_countries_s = get_dir_string(&["NewsCountries"], "Sell");
+    let news_api_url_b = get_dir_string(&["NewsApiUrl"], "Buy");
+    let news_api_url_s = get_dir_string(&["NewsApiUrl"], "Sell");
+    let news_api_key_b = get_dir_string(&["NewsApiKey"], "Buy");
+    let news_api_key_s = get_dir_string(&["NewsApiKey"], "Sell");
+    let news_stop_ea_b = get_dir_bool(&["NewsStopEA"], "Buy");
+    let news_stop_ea_s = get_dir_bool(&["NewsStopEA"], "Sell");
+    let news_close_trades_b = get_dir_bool(&["NewsCloseTrades"], "Buy");
+    let news_close_trades_s = get_dir_bool(&["NewsCloseTrades"], "Sell");
+    let news_auto_restart_b = get_dir_bool(&["NewsAutoRestart"], "Buy");
+    let news_auto_restart_s = get_dir_bool(&["NewsAutoRestart"], "Sell");
+    let news_restart_mode_b = get_dir_string(&["NewsRestartMode"], "Buy");
+    let news_restart_mode_s = get_dir_string(&["NewsRestartMode"], "Sell");
+    let news_calendar_b = get_dir_string(&["NewsCalendarFile"], "Buy");
+    let news_calendar_s = get_dir_string(&["NewsCalendarFile"], "Sell");
+
+    let has_news_b = news_enabled_b.is_some()
+        || news_impact_b.is_some()
+        || news_minutes_before_b.is_some()
+        || news_minutes_after_b.is_some()
+        || news_countries_b.is_some()
+        || news_stop_ea_b.is_some()
+        || news_close_trades_b.is_some()
+        || news_restart_mode_b.is_some();
+    let has_news_s = news_enabled_s.is_some()
+        || news_impact_s.is_some()
+        || news_minutes_before_s.is_some()
+        || news_minutes_after_s.is_some()
+        || news_countries_s.is_some()
+        || news_stop_ea_s.is_some()
+        || news_close_trades_s.is_some()
+        || news_restart_mode_s.is_some();
+
+    let default_news_api = "https://www.jblanked.com/news/api/calendar/".to_string();
+    let default_countries = "US,GB,EU".to_string();
+
+    let news_filter_b = if has_news_b {
+        Some(NewsFilterConfig {
+            enabled: news_enabled_b.unwrap_or(false),
+            api_key: news_api_key_b.unwrap_or_default(),
+            api_url: news_api_url_b.unwrap_or_else(|| default_news_api.clone()),
+            countries: news_countries_b.unwrap_or_else(|| default_countries.clone()),
+            impact_level: news_impact_b.unwrap_or(3),
+            minutes_before: news_minutes_before_b.unwrap_or(30),
+            minutes_after: news_minutes_after_b.unwrap_or(30),
+            stop_ea: news_stop_ea_b.unwrap_or(true),
+            close_trades: news_close_trades_b.unwrap_or(false),
+            auto_restart: news_auto_restart_b.unwrap_or(true),
+            restart_mode: news_restart_mode_b
+                .as_deref()
+                .map(restart_mode_from_raw)
+                .unwrap_or_else(|| "RestartMode_Disable".to_string()),
+            calendar_file: news_calendar_b.unwrap_or_default(),
+            check_interval: 60,
+            alert_minutes: 5,
+            filter_high_only: true,
+            filter_weekends: false,
+            use_local_cache: true,
+            cache_duration: 3600,
+            fallback_on_error: "Fallback_Continue".to_string(),
+            filter_currencies: "".to_string(),
+            include_speeches: true,
+            include_reports: true,
+            visual_indicator: true,
+            alert_before_news: false,
+        })
+    } else {
+        None
+    };
+    let news_filter_s = if has_news_s {
+        Some(NewsFilterConfig {
+            enabled: news_enabled_s.unwrap_or(false),
+            api_key: news_api_key_s.unwrap_or_default(),
+            api_url: news_api_url_s.unwrap_or_else(|| default_news_api.clone()),
+            countries: news_countries_s.unwrap_or_else(|| default_countries.clone()),
+            impact_level: news_impact_s.unwrap_or(3),
+            minutes_before: news_minutes_before_s.unwrap_or(30),
+            minutes_after: news_minutes_after_s.unwrap_or(30),
+            stop_ea: news_stop_ea_s.unwrap_or(true),
+            close_trades: news_close_trades_s.unwrap_or(false),
+            auto_restart: news_auto_restart_s.unwrap_or(true),
+            restart_mode: news_restart_mode_s
+                .as_deref()
+                .map(restart_mode_from_raw)
+                .unwrap_or_else(|| "RestartMode_Disable".to_string()),
+            calendar_file: news_calendar_s.unwrap_or_default(),
+            check_interval: 60,
+            alert_minutes: 5,
+            filter_high_only: true,
+            filter_weekends: false,
+            use_local_cache: true,
+            cache_duration: 3600,
+            fallback_on_error: "Fallback_Continue".to_string(),
+            filter_currencies: "".to_string(),
+            include_speeches: true,
+            include_reports: true,
+            visual_indicator: true,
+            alert_before_news: false,
+        })
+    } else {
+        None
+    };
+
+    let time_enabled_b = get_dir_bool(&["TimeFiltersEnabled"], "Buy");
+    let time_enabled_s = get_dir_bool(&["TimeFiltersEnabled"], "Sell");
+    let news_override_b = get_dir_bool(&["NewsFilterOverridesSession"], "Buy");
+    let news_override_s = get_dir_bool(&["NewsFilterOverridesSession"], "Sell");
+    let session_override_b = get_dir_bool(&["SessionFilterOverridesNews"], "Buy");
+    let session_override_s = get_dir_bool(&["SessionFilterOverridesNews"], "Sell");
+
+    let mut has_time_b = time_enabled_b.is_some() || news_override_b.is_some() || session_override_b.is_some();
+    let mut has_time_s = time_enabled_s.is_some() || news_override_s.is_some() || session_override_s.is_some();
+
+    let mut sessions_b: Vec<SessionConfig> = Vec::new();
+    let mut sessions_s: Vec<SessionConfig> = Vec::new();
+    for i in 1..=7 {
+        let session_key_enabled = format!("Session{}Enabled", i);
+        let session_key_day = format!("Session{}Day", i);
+        let session_key_start_hour = format!("Session{}StartHour", i);
+        let session_key_start_minute = format!("Session{}StartMinute", i);
+        let session_key_end_hour = format!("Session{}EndHour", i);
+        let session_key_end_minute = format!("Session{}EndMinute", i);
+        let session_key_stop_ea = format!("Session{}StopEA", i);
+        let session_key_close_trades = format!("Session{}CloseTrades", i);
+        let session_key_restart_mode = format!("Session{}RestartMode", i);
+
+        let enabled_b = get_dir_bool(&[session_key_enabled.as_str()], "Buy");
+        let enabled_s = get_dir_bool(&[session_key_enabled.as_str()], "Sell");
+        let day_b = get_dir_i32(&[session_key_day.as_str()], "Buy");
+        let day_s = get_dir_i32(&[session_key_day.as_str()], "Sell");
+        let start_hour_b = get_dir_i32(&[session_key_start_hour.as_str()], "Buy");
+        let start_hour_s = get_dir_i32(&[session_key_start_hour.as_str()], "Sell");
+        let start_minute_b = get_dir_i32(&[session_key_start_minute.as_str()], "Buy");
+        let start_minute_s = get_dir_i32(&[session_key_start_minute.as_str()], "Sell");
+        let end_hour_b = get_dir_i32(&[session_key_end_hour.as_str()], "Buy");
+        let end_hour_s = get_dir_i32(&[session_key_end_hour.as_str()], "Sell");
+        let end_minute_b = get_dir_i32(&[session_key_end_minute.as_str()], "Buy");
+        let end_minute_s = get_dir_i32(&[session_key_end_minute.as_str()], "Sell");
+        let stop_ea_b = get_dir_bool(&[session_key_stop_ea.as_str()], "Buy");
+        let stop_ea_s = get_dir_bool(&[session_key_stop_ea.as_str()], "Sell");
+        let close_trades_b = get_dir_bool(&[session_key_close_trades.as_str()], "Buy");
+        let close_trades_s = get_dir_bool(&[session_key_close_trades.as_str()], "Sell");
+        let restart_mode_b = get_dir_string(&[session_key_restart_mode.as_str()], "Buy");
+        let restart_mode_s = get_dir_string(&[session_key_restart_mode.as_str()], "Sell");
+
+        if enabled_b.is_some()
+            || day_b.is_some()
+            || start_hour_b.is_some()
+            || start_minute_b.is_some()
+            || end_hour_b.is_some()
+            || end_minute_b.is_some()
+            || stop_ea_b.is_some()
+            || close_trades_b.is_some()
+            || restart_mode_b.is_some()
+        {
+            has_time_b = true;
+        }
+        if enabled_s.is_some()
+            || day_s.is_some()
+            || start_hour_s.is_some()
+            || start_minute_s.is_some()
+            || end_hour_s.is_some()
+            || end_minute_s.is_some()
+            || stop_ea_s.is_some()
+            || close_trades_s.is_some()
+            || restart_mode_s.is_some()
+        {
+            has_time_s = true;
+        }
+
+        sessions_b.push(SessionConfig {
+            session_number: i,
+            enabled: enabled_b.unwrap_or(false),
+            day: day_b.unwrap_or(i % 7),
+            start_hour: start_hour_b.unwrap_or(9),
+            start_minute: start_minute_b.unwrap_or(30),
+            end_hour: end_hour_b.unwrap_or(17),
+            end_minute: end_minute_b.unwrap_or(0),
+            stop_ea: stop_ea_b.unwrap_or(false),
+            close_trades: close_trades_b.unwrap_or(false),
+            action: "Action_Default".to_string(),
+            auto_restart: false,
+            restart_mode: restart_mode_b
+                .as_deref()
+                .map(restart_mode_from_raw)
+                .unwrap_or_else(|| "RestartMode_Disable".to_string()),
+            restart_bars: 0,
+            restart_minutes: 0,
+            restart_pips: 0,
+        });
+
+        sessions_s.push(SessionConfig {
+            session_number: i,
+            enabled: enabled_s.unwrap_or(false),
+            day: day_s.unwrap_or(i % 7),
+            start_hour: start_hour_s.unwrap_or(9),
+            start_minute: start_minute_s.unwrap_or(30),
+            end_hour: end_hour_s.unwrap_or(17),
+            end_minute: end_minute_s.unwrap_or(0),
+            stop_ea: stop_ea_s.unwrap_or(false),
+            close_trades: close_trades_s.unwrap_or(false),
+            action: "Action_Default".to_string(),
+            auto_restart: false,
+            restart_mode: restart_mode_s
+                .as_deref()
+                .map(restart_mode_from_raw)
+                .unwrap_or_else(|| "RestartMode_Disable".to_string()),
+            restart_bars: 0,
+            restart_minutes: 0,
+            restart_pips: 0,
+        });
+    }
+
+    let time_filters_b = if has_time_b {
+        Some(TimeFiltersConfig {
+            enabled: time_enabled_b.unwrap_or(false),
+            priority_settings: TimePrioritySettings {
+                news_filter_overrides_session: news_override_b.unwrap_or(false),
+                session_filter_overrides_news: session_override_b.unwrap_or(true),
+            },
+            sessions: sessions_b,
+        })
+    } else {
+        None
+    };
+    let time_filters_s = if has_time_s {
+        Some(TimeFiltersConfig {
+            enabled: time_enabled_s.unwrap_or(false),
+            priority_settings: TimePrioritySettings {
+                news_filter_overrides_session: news_override_s.unwrap_or(false),
+                session_filter_overrides_news: session_override_s.unwrap_or(true),
+            },
+            sessions: sessions_s,
+        })
+    } else {
+        None
+    };
+
     // Parse Trigger parameters with Buy/Sell variants
     let trigger_type_val = get_param_multi(&["TriggerType"], "");
     let trigger_type = if trigger_type_val.is_empty() { None } else { Some(trigger_type_val) };
@@ -7264,6 +7713,12 @@ fn build_logic_config(
         close_partial_profit_threshold_4,
         close_partial_profit_threshold_4_b,
         close_partial_profit_threshold_4_s,
+        risk_management_b,
+        risk_management_s,
+        news_filter_b,
+        news_filter_s,
+        time_filters_b,
+        time_filters_s,
         trigger_type,
         trigger_type_b,
         trigger_type_s,
@@ -7584,6 +8039,12 @@ fn create_default_logic(logic_name: &str) -> LogicConfig {
         close_partial_profit_threshold_4: None,
         close_partial_profit_threshold_4_b: None,
         close_partial_profit_threshold_4_s: None,
+        risk_management_b: None,
+        risk_management_s: None,
+        news_filter_b: None,
+        news_filter_s: None,
+        time_filters_b: None,
+        time_filters_s: None,
         trigger_type: None,
         trigger_type_b: None,
         trigger_type_s: None,
@@ -7814,7 +8275,6 @@ mod tests {
         values.insert("gInput_MagicNumber".to_string(), "777".to_string());
         values.insert("gInput_MagicNumberBuy".to_string(), "123".to_string());
         values.insert("gInput_MagicNumberSell".to_string(), "456".to_string());
-        values.insert("gInput_MaxSlippagePoints".to_string(), "30.0".to_string());
         values.insert("gInput_allowBuy".to_string(), "1".to_string());
         values.insert("gInput_allowSell".to_string(), "1".to_string());
         values.insert("gInput_LicenseKey".to_string(), "test".to_string());
@@ -7836,7 +8296,6 @@ mod tests {
 
         assert_eq!(config.general.magic_number_sell, 456);
 
-        assert_eq!(config.general.max_slippage_points, 30.0);
     }
 
     #[test]
@@ -8474,11 +8933,35 @@ fn create_default_mt_config() -> MTConfig {
                 enabled: false,
                 spread_filter_enabled: false,
                 max_spread_points: 25.0,
+                slippage_enabled: false,
+                max_slippage_points: 30.0,
                 equity_stop_enabled: false,
                 equity_stop_value: 35.0,
                 drawdown_stop_enabled: false,
                 max_drawdown_percent: 35.0,
                 risk_action: Some("TriggerAction_StopEA_KeepTrades".to_string()),
+                equity_protection_enabled: false,
+                equity_protection_use_equity: true,
+                equity_protection_drawdown_enabled: false,
+                equity_protection_drawdown_value: 35.0,
+                equity_protection_profit_enabled: false,
+                equity_protection_profit_value: 100.0,
+                equity_protection_margin_enabled: false,
+                equity_protection_margin_value: 150.0,
+                equity_protection_stop_ea: true,
+                equity_protection_close_trades: false,
+                equity_protection_restart_mode: "RestartMode_Disable".to_string(),
+                balance_protection_enabled: false,
+                balance_protection_use_equity: false,
+                balance_protection_drawdown_enabled: false,
+                balance_protection_drawdown_value: 35.0,
+                balance_protection_profit_enabled: false,
+                balance_protection_profit_value: 100.0,
+                balance_protection_margin_enabled: false,
+                balance_protection_margin_value: 150.0,
+                balance_protection_stop_ea: true,
+                balance_protection_close_trades: false,
+                balance_protection_restart_mode: "RestartMode_Disable".to_string(),
             },
             risk_management_b: None,
             risk_management_s: None,
@@ -8505,6 +8988,7 @@ fn create_default_mt_config() -> MTConfig {
                 stop_ea: true,
                 close_trades: false,
                 auto_restart: true,
+                restart_mode: "RestartMode_Disable".to_string(),
                 check_interval: 60,
                 alert_minutes: 5,
                 filter_high_only: true,
@@ -8798,6 +9282,12 @@ fn create_default_logic_config(logic_name: &str) -> LogicConfig {
         close_partial_profit_threshold_4: None,
         close_partial_profit_threshold_4_b: None,
         close_partial_profit_threshold_4_s: None,
+        risk_management_b: None,
+        risk_management_s: None,
+        news_filter_b: None,
+        news_filter_s: None,
+        time_filters_b: None,
+        time_filters_s: None,
         // Triggers
         trigger_type: None,
         trigger_type_b: None,
@@ -8939,15 +9429,20 @@ const V19_MAX_LOGICS: usize = 7;
 #[allow(dead_code)]
 const V19_MAX_DIRECTIONS: usize = 2;
 #[allow(dead_code)]
-const V19_FIELDS_PER_LOGIC_GROUP1: usize = 81;
+// Current contract (with per-logic risk/news/time + slippage):
+// - Group1 Power (A) = 203
+// - Group1 Power (B/C) = 204
+// - Group1 non-power = 205
+const V19_FIELDS_PER_LOGIC_GROUP1: usize = 205;
 #[allow(dead_code)]
-const V19_FIELDS_PER_LOGIC_OTHER_GROUPS: usize = 83;
+const V19_FIELDS_PER_LOGIC_OTHER_GROUPS: usize = 201;
 #[allow(dead_code)]
 const V19_FIELDS_PER_LOGIC_GROUP1_LEGACY: usize = 87;
 #[allow(dead_code)]
 const V19_FIELDS_PER_LOGIC_OTHER_GROUPS_LEGACY: usize = 84;
 #[allow(dead_code)]
-const V19_FIELDS_PER_LOGIC_GROUP1_POWER: usize = 80;
+const V19_FIELDS_PER_LOGIC_GROUP1_POWER: usize = 203;
+const V19_FIELDS_PER_LOGIC_GROUP1_POWER_MAX: usize = 204;
 #[allow(dead_code)]
 const V19_FIELDS_PER_LOGIC_OTHER_GROUPS_LEGACY_MAX: usize = 87;
 #[allow(dead_code)]
@@ -8959,9 +9454,9 @@ const V19_NON_GROUP1_LOGIC_DIRECTIONS: usize = V19_TOTAL_LOGIC_DIRECTIONS - V19_
 #[allow(dead_code)]
 const V19_TOTAL_LOGIC_INPUTS: usize = (V19_MAX_ENGINES * V19_MAX_DIRECTIONS) * V19_FIELDS_PER_LOGIC_GROUP1_POWER
     + (V19_GROUP1_LOGIC_DIRECTIONS - (V19_MAX_ENGINES * V19_MAX_DIRECTIONS)) * V19_FIELDS_PER_LOGIC_GROUP1
-    + V19_NON_GROUP1_LOGIC_DIRECTIONS * V19_FIELDS_PER_LOGIC_OTHER_GROUPS; // 52,200
+    + V19_NON_GROUP1_LOGIC_DIRECTIONS * V19_FIELDS_PER_LOGIC_OTHER_GROUPS; // 127,800
 #[allow(dead_code)]
-const V19_MIN_TOTAL_INPUTS: usize = 45000;
+const V19_MIN_TOTAL_INPUTS: usize = 120000;
 
 #[derive(Debug, Clone)]
 pub struct ParsedV19Key {
@@ -9110,39 +9605,62 @@ pub fn parse_v19_setfile(content: &str) -> V19ParsedSetfile {
             .unwrap_or(0);
         if group == 1 {
             let logic_code = k.split('_').nth(2).unwrap_or("");
-            let expected_current = if logic_code == "P" {
-                V19_FIELDS_PER_LOGIC_GROUP1_POWER
-            } else {
-                V19_FIELDS_PER_LOGIC_GROUP1
-            };
-            if *count != expected_current
-                && *count != V19_FIELDS_PER_LOGIC_GROUP1
-                && *count != V19_FIELDS_PER_LOGIC_GROUP1_LEGACY
-                && *count != 74
-                && *count != 75
-                && *count != 85
-                && *count != 86
-            {
+            let is_power = logic_code == "P";
+            let mut allowed = vec![
+                V19_FIELDS_PER_LOGIC_GROUP1,
+                V19_FIELDS_PER_LOGIC_GROUP1_LEGACY,
+                74,
+                75,
+                85,
+                86,
+            ];
+            // Profit-trail legacy adds +4 fields.
+            allowed.push(V19_FIELDS_PER_LOGIC_GROUP1 + 4);
+
+            if is_power {
+                allowed.push(V19_FIELDS_PER_LOGIC_GROUP1_POWER);
+                allowed.push(V19_FIELDS_PER_LOGIC_GROUP1_POWER_MAX);
+                allowed.push(V19_FIELDS_PER_LOGIC_GROUP1_POWER + 4);
+                allowed.push(V19_FIELDS_PER_LOGIC_GROUP1_POWER_MAX + 4);
+            }
+
+            if !allowed.contains(count) {
                 errors.push(format!(
-                    "Logic-direction {} has {} fields (expected one of {}, {}, {}, 74, 75, 85, 86).",
+                    "Logic-direction {} has {} fields (expected one of {}).",
                     k,
                     count,
-                    expected_current,
-                    V19_FIELDS_PER_LOGIC_GROUP1,
-                    V19_FIELDS_PER_LOGIC_GROUP1_LEGACY
+                    allowed
+                        .iter()
+                        .map(|v| v.to_string())
+                        .collect::<Vec<_>>()
+                        .join(", ")
                 ));
             }
         } else {
-            if *count != V19_FIELDS_PER_LOGIC_OTHER_GROUPS
-                && *count != 78
-                && *count != V19_FIELDS_PER_LOGIC_OTHER_GROUPS_LEGACY
-                && *count != 72
-                && *count != 85
-                && *count != 86
-                && *count != V19_FIELDS_PER_LOGIC_OTHER_GROUPS_LEGACY_MAX {
+            let mut allowed = vec![
+                V19_FIELDS_PER_LOGIC_OTHER_GROUPS,
+                V19_FIELDS_PER_LOGIC_OTHER_GROUPS_LEGACY,
+                V19_FIELDS_PER_LOGIC_OTHER_GROUPS_LEGACY_MAX,
+                72,
+                78,
+                84,
+                85,
+                86,
+                87,
+            ];
+            // Profit-trail legacy adds +4 fields.
+            allowed.push(V19_FIELDS_PER_LOGIC_OTHER_GROUPS + 4);
+
+            if !allowed.contains(count) {
                 errors.push(format!(
-                    "Logic-direction {} has {} fields (expected one of 72, 78, 83, 84, 85, 86, 87).",
-                    k, count
+                    "Logic-direction {} has {} fields (expected one of {}).",
+                    k,
+                    count,
+                    allowed
+                        .iter()
+                        .map(|v| v.to_string())
+                        .collect::<Vec<_>>()
+                        .join(", ")
                 ));
             }
         }
@@ -9151,7 +9669,7 @@ pub fn parse_v19_setfile(content: &str) -> V19ParsedSetfile {
     let total_inputs = inputs.len();
     if total_inputs < V19_MIN_TOTAL_INPUTS {
         errors.push(format!(
-            "Expected at least {} inputs for the current v19 contract (full export is about 45,480 logic inputs across 630 logic-directions), found {}. Setfile may be incomplete.",
+            "Expected at least {} inputs for the current v19 contract (full export is about 127,800 logic inputs across 630 logic-directions), found {}. Setfile may be incomplete.",
             V19_MIN_TOTAL_INPUTS, total_inputs
         ));
     }
@@ -9666,6 +10184,43 @@ fn set_dir_opt_string(is_buy: bool, field_b: &mut Option<String>, field_s: &mut 
     }
 }
 
+fn get_dir_risk_config<'a>(logic: &'a mut LogicConfig, is_buy: bool) -> &'a mut RiskManagementConfig {
+    if is_buy {
+        logic.risk_management_b.get_or_insert_with(RiskManagementConfig::default)
+    } else {
+        logic.risk_management_s.get_or_insert_with(RiskManagementConfig::default)
+    }
+}
+
+fn get_dir_news_config<'a>(logic: &'a mut LogicConfig, is_buy: bool) -> &'a mut NewsFilterConfig {
+    if is_buy {
+        logic.news_filter_b.get_or_insert_with(NewsFilterConfig::default)
+    } else {
+        logic.news_filter_s.get_or_insert_with(NewsFilterConfig::default)
+    }
+}
+
+fn get_dir_time_config<'a>(logic: &'a mut LogicConfig, is_buy: bool) -> &'a mut TimeFiltersConfig {
+    if is_buy {
+        logic.time_filters_b.get_or_insert_with(TimeFiltersConfig::default)
+    } else {
+        logic.time_filters_s.get_or_insert_with(TimeFiltersConfig::default)
+    }
+}
+
+fn ensure_time_session(cfg: &mut TimeFiltersConfig, session_number: i32) -> &mut SessionConfig {
+    if let Some(idx) = cfg
+        .sessions
+        .iter()
+        .position(|s| s.session_number == session_number)
+    {
+        return &mut cfg.sessions[idx];
+    }
+    cfg.sessions.push(default_session_config(session_number));
+    let idx = cfg.sessions.len().saturating_sub(1);
+    &mut cfg.sessions[idx]
+}
+
 fn apply_v19_param_to_logic(logic: &mut LogicConfig, is_buy: bool, param: &str, raw: &str) {
     let p = param.to_ascii_lowercase();
     let raw_trimmed = raw.trim();
@@ -9765,6 +10320,52 @@ fn apply_v19_param_to_logic(logic: &mut LogicConfig, is_buy: bool, param: &str, 
         "triggerpips" => {
             if let Ok(v) = raw_trimmed.parse::<f64>() {
                 logic.trigger_pips = Some(v);
+            }
+        }
+        "triggerpoints" => {
+            if raw_trimmed.is_empty() {
+                logic.trigger_points = None;
+                logic.trigger_points_b = None;
+                logic.trigger_points_s = None;
+            } else if let Ok(v) = raw_trimmed.parse::<f64>() {
+                logic.trigger_points = Some(v);
+                set_dir_opt_f64(is_buy, &mut logic.trigger_points_b, &mut logic.trigger_points_s, v);
+            }
+        }
+        "startopcount" => {
+            if raw_trimmed.is_empty() {
+                logic.start_op_count = None;
+                logic.start_op_count_b = None;
+                logic.start_op_count_s = None;
+            } else if let Ok(v) = raw_trimmed.parse::<i32>() {
+                logic.start_op_count = Some(v);
+                if is_buy {
+                    logic.start_op_count_b = Some(v);
+                } else {
+                    logic.start_op_count_s = Some(v);
+                }
+            }
+        }
+        "opcountref" => {
+            if raw_trimmed.is_empty() {
+                logic.opcount_ref = None;
+                logic.opcount_ref_b = None;
+                logic.opcount_ref_s = None;
+            } else {
+                let value = raw.to_string();
+                logic.opcount_ref = Some(value.clone());
+                set_dir_opt_string(is_buy, &mut logic.opcount_ref_b, &mut logic.opcount_ref_s, value);
+            }
+        }
+        "startlevelref" => {
+            if raw_trimmed.is_empty() {
+                logic.start_level_ref = None;
+                logic.start_level_ref_b = None;
+                logic.start_level_ref_s = None;
+            } else {
+                let value = raw.to_string();
+                logic.start_level_ref = Some(value.clone());
+                set_dir_opt_string(is_buy, &mut logic.start_level_ref_b, &mut logic.start_level_ref_s, value);
             }
         }
         "ordercountreferencelogic" | "ordercountreference" => {
@@ -9936,7 +10537,330 @@ fn apply_v19_param_to_logic(logic: &mut LogicConfig, is_buy: bool, param: &str, 
             }
         }
         "closetargets" => logic.close_targets = raw.to_string(),
+        // Per-logic Risk Management (directional)
+        "riskmanagementenabled" => {
+            let cfg = get_dir_risk_config(logic, is_buy);
+            cfg.enabled = parse_bool_val(raw);
+        }
+        "spreadfilterenabled" | "usespreadfilter" => {
+            let cfg = get_dir_risk_config(logic, is_buy);
+            cfg.spread_filter_enabled = parse_bool_val(raw);
+        }
+        "maxspreadpoints" => {
+            if let Ok(v) = raw_trimmed.parse::<f64>() {
+                let cfg = get_dir_risk_config(logic, is_buy);
+                cfg.max_spread_points = v;
+            }
+        }
+        "slippageenabled" => {
+            let cfg = get_dir_risk_config(logic, is_buy);
+            cfg.slippage_enabled = parse_bool_val(raw);
+        }
+        "maxslippagepoints" | "maxslippage" => {
+            if let Ok(v) = raw_trimmed.parse::<f64>() {
+                let cfg = get_dir_risk_config(logic, is_buy);
+                cfg.max_slippage_points = v;
+            }
+        }
+        "equitystopenabled" | "useequitystop" => {
+            let cfg = get_dir_risk_config(logic, is_buy);
+            cfg.equity_stop_enabled = parse_bool_val(raw);
+        }
+        "equitystopvalue" => {
+            if let Ok(v) = raw_trimmed.parse::<f64>() {
+                let cfg = get_dir_risk_config(logic, is_buy);
+                cfg.equity_stop_value = v;
+            }
+        }
+        "drawdownstopenabled" | "usedrawdownstop" => {
+            let cfg = get_dir_risk_config(logic, is_buy);
+            cfg.drawdown_stop_enabled = parse_bool_val(raw);
+        }
+        "maxdrawdownpercent" => {
+            if let Ok(v) = raw_trimmed.parse::<f64>() {
+                let cfg = get_dir_risk_config(logic, is_buy);
+                cfg.max_drawdown_percent = v;
+            }
+        }
+        "riskaction" => {
+            let cfg = get_dir_risk_config(logic, is_buy);
+            let cleaned = raw_trimmed.trim();
+            if cleaned.is_empty() {
+                cfg.risk_action = None;
+            } else {
+                cfg.risk_action = Some(trigger_action_from_raw(cleaned));
+            }
+        }
+        "equityprotectionenabled" => {
+            let cfg = get_dir_risk_config(logic, is_buy);
+            cfg.equity_protection_enabled = parse_bool_val(raw);
+        }
+        "equityprotectionuseequity" => {
+            let cfg = get_dir_risk_config(logic, is_buy);
+            cfg.equity_protection_use_equity = parse_bool_val(raw);
+        }
+        "equityprotectiondrawdownenabled" => {
+            let cfg = get_dir_risk_config(logic, is_buy);
+            cfg.equity_protection_drawdown_enabled = parse_bool_val(raw);
+        }
+        "equityprotectiondrawdownvalue" => {
+            if let Ok(v) = raw_trimmed.parse::<f64>() {
+                let cfg = get_dir_risk_config(logic, is_buy);
+                cfg.equity_protection_drawdown_value = v;
+            }
+        }
+        "equityprotectionprofitenabled" => {
+            let cfg = get_dir_risk_config(logic, is_buy);
+            cfg.equity_protection_profit_enabled = parse_bool_val(raw);
+        }
+        "equityprotectionprofitvalue" => {
+            if let Ok(v) = raw_trimmed.parse::<f64>() {
+                let cfg = get_dir_risk_config(logic, is_buy);
+                cfg.equity_protection_profit_value = v;
+            }
+        }
+        "equityprotectionmarginenabled" => {
+            let cfg = get_dir_risk_config(logic, is_buy);
+            cfg.equity_protection_margin_enabled = parse_bool_val(raw);
+        }
+        "equityprotectionmarginvalue" => {
+            if let Ok(v) = raw_trimmed.parse::<f64>() {
+                let cfg = get_dir_risk_config(logic, is_buy);
+                cfg.equity_protection_margin_value = v;
+            }
+        }
+        "equityprotectionstopea" => {
+            let cfg = get_dir_risk_config(logic, is_buy);
+            cfg.equity_protection_stop_ea = parse_bool_val(raw);
+        }
+        "equityprotectionclosetrades" => {
+            let cfg = get_dir_risk_config(logic, is_buy);
+            cfg.equity_protection_close_trades = parse_bool_val(raw);
+        }
+        "equityprotectionrestartmode" => {
+            let cfg = get_dir_risk_config(logic, is_buy);
+            cfg.equity_protection_restart_mode = restart_mode_from_raw(raw);
+        }
+        "balanceprotectionenabled" => {
+            let cfg = get_dir_risk_config(logic, is_buy);
+            cfg.balance_protection_enabled = parse_bool_val(raw);
+        }
+        "balanceprotectionuseequity" => {
+            let cfg = get_dir_risk_config(logic, is_buy);
+            cfg.balance_protection_use_equity = parse_bool_val(raw);
+        }
+        "balanceprotectiondrawdownenabled" => {
+            let cfg = get_dir_risk_config(logic, is_buy);
+            cfg.balance_protection_drawdown_enabled = parse_bool_val(raw);
+        }
+        "balanceprotectiondrawdownvalue" => {
+            if let Ok(v) = raw_trimmed.parse::<f64>() {
+                let cfg = get_dir_risk_config(logic, is_buy);
+                cfg.balance_protection_drawdown_value = v;
+            }
+        }
+        "balanceprotectionprofitenabled" => {
+            let cfg = get_dir_risk_config(logic, is_buy);
+            cfg.balance_protection_profit_enabled = parse_bool_val(raw);
+        }
+        "balanceprotectionprofitvalue" => {
+            if let Ok(v) = raw_trimmed.parse::<f64>() {
+                let cfg = get_dir_risk_config(logic, is_buy);
+                cfg.balance_protection_profit_value = v;
+            }
+        }
+        "balanceprotectionmarginenabled" => {
+            let cfg = get_dir_risk_config(logic, is_buy);
+            cfg.balance_protection_margin_enabled = parse_bool_val(raw);
+        }
+        "balanceprotectionmarginvalue" => {
+            if let Ok(v) = raw_trimmed.parse::<f64>() {
+                let cfg = get_dir_risk_config(logic, is_buy);
+                cfg.balance_protection_margin_value = v;
+            }
+        }
+        "balanceprotectionstopea" => {
+            let cfg = get_dir_risk_config(logic, is_buy);
+            cfg.balance_protection_stop_ea = parse_bool_val(raw);
+        }
+        "balanceprotectionclosetrades" => {
+            let cfg = get_dir_risk_config(logic, is_buy);
+            cfg.balance_protection_close_trades = parse_bool_val(raw);
+        }
+        "balanceprotectionrestartmode" => {
+            let cfg = get_dir_risk_config(logic, is_buy);
+            cfg.balance_protection_restart_mode = restart_mode_from_raw(raw);
+        }
+        // Per-logic News Filter (directional)
+        "newsfilterenabled" => {
+            let cfg = get_dir_news_config(logic, is_buy);
+            cfg.enabled = parse_bool_val(raw);
+        }
+        "newsimpactlevel" => {
+            if let Ok(v) = raw_trimmed.parse::<i32>() {
+                let cfg = get_dir_news_config(logic, is_buy);
+                cfg.impact_level = v;
+            }
+        }
+        "newsminutesbefore" => {
+            if let Ok(v) = raw_trimmed.parse::<i32>() {
+                let cfg = get_dir_news_config(logic, is_buy);
+                cfg.minutes_before = v;
+            }
+        }
+        "newsminutesafter" => {
+            if let Ok(v) = raw_trimmed.parse::<i32>() {
+                let cfg = get_dir_news_config(logic, is_buy);
+                cfg.minutes_after = v;
+            }
+        }
+        "newscountries" => {
+            let cfg = get_dir_news_config(logic, is_buy);
+            cfg.countries = raw.to_string();
+        }
+        "newsapiurl" => {
+            let cfg = get_dir_news_config(logic, is_buy);
+            cfg.api_url = raw.to_string();
+        }
+        "newsapikey" => {
+            let cfg = get_dir_news_config(logic, is_buy);
+            cfg.api_key = raw.to_string();
+        }
+        "newsstopea" => {
+            let cfg = get_dir_news_config(logic, is_buy);
+            cfg.stop_ea = parse_bool_val(raw);
+        }
+        "newsclosetrades" => {
+            let cfg = get_dir_news_config(logic, is_buy);
+            cfg.close_trades = parse_bool_val(raw);
+        }
+        "newsautorestart" => {
+            let cfg = get_dir_news_config(logic, is_buy);
+            cfg.auto_restart = parse_bool_val(raw);
+        }
+        "newsrestartmode" => {
+            let cfg = get_dir_news_config(logic, is_buy);
+            cfg.restart_mode = restart_mode_from_raw(raw);
+        }
+        "newscalendarfile" => {
+            let cfg = get_dir_news_config(logic, is_buy);
+            cfg.calendar_file = raw.to_string();
+        }
+        "newscheckinterval" => {
+            if let Ok(v) = raw_trimmed.parse::<i32>() {
+                let cfg = get_dir_news_config(logic, is_buy);
+                cfg.check_interval = v;
+            }
+        }
+        "alertminutesbefore" => {
+            if let Ok(v) = raw_trimmed.parse::<i32>() {
+                let cfg = get_dir_news_config(logic, is_buy);
+                cfg.alert_minutes = v;
+            }
+        }
+        "filterhighimpactonly" => {
+            let cfg = get_dir_news_config(logic, is_buy);
+            cfg.filter_high_only = parse_bool_val(raw);
+        }
+        "filterweekendnews" => {
+            let cfg = get_dir_news_config(logic, is_buy);
+            cfg.filter_weekends = parse_bool_val(raw);
+        }
+        "uselocalnewscache" => {
+            let cfg = get_dir_news_config(logic, is_buy);
+            cfg.use_local_cache = parse_bool_val(raw);
+        }
+        "newscacheduration" => {
+            if let Ok(v) = raw_trimmed.parse::<i32>() {
+                let cfg = get_dir_news_config(logic, is_buy);
+                cfg.cache_duration = v;
+            }
+        }
+        "newsfallbackonerror" => {
+            let cfg = get_dir_news_config(logic, is_buy);
+            cfg.fallback_on_error = raw.to_string();
+        }
+        "filtercurrencies" => {
+            let cfg = get_dir_news_config(logic, is_buy);
+            cfg.filter_currencies = raw.to_string();
+        }
+        "includespeeches" => {
+            let cfg = get_dir_news_config(logic, is_buy);
+            cfg.include_speeches = parse_bool_val(raw);
+        }
+        "includereports" => {
+            let cfg = get_dir_news_config(logic, is_buy);
+            cfg.include_reports = parse_bool_val(raw);
+        }
+        "newsvisualindicator" => {
+            let cfg = get_dir_news_config(logic, is_buy);
+            cfg.visual_indicator = parse_bool_val(raw);
+        }
+        "alertbeforenews" => {
+            let cfg = get_dir_news_config(logic, is_buy);
+            cfg.alert_before_news = parse_bool_val(raw);
+        }
+        // Per-logic Time Filters (directional)
+        "timefiltersenabled" | "sessionfilterenabled" => {
+            let cfg = get_dir_time_config(logic, is_buy);
+            cfg.enabled = parse_bool_val(raw);
+        }
+        "newsfilteroverridessession" | "newsoverridessession" => {
+            let cfg = get_dir_time_config(logic, is_buy);
+            cfg.priority_settings.news_filter_overrides_session = parse_bool_val(raw);
+        }
+        "sessionfilteroverridesnews" | "sessionoverridesnews" => {
+            let cfg = get_dir_time_config(logic, is_buy);
+            cfg.priority_settings.session_filter_overrides_news = parse_bool_val(raw);
+        }
         _ => {
+            if let Some(rest) = p.strip_prefix("session") {
+                let bytes = rest.as_bytes();
+                let mut idx = 0;
+                while idx < bytes.len() && bytes[idx].is_ascii_digit() {
+                    idx += 1;
+                }
+                if idx > 0 {
+                    if let Ok(num) = rest[..idx].parse::<i32>() {
+                        let field = &rest[idx..];
+                        let cfg = get_dir_time_config(logic, is_buy);
+                        let session = ensure_time_session(cfg, num);
+                        match field {
+                            "enabled" => session.enabled = parse_bool_val(raw),
+                            "day" => {
+                                if let Ok(v) = raw_trimmed.parse::<i32>() {
+                                    session.day = v;
+                                }
+                            }
+                            "starthour" => {
+                                if let Ok(v) = raw_trimmed.parse::<i32>() {
+                                    session.start_hour = v;
+                                }
+                            }
+                            "startminute" => {
+                                if let Ok(v) = raw_trimmed.parse::<i32>() {
+                                    session.start_minute = v;
+                                }
+                            }
+                            "endhour" => {
+                                if let Ok(v) = raw_trimmed.parse::<i32>() {
+                                    session.end_hour = v;
+                                }
+                            }
+                            "endminute" => {
+                                if let Ok(v) = raw_trimmed.parse::<i32>() {
+                                    session.end_minute = v;
+                                }
+                            }
+                            "stopea" => session.stop_ea = parse_bool_val(raw),
+                            "closetrades" => session.close_trades = parse_bool_val(raw),
+                            "restartmode" => session.restart_mode = restart_mode_from_raw(raw),
+                            _ => {}
+                        }
+                        return;
+                    }
+                }
+            }
             if let Some(suffix) = p.strip_prefix("trailstep") {
                 if let Ok(n) = suffix.parse::<i32>() {
                     if raw_trimmed.is_empty() {
@@ -10102,11 +11026,6 @@ fn apply_v19_global_keys(config: &mut MTConfig, inputs: &HashMap<String, String>
         get_i32(inputs, "gInput_MagicNumberHedgeBase", config.general.hedge_magic_base);
     config.general.hedge_magic_independent =
         get_bool_first(inputs, &["gInput_HedgeMagicIndependent"]);
-    config.general.max_slippage_points = get_f64_first(
-        inputs,
-        &["gInput_MaxSlippagePoints", "gInput_MaxSlippage"],
-        config.general.max_slippage_points,
-    );
     let allow_buy_keys = ["gInput_AllowBuy", "gInput_allowBuy", "AllowBuy", "allowBuy"];
     if allow_buy_keys.iter().any(|k| inputs.contains_key(*k)) {
         config.general.allow_buy = get_bool_first(inputs, &allow_buy_keys);
@@ -10121,40 +11040,6 @@ fn apply_v19_global_keys(config: &mut MTConfig, inputs: &HashMap<String, String>
     let pip_factor_default = config.general.pip_factor.unwrap_or(1);
     config.general.grid_unit = Some(get_i32(inputs, "gInput_GridUnit", grid_unit_default));
     config.general.pip_factor = Some(get_i32(inputs, "gInput_PipFactor", pip_factor_default));
-
-    let nf = &mut config.general.news_filter;
-    nf.enabled = get_bool_first(inputs, &["gInput_EnableNewsFilter", "gInput_NewsFilterEnabled"]);
-    nf.api_key = get_string(inputs, "gInput_NewsAPIKey", &nf.api_key);
-    nf.api_url = get_string(inputs, "gInput_NewsAPIURL", &nf.api_url);
-    nf.countries = get_string(inputs, "gInput_NewsFilterCountries", &nf.countries);
-    nf.impact_level = get_i32(inputs, "gInput_NewsImpactLevel", nf.impact_level);
-    nf.minutes_before = get_i32(inputs, "gInput_MinutesBeforeNews", nf.minutes_before);
-    nf.minutes_after = get_i32(inputs, "gInput_MinutesAfterNews", nf.minutes_after);
-    if let Some(raw_action) = inputs.get("gInput_NewsAction") {
-        if let Ok(action_num) = raw_action.trim().parse::<i32>() {
-            let flags = news_flags_from_action_int(action_num);
-            nf.stop_ea = flags.0;
-            nf.close_trades = flags.1;
-            nf.auto_restart = flags.2;
-        }
-    }
-    // Parse 3 boolean fields
-    nf.stop_ea = get_bool_with_default(inputs, "gInput_NewsStopEA", nf.stop_ea);
-    nf.close_trades = get_bool_with_default(inputs, "gInput_NewsCloseTrades", nf.close_trades);
-    nf.auto_restart = get_bool_with_default(inputs, "gInput_NewsAutoRestart", nf.auto_restart);
-    nf.check_interval = get_i32(inputs, "gInput_NewsCheckInterval", nf.check_interval);
-    nf.alert_minutes = get_i32(inputs, "gInput_AlertMinutesBefore", nf.alert_minutes);
-    nf.filter_high_only = get_bool_with_default(inputs, "gInput_FilterHighImpactOnly", nf.filter_high_only);
-    nf.filter_weekends = get_bool_with_default(inputs, "gInput_FilterWeekendNews", nf.filter_weekends);
-    nf.use_local_cache = get_bool_with_default(inputs, "gInput_UseLocalNewsCache", nf.use_local_cache);
-    nf.cache_duration = get_i32(inputs, "gInput_NewsCacheDuration", nf.cache_duration);
-    nf.fallback_on_error = get_string(inputs, "gInput_NewsFallbackOnError", &nf.fallback_on_error);
-    nf.filter_currencies = get_string(inputs, "gInput_FilterCurrencies", &nf.filter_currencies);
-    nf.include_speeches = get_bool_with_default(inputs, "gInput_IncludeSpeeches", nf.include_speeches);
-    nf.include_reports = get_bool_with_default(inputs, "gInput_IncludeReports", nf.include_reports);
-    nf.visual_indicator = get_bool_with_default(inputs, "gInput_NewsVisualIndicator", nf.visual_indicator);
-    nf.alert_before_news = get_bool_with_default(inputs, "gInput_AlertBeforeNews", nf.alert_before_news);
-    nf.calendar_file = get_string(inputs, "gInput_NewsCalendarFile", "");
 
     // Group thresholds (groups 2-15):
     // NEW: Support separate Buy/Sell values: gInput_GroupPowerStart_{P|BP|CP}{N}_{Buy|Sell}
@@ -10236,6 +11121,51 @@ fn build_config_from_v19_setfile(content: &str) -> Result<MTConfig, String> {
                     }
                     if let Some(logic) = maybe_logic {
                         apply_v19_param_to_logic(logic, is_buy, &parsed_key.param, raw_val);
+                    }
+                }
+            }
+        }
+    }
+
+    // Ensure NewsApiKey + FilterCurrencies survive v19 import for Buy/Sell rows.
+    // These two fields were observed blanking out after load->export cycles.
+    for (key, raw_val) in &parsed.inputs {
+        if raw_val.trim().is_empty() {
+            continue;
+        }
+        let Some(parsed_key) = parse_v19_key(key) else { continue };
+        let param_lower = parsed_key.param.to_ascii_lowercase();
+        if param_lower != "newsapikey" && param_lower != "filtercurrencies" {
+            continue;
+        }
+
+        let engine_id = parsed_key.engine.to_string();
+        let logic_name = match logic_code_to_name(parsed_key.logic.as_str()) {
+            Some(name) => name.to_string(),
+            None => continue,
+        };
+        let is_buy = parsed_key.direction == "Buy";
+        let group_u8 = parsed_key.group as u8;
+
+        if let Some(engine) = config.engines.iter_mut().find(|e| e.engine_id == engine_id) {
+            if let Some(group) = engine.groups.iter_mut().find(|g| g.group_number == group_u8) {
+                let dir_token = if is_buy { "_B_" } else { "_S_" };
+                let mut maybe_logic = group.logics.iter_mut().find(|l| {
+                    l.logic_name.to_uppercase() == logic_name.to_uppercase()
+                        && l.logic_id.to_uppercase().contains(dir_token)
+                });
+                if maybe_logic.is_none() {
+                    maybe_logic = group
+                        .logics
+                        .iter_mut()
+                        .find(|l| l.logic_name.to_uppercase() == logic_name.to_uppercase());
+                }
+                if let Some(logic) = maybe_logic {
+                    let cfg = get_dir_news_config(logic, is_buy);
+                    if param_lower == "newsapikey" {
+                        cfg.api_key = raw_val.to_string();
+                    } else if param_lower == "filtercurrencies" {
+                        cfg.filter_currencies = raw_val.to_string();
                     }
                 }
             }

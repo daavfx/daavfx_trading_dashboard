@@ -3,6 +3,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { MTConfig } from '@/types/mt-config';
+import { safeGetItem, safeRemoveItem, safeSetItem } from '@/utils/safe-storage';
 import {
   VersionControlState,
   Snapshot,
@@ -49,7 +50,7 @@ export class VersionControlManager {
   private saveToStorage(): void {
     try {
       const data = JSON.stringify(this.state);
-      localStorage.setItem(STORAGE_KEY, data);
+      safeSetItem(STORAGE_KEY, data);
     } catch (e) {
       if (e instanceof DOMException && e.name === 'QuotaExceededError') {
         console.warn('[VersionControl] Storage quota exceeded, clearing old snapshots...');
@@ -57,7 +58,7 @@ export class VersionControlManager {
         if (this.state.snapshots.length > 5) {
           this.state.snapshots = this.state.snapshots.slice(-5);
           try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+            safeSetItem(STORAGE_KEY, JSON.stringify(this.state));
           } catch (e2) {
             console.error('[VersionControl] Still cannot save after clearing, disabling storage');
             // Clear all but current snapshot
@@ -73,7 +74,7 @@ export class VersionControlManager {
   // Load from localStorage
   private loadFromStorage(): VersionControlState | null {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
+      const saved = safeGetItem(STORAGE_KEY);
       if (saved) {
         return JSON.parse(saved);
       }

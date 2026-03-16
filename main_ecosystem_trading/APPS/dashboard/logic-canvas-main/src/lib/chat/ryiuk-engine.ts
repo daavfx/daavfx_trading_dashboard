@@ -10,6 +10,7 @@
 // Efficient, deterministic, visual - no LLM required
 
 import type { MTConfig, LogicConfig, GroupConfig } from "@/types/mt-config";
+import { safeGetItem, safeSetItem } from "@/utils/safe-storage";
 
 // ============================================================================
 // QUICK ACTION DEFINITIONS
@@ -847,7 +848,7 @@ export function savePreset(config: MTConfig, name: string, description: string, 
   existing.push(preset);
   
   try {
-    localStorage.setItem(PRESET_STORAGE_KEY, JSON.stringify(existing));
+    safeSetItem(PRESET_STORAGE_KEY, JSON.stringify(existing));
   } catch (e) {
     console.error("Failed to save preset:", e);
   }
@@ -857,7 +858,7 @@ export function savePreset(config: MTConfig, name: string, description: string, 
 
 export function loadAllPresets(): ConfigPreset[] {
   try {
-    const data = localStorage.getItem(PRESET_STORAGE_KEY);
+    const data = safeGetItem(PRESET_STORAGE_KEY);
     return data ? JSON.parse(data) : [];
   } catch (e) {
     console.error("Failed to load presets:", e);
@@ -872,7 +873,7 @@ export function deletePreset(id: string): boolean {
   if (filtered.length === existing.length) return false;
   
   try {
-    localStorage.setItem(PRESET_STORAGE_KEY, JSON.stringify(filtered));
+    safeSetItem(PRESET_STORAGE_KEY, JSON.stringify(filtered));
     return true;
   } catch (e) {
     console.error("Failed to delete preset:", e);
