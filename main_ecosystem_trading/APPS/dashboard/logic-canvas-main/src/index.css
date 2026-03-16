@@ -25,6 +25,7 @@
 
     --foreground: 38 10% 91%;
     --foreground-muted: 30 5% 50%;
+    --foreground-title: 0 0% 100%; /* Pure white for titles */
 
     --card: 30 3% 9%;
     --card-foreground: 38 10% 89%;
@@ -33,10 +34,10 @@
     --popover: 30 4% 8.5%;
     --popover-foreground: 38 8% 89%;
 
-    /* Primary (Warm Bronze — desaturated, never loud) */
-    --primary: 38 32% 46%;
+    /* Primary (Elegant Gold — muted, sophisticated) */
+    --primary: 38 20% 38%;
     --primary-foreground: 30 8% 8%;
-    --primary-glow: 38 28% 42%;
+    --primary-glow: 38 18% 32%;
 
     /* Accent (Steel Blue — cooled down, contextual) */
     --accent: 215 12% 28%;
@@ -50,15 +51,15 @@
     --muted: 30 3% 16%;
     --muted-foreground: 30 5% 48%;
 
-    /* Destructive (Burnt Oxide — dark, not alarming) */
-    --destructive: 4 28% 26%;
+    /* Destructive (Dark Red — elegant, not alarming) */
+    --destructive: 0 25% 22%;
     --destructive-foreground: 38 10% 91%;
 
     /* Status */
     --success: 160 14% 24%;
     --success-foreground: 38 10% 91%;
 
-    --warning: 38 30% 46%;
+    --warning: 38 20% 38%;
     --warning-foreground: 30 8% 8%;
 
     /* Borders — warm-tinted, very subtle */
@@ -69,16 +70,16 @@
 
     --radius: 0.375rem;
 
-    /* Canvas */
-    --canvas-default: 30 3% 5%;
-    --canvas-mt4: 30 3% 5%;
-    --canvas-mt5: 30 3% 5%;
-    --canvas-python: 30 3% 5%;
-    --canvas-c: 30 3% 5%;
-    --canvas-cpp: 30 3% 5%;
-    --canvas-rust: 30 3% 5%;
+    /* Canvas with subtle gradient */
+    --canvas-default: linear-gradient(180deg, hsl(30 3% 7%) 0%, hsl(30 3% 4%) 100%);
+    --canvas-mt4: linear-gradient(180deg, hsl(30 3% 7%) 0%, hsl(30 3% 4%) 100%);
+    --canvas-mt5: linear-gradient(180deg, hsl(30 3% 7%) 0%, hsl(30 3% 4%) 100%);
+    --canvas-python: linear-gradient(180deg, hsl(30 3% 7%) 0%, hsl(30 3% 4%) 100%);
+    --canvas-c: linear-gradient(180deg, hsl(30 3% 7%) 0%, hsl(30 3% 4%) 100%);
+    --canvas-cpp: linear-gradient(180deg, hsl(30 3% 7%) 0%, hsl(30 3% 4%) 100%);
+    --canvas-rust: linear-gradient(180deg, hsl(30 3% 7%) 0%, hsl(30 3% 4%) 100%);
 
-    /* Platform Colors — muted */
+    /* Platform Colors — muted elegant */
     --platform-mt4: 214 16% 40%;
     --platform-mt5: 205 14% 38%;
     --platform-python: 38 24% 44%;
@@ -96,30 +97,37 @@
     /* Sidebar */
     --sidebar-background: 30 3% 5.5%;
     --sidebar-foreground: 38 10% 76%;
-    --sidebar-primary: 38 32% 48%;
+    --sidebar-primary: 38 20% 40%;
     --sidebar-primary-foreground: 30 8% 8%;
     --sidebar-accent: 30 3% 13%;
     --sidebar-accent-foreground: 38 10% 76%;
     --sidebar-border: 30 4% 14%;
-    --sidebar-ring: 38 28% 42%;
+    --sidebar-ring: 38 18% 34%;
 
     /* Chart */
     --chart-1: 160 14% 30%;
-    --chart-2: 38 32% 48%;
+    --chart-2: 38 20% 40%;
     --chart-3: 38 8% 82%;
-    --chart-4: 4 28% 32%;
+    --chart-4: 0 25% 28%;
     --chart-5: 215 18% 38%;
 
-    /* Logic Colors */
-    --logic-power: 38 32% 48%;
-    --logic-repower: 215 16% 34%;
-    --logic-scalper: 160 14% 26%;
-    --logic-stopper: 4 28% 28%;
-    --logic-sto: 38 28% 44%;
-    --logic-sca: 215 12% 32%;
-    --logic-rpo: 160 16% 28%;
+    /* Logic Colors - Muted elegant */
+    --logic-power: 38 20% 40%;
+    --logic-repower: 215 14% 30%;
+    --logic-scalper: 160 12% 24%;
+    --logic-stopper: 0 25% 24%;
+    --logic-sto: 38 18% 38%;
+    --logic-sca: 215 10% 28%;
+    --logic-rpo: 160 14% 26%;
 
-    /* ── Subtle Accent Tints (for interactive elements only) ── */
+    /* Elegant Accent Colors (50% max saturation) */
+    --elegant-gold: 38 20% 40%;
+    --elegant-blue: 215 15% 30%;
+    --elegant-purple: 265 12% 28%;
+    --elegant-orange: 25 18% 28%;
+    --elegant-red: 0 20% 25%;
+
+    /* Interactive elements */
     --interactive-border: 38 8% 18%;
     --interactive-hover: 38 6% 14%;
     --interactive-active: 38 10% 20%;
@@ -163,7 +171,7 @@
 
 @layer components {
   /* ============================================
-     TYPOGRAPHY HIERARCHY - Sutil Visual Weight
+     TYPOGRAPHY HIERARCHY - Elegant White & Shadowing
      ============================================ */
 
   /* Group Header - Anchors the entire view */
@@ -172,6 +180,7 @@
     font-weight: 600;
     color: #FFFFFF;
     letter-spacing: -0.01em;
+    text-shadow: 0 1px 2px hsl(30 6% 0% / 0.3);
   }
 
   /* Card Title - Category boundaries */
@@ -179,7 +188,7 @@
     font-size: 11px;
     font-weight: 700;
     text-transform: uppercase;
-    color: hsl(38 12% 55%);
+    color: hsl(0 0% 70%);
     letter-spacing: 0.05em;
   }
 
@@ -188,7 +197,7 @@
     font-size: 11px;
     font-weight: 600;
     text-transform: capitalize;
-    color: hsl(30 5% 48%);
+    color: hsl(30 5% 55%);
     letter-spacing: 0;
   }
 

@@ -9,21 +9,25 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:brightness-110 shadow-[inset_0_1px_0_hsl(38_18%_60%/0.08)]",
-        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-        outline: "border border-white/[0.05] bg-transparent hover:bg-white/[0.03] hover:border-white/[0.08] text-foreground",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-white/[0.03] text-muted-foreground hover:text-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
-        gold: "bg-primary text-primary-foreground hover:brightness-110 shadow-[inset_0_1px_0_hsl(38_18%_60%/0.08)]",
-        "gold-outline": "border border-primary/30 text-primary bg-transparent hover:bg-primary/10 hover:border-primary/40",
-        accent: "bg-accent text-accent-foreground hover:bg-accent/90",
+        default: "bg-gradient-to-b from-[hsl(38_20%42%)] to-[hsl(38_20%32%)] text-white border border-white/[0.06] hover:brightness-110 hover:border-white/[0.12] shadow-md",
+        destructive: "bg-gradient-to-b from-[hsl(0_25%28%)] to-[hsl(0_25%18%)] text-white border border-white/[0.06] hover:brightness-110",
+        outline: "border border-white/[0.08] bg-transparent hover:bg-white/[0.04] hover:border-white/[0.15] text-foreground",
+        secondary: "bg-gradient-to-b from-[hsl(30_3%15%)] to-[hsl(30_3%10%)] text-muted-foreground border border-white/[0.05] hover:bg-white/[0.04]",
+        ghost: "hover:bg-white/[0.04] text-muted-foreground hover:text-foreground border border-transparent hover:border-white/[0.05]",
+        link: "text-[hsl(38_20%50%)] underline-offset-4 hover:underline",
+        gold: "bg-gradient-to-b from-[hsl(38_20%42%)] to-[hsl(38_20%32%)] text-white border border-white/[0.06] hover:brightness-110 hover:border-white/[0.12] shadow-md",
+        "gold-outline": "border border-[hsl(38_20%40%)]/40 text-[hsl(38_20%50%)] bg-transparent hover:bg-[hsl(38_20%40%)]/10 hover:border-[hsl(38_20%40%)]/50",
+        accent: "bg-gradient-to-b from-[hsl(215_15%32%)] to-[hsl(215_15%22%)] text-white border border-white/[0.06] hover:brightness-110",
+        blue: "bg-gradient-to-b from-[hsl(215_15%32%)] to-[hsl(215_15%22%)] text-white border border-white/[0.06] hover:brightness-110 hover:border-white/[0.12]",
+        purple: "bg-gradient-to-b from-[hsl(265_12%30%)] to-[hsl(265_12%20%)] text-white border border-white/[0.06] hover:brightness-110 hover:border-white/[0.12]",
+        orange: "bg-gradient-to-b from-[hsl(25_18%32%)] to-[hsl(25_18%22%)] text-white border border-white/[0.06] hover:brightness-110 hover:border-white/[0.12]",
+        red: "bg-gradient-to-b from-[hsl(0_20%28%)] to-[hsl(0_20%18%)] text-white border border-white/[0.06] hover:brightness-110 hover:border-white/[0.12]",
       },
       size: {
         default: "h-10 px-4 py-2",
-        sm: "h-9 rounded-md px-3",
+        sm: "h-8 rounded-md px-3 text-xs",
         lg: "h-11 rounded-md px-8",
-        icon: "h-10 w-10",
+        icon: "h-9 w-9",
       },
     },
     defaultVariants: {
@@ -35,7 +39,7 @@ const buttonVariants = cva(
 
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-  VariantProps<typeof buttonVariants> {
+    VariantProps<typeof buttonVariants> {
   asChild?: boolean;
 }
 
