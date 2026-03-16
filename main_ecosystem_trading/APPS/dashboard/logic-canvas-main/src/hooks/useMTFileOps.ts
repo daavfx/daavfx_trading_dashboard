@@ -111,6 +111,10 @@ export function useMTFileOps(
         });
         if (!filePath) return;
 
+        const fileName = Array.isArray(filePath)
+          ? String(filePath[0]).split(/[/\\\\]/).pop() || String(filePath[0])
+          : String(filePath).split(/[/\\\\]/).pop() || String(filePath);
+
         const configToRust = canonicalizeConfigForBackend(configToExport);
 
         await invoke("export_massive_v19_setfile", {
@@ -119,14 +123,22 @@ export function useMTFileOps(
           platform: mtPlatform,
         });
 
-        toast.success(`Exported .set file: ${filePath}`);
+        const nowIso = new Date().toISOString();
+        const enrichedConfig = {
+          ...configToExport,
+          current_set_name: fileName,
+          last_saved_at: nowIso,
+        };
+        await loadConfigOnly(enrichedConfig);
+        
+        toast.success(`Exported .set file: ${fileName}`);
       } else {
         toast.error("Exporting .set requires the app backend (Tauri).");
       }
     } catch (err) {
       toast.error(`Failed to export .set file: ${err}`);
     }
-  }, [config, mtPlatform, tauriAvailable]);
+  }, [config, mtPlatform, tauriAvailable, loadConfigOnly]);
 
   const refreshActiveSetStatus = useCallback(async () => {
     return null;

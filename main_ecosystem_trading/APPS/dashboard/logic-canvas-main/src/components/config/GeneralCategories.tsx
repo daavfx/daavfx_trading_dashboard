@@ -11,6 +11,7 @@ import {
   Palette,
   FileText,
   TrendingUp,
+  TrendingDown,
   RotateCw,
   Terminal,
   Zap,
