@@ -318,9 +318,14 @@ function exportGlobalConfig(global: GlobalConfig, entries: Map<string, string>):
   add("MagicNumber", global.magicNumberBuy || global.baseMagicNumber);
   add("MagicNumberBuy", global.magicNumberBuy);
   add("MagicNumberSell", global.magicNumberSell);
-  add("SlippageEnabled", global.slippageEnabled || false);
-  add("MaxSlippagePoints", global.maxSlippagePoints || global.maxSlippage || 30);
   add("EnableLogs", global.enableLogs);
+  add("Log_Lifecycle", global.logLifecycle ?? true);
+  add("Log_Trail", global.logTrail ?? true);
+  add("Log_Grid", global.logGrid ?? true);
+  add("Log_StartLevel", global.logStartLevel ?? true);
+  add("Log_Risk", global.logRisk ?? true);
+  add("Log_Session", global.logSession ?? true);
+  add("Log_Config", global.logConfig ?? true);
   add("AllowBuy", global.allowBuy);
   add("AllowSell", global.allowSell);
   add("EnableReverseMode", global.enableReverseMode);
@@ -329,59 +334,6 @@ function exportGlobalConfig(global: GlobalConfig, entries: Map<string, string>):
   add("CompoundingType", global.compoundingType === "Compound_Balance" ? 0 : 1);
   add("GridUnit", global.gridUnit);
   add("PipFactor", global.pipFactor);
-
-  // Session filters
-  add("SessionFilterEnabled", global.sessionFilterEnabled);
-  add("NewsFilterEnabled", global.newsFilterEnabled);
-  add("SessionOverridesNews", global.sessionOverridesNews);
-  add("NewsOverridesSession", global.newsOverridesSession);
-  add("NewsFilterCountries", global.newsCountries);
-  add("NewsImpactLevel", global.newsImpactLevel);
-  add("MinutesBeforeNews", global.newsMinutesBefore);
-  add("MinutesAfterNews", global.newsMinutesAfter);
-  add("NewsAction", newsActionToInt(global.newsAction));
-  add("NewsCalendarFile", global.newsCalendarFile);
-
-  // Risk management
-  add("MaxDailyLoss", global.risk.maxDailyLoss);
-  add("MaxWeeklyLoss", global.risk.maxWeeklyLoss);
-  add("MaxMonthlyLoss", global.risk.maxMonthlyLoss);
-  add("MaxDrawdown", global.risk.maxDrawdownPercent);
-  add("MaxDrawdownPercent", global.risk.maxDrawdownPercent);
-  add("MaxLotSize", global.risk.maxLotSize);
-  add("MaxOrders", global.risk.maxTotalOrders);
-  add("MaxTotalOrders", global.risk.maxTotalOrders);
-  add("RiskStopMode", global.risk.stopMode === "Stop_ByPercent" ? 0 : 1);
-  add("RiskAction", global.risk.action);
-
-  // Equity Protection
-  add("EquityProtectionEnabled", (global as any).equityProtectionEnabled || false);
-  add("EquityProtectionUseEquity", (global as any).equityProtectionUseEquity ?? true);
-  add("EquityProtectionDrawdownEnabled", (global as any).equityProtectionDrawdownEnabled || false);
-  add("EquityProtectionDrawdownValue", (global as any).equityProtectionDrawdownValue ?? 35);
-  add("EquityProtectionProfitEnabled", (global as any).equityProtectionProfitEnabled || false);
-  add("EquityProtectionProfitValue", (global as any).equityProtectionProfitValue ?? 100);
-  add("EquityProtectionMarginEnabled", (global as any).equityProtectionMarginEnabled || false);
-  add("EquityProtectionMarginValue", (global as any).equityProtectionMarginValue ?? 150);
-  add("EquityProtectionStopEA", (global as any).equityProtectionStopEA ?? true);
-  add("EquityProtectionCloseTrades", (global as any).equityProtectionCloseTrades || false);
-  add("EquityProtectionRestartMode", restartModeToInt((global as any).equityProtectionRestartMode || "RestartMode_Disable"));
-
-  // Balance Protection
-  add("BalanceProtectionEnabled", (global as any).balanceProtectionEnabled || false);
-  add("BalanceProtectionUseEquity", (global as any).balanceProtectionUseEquity ?? false);
-  add("BalanceProtectionDrawdownEnabled", (global as any).balanceProtectionDrawdownEnabled || false);
-  add("BalanceProtectionDrawdownValue", (global as any).balanceProtectionDrawdownValue ?? 35);
-  add("BalanceProtectionProfitEnabled", (global as any).balanceProtectionProfitEnabled || false);
-  add("BalanceProtectionProfitValue", (global as any).balanceProtectionProfitValue ?? 100);
-  add("BalanceProtectionMarginEnabled", (global as any).balanceProtectionMarginEnabled || false);
-  add("BalanceProtectionMarginValue", (global as any).balanceProtectionMarginValue ?? 150);
-  add("BalanceProtectionStopEA", (global as any).balanceProtectionStopEA ?? true);
-  add("BalanceProtectionCloseTrades", (global as any).balanceProtectionCloseTrades || false);
-  add("BalanceProtectionRestartMode", restartModeToInt((global as any).balanceProtectionRestartMode || "RestartMode_Disable"));
-
-  // News Filter - Restart Mode
-  add("NewsRestartMode", restartModeToInt((global as any).newsRestartMode || "RestartMode_Disable"));
 
   // UI settings
   add("ShowUI", global.showUI);
@@ -402,23 +354,6 @@ function exportGlobalConfig(global: GlobalConfig, entries: Map<string, string>):
   add("DebugMode", global.debugMode);
   add("VerboseLogging", global.verboseLogging);
   add("LogProfile", global.logProfile);
-
-  // Sessions
-  global.sessions.forEach((session, idx) => {
-    if (idx < 10) {
-      add(`Session${idx + 1}Enabled`, session.enabled);
-      add(`Session${idx + 1}Day`, session.day);
-      add(`Session${idx + 1}StartHour`, session.startHour);
-      add(`Session${idx + 1}StartMinute`, session.startMinute);
-      add(`Session${idx + 1}EndHour`, session.endHour);
-      add(`Session${idx + 1}EndMinute`, session.endMinute);
-      add(`Session${idx + 1}Action`, session.action);
-      // New session fields
-      add(`Session${idx + 1}StopEA`, (session as any).stopEa ?? true);
-      add(`Session${idx + 1}CloseTrades`, (session as any).closeTrades ?? false);
-      add(`Session${idx + 1}RestartMode`, restartModeToInt((session as any).restartMode || "RestartMode_Disable"));
-    }
-  });
 
   // Group-level settings
   for (let g = 1; g <= 15; g++) {

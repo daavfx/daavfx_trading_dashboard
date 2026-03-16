@@ -3,6 +3,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { MTConfig } from '@/types/mt-config';
+import { safeGetItem, safeSetItem } from '@/utils/safe-storage';
 import {
   TaggingSystemState,
   ParameterTag,
@@ -51,7 +52,7 @@ export class ParameterGroupingManager {
 
   private saveToStorage(): void {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+      safeSetItem(STORAGE_KEY, JSON.stringify(this.state));
     } catch {
       return;
     }
@@ -59,7 +60,7 @@ export class ParameterGroupingManager {
 
   private loadFromStorage(): TaggingSystemState | null {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
+      const saved = safeGetItem(STORAGE_KEY);
       if (!saved) return null;
       return JSON.parse(saved);
     } catch {

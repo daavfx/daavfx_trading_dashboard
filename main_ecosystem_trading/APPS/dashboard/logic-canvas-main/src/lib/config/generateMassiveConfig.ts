@@ -253,6 +253,13 @@ export function generateMassiveCompleteConfig(
 
     // Feature toggles
     enableLogs: true,
+    logLifecycle: true,
+    logTrail: true,
+    logGrid: true,
+    logStartLevel: true,
+    logRisk: true,
+    logSession: true,
+    logConfig: true,
     enableReverseMode: false,
     enableHedgeMode: false,
     useCompounding: false,

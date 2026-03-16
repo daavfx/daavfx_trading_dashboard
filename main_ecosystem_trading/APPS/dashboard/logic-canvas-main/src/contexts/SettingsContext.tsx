@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { safeGetItem, safeRemoveItem, safeSetItem } from "@/utils/safe-storage";
 
 export interface SettingsState {
   // Appearance
@@ -157,7 +158,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
   // Load settings on mount
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    const saved = safeGetItem(STORAGE_KEY);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -175,7 +176,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   };
 
   const saveSettings = () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+    safeSetItem(STORAGE_KEY, JSON.stringify(settings));
     setHasChanges(false);
     // Dispatch event for other components
     window.dispatchEvent(new CustomEvent("settings-changed", { detail: settings }));
@@ -184,7 +185,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const resetSettings = () => {
     setSettings(defaultSettings);
     setHasChanges(true);
-    localStorage.removeItem(STORAGE_KEY);
+    safeRemoveItem(STORAGE_KEY);
   };
 
   

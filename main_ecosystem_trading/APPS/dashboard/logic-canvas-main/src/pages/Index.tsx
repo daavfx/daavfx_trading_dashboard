@@ -91,6 +91,7 @@ const mockGeneralConfig: GeneralConfig = {
   magic_number: 777,
   magic_number_buy: 777,
   magic_number_sell: 8988,
+  slippage_enabled: false,
   max_slippage_points: 30.0,
   risk_management: {
     spread_filter_enabled: false,
@@ -100,6 +101,8 @@ const mockGeneralConfig: GeneralConfig = {
     drawdown_stop_enabled: false,
     max_drawdown_percent: 35.0,
     risk_action: "TriggerAction_StopEA_KeepTrades",
+    slippage_enabled: false,
+    max_slippage_points: 30.0,
   },
   time_filters: {
     priority_settings: {
@@ -935,7 +938,7 @@ function Index() {
                   
                   // Update the pending command status to 'applied'
                   setCommandHistory(prev => {
-                    const lastPending = prev.findLast(c => c.status === 'pending');
+                    const lastPending = [...prev].reverse().find((c: any) => c.status === 'pending');
                     if (lastPending) {
                       return prev.map(c => 
                         c.id === lastPending.id 
@@ -969,7 +972,7 @@ function Index() {
                 if (chatPendingPlan) {
                   // Update the pending command status to 'cancelled'
                   setCommandHistory(prev => {
-                    const lastPending = prev.findLast(c => c.status === 'pending');
+                    const lastPending = [...prev].reverse().find((c: any) => c.status === 'pending');
                     if (lastPending) {
                       return prev.map(c => 
                         c.id === lastPending.id 
@@ -1258,18 +1261,13 @@ function Index() {
                         <div className="mt-4">
                           <GeneralCategories
                             platform={platform}
+                            config={config ?? undefined}
                             generalConfig={config?.general || mockGeneralConfig}
                             mtPlatform={platform}
                             mode={1}
                             selectedCategory={selectedGeneralCategory}
-                            onConfigChange={(newGeneralConfig) => {
-                              if (config) {
-                                handleSaveConfig({
-                                  ...config,
-                                  general: newGeneralConfig,
-                                });
-                              }
-                            }}
+                            onSelectGeneralCategory={(val) => val && setSelectedGeneralCategory(val)}
+                            onConfigChange={handleSaveConfig}
                           />
                         </div>
                       )}
@@ -1278,19 +1276,13 @@ function Index() {
                         <div className="mt-4">
                           <GeneralCategories
                             platform={platform}
+                            config={config ?? undefined}
                             generalConfig={config?.general || mockGeneralConfig}
                             mtPlatform={platform}
                             mode={1}
                             selectedCategory={selectedGeneralCategory}
-                            onSelectGeneralCategory={setSelectedGeneralCategory}
-                            onConfigChange={(newGeneralConfig) => {
-                              if (config) {
-                                handleSaveConfig({
-                                  ...config,
-                                  general: newGeneralConfig,
-                                });
-                              }
-                            }}
+                            onSelectGeneralCategory={(val) => val && setSelectedGeneralCategory(val)}
+                            onConfigChange={handleSaveConfig}
                             isHorizontal={true}
                             selectedEngines={controlSelectedEngines}
                             selectedGroups={controlSelectedGroups}

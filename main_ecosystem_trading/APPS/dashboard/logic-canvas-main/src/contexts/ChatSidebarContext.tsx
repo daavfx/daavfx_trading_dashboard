@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
+import { safeGetItem, safeSetItem } from '@/utils/safe-storage';
 import type { TransactionPlan, ChangePreview } from '@/lib/chat/types';
 
 export interface CommandHistoryItem {
@@ -97,7 +98,7 @@ export function ChatSidebarProvider({ children, initialStats }: ChatSidebarProvi
   // Load command history from localStorage
   useEffect(() => {
     try {
-      const stored = localStorage.getItem('daavfx-command-history');
+      const stored = safeGetItem('daavfx-command-history');
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) {
@@ -123,7 +124,7 @@ export function ChatSidebarProvider({ children, initialStats }: ChatSidebarProvi
   // Save command history to localStorage
   const saveToLocalStorage = useCallback((history: CommandHistoryItem[]) => {
     try {
-      localStorage.setItem('daavfx-command-history', JSON.stringify(history.slice(-50)));
+      safeSetItem('daavfx-command-history', JSON.stringify(history.slice(-50)));
     } catch {
       // Ignore errors
     }

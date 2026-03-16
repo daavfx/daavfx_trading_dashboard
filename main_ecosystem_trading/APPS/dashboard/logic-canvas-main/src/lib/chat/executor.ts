@@ -345,6 +345,8 @@ export class CommandExecutor {
       risk_management: {
         spread_filter_enabled: false,
         max_spread_points: 25,
+        slippage_enabled: false,
+        max_slippage_points: 30,
         equity_stop_enabled: false,
         equity_stop_value: 35,
         drawdown_stop_enabled: false,

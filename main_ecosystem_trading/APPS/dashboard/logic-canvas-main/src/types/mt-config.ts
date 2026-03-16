@@ -128,6 +128,13 @@ export interface GeneralConfig {
   
   // Logging
   enable_logs: boolean;
+  log_lifecycle: boolean;
+  log_trail: boolean;
+  log_grid: boolean;
+  log_start_level: boolean;
+  log_risk: boolean;
+  log_session: boolean;
+  log_config: boolean;
 
   use_direct_price_grid: boolean;
 
@@ -180,6 +187,10 @@ export interface RiskManagementConfig {
   // Spread Filter
   spread_filter_enabled: boolean;
   max_spread_points: number;
+
+  // Slippage Filter
+  slippage_enabled: boolean;
+  max_slippage_points: number;
   
   // Equity Stop
   equity_stop_enabled: boolean;
@@ -190,6 +201,32 @@ export interface RiskManagementConfig {
   max_drawdown_percent: number;
 
   risk_action?: string; // ENUM_TRIGGER_ACTION
+
+  // Equity Protection (extended)
+  equity_protection_enabled?: boolean;
+  equity_protection_use_equity?: boolean;
+  equity_protection_drawdown_enabled?: boolean;
+  equity_protection_drawdown_value?: number;
+  equity_protection_profit_enabled?: boolean;
+  equity_protection_profit_value?: number;
+  equity_protection_margin_enabled?: boolean;
+  equity_protection_margin_value?: number;
+  equity_protection_stop_ea?: boolean;
+  equity_protection_close_trades?: boolean;
+  equity_protection_restart_mode?: string;
+
+  // Balance Protection (extended)
+  balance_protection_enabled?: boolean;
+  balance_protection_use_equity?: boolean;
+  balance_protection_drawdown_enabled?: boolean;
+  balance_protection_drawdown_value?: number;
+  balance_protection_profit_enabled?: boolean;
+  balance_protection_profit_value?: number;
+  balance_protection_margin_enabled?: boolean;
+  balance_protection_margin_value?: number;
+  balance_protection_stop_ea?: boolean;
+  balance_protection_close_trades?: boolean;
+  balance_protection_restart_mode?: string;
 }
 
 export interface TimeFiltersConfig {
@@ -211,6 +248,8 @@ export interface SessionConfig {
   start_minute: number;
   end_hour: number;
   end_minute: number;
+  stop_ea?: boolean;
+  close_trades?: boolean;
   action: string; // ENUM_TRIGGER_ACTION
   auto_restart: boolean;
   restart_mode: string; // ENUM_RESTART_MODE
@@ -230,6 +269,8 @@ export interface NewsFilterConfig {
   stop_ea: boolean; // Stop EA during news events
   close_trades: boolean; // Close open trades when news hits
   auto_restart: boolean; // Auto-restart EA after news window passes
+  restart_mode?: string; // ENUM_RESTART_MODE
+  action?: string; // Legacy/compatibility
   calendar_file?: string;
   check_interval?: number;
   alert_minutes?: number;
@@ -399,6 +440,14 @@ export interface LogicConfig {
   close_partial_profit_threshold_4?: number;
   close_partial_cycle_4?: number;
   close_partial_balance_4?: LegacyPartialBalance;
+
+  // ===== RISK / NEWS / TIME (Control tab per-logic) =====
+  risk_management_b?: RiskManagementConfig;
+  risk_management_s?: RiskManagementConfig;
+  news_filter_b?: NewsFilterConfig;
+  news_filter_s?: NewsFilterConfig;
+  time_filters_b?: TimeFiltersConfig;
+  time_filters_s?: TimeFiltersConfig;
   
   // ===== GROUP 1 ONLY (4 fields - optional for Groups 2-20) =====
   trigger_type?: string;                // gInput_G1_TriggerType_P (Group 1 ONLY!)

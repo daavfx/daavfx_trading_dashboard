@@ -201,10 +201,10 @@ export default {
   			},
   			'glow-pulse': {
   				'0%, 100%': {
-  					boxShadow: '0 0 20px hsl(43 90% 55% / 0.15)'
+  					boxShadow: '0 0 8px hsl(38 24% 50% / 0.05)'
   				},
   				'50%': {
-  					boxShadow: '0 0 30px hsl(43 90% 55% / 0.25)'
+  					boxShadow: '0 0 12px hsl(38 24% 50% / 0.08)'
   				}
   			},
   			typing: {
@@ -235,16 +235,16 @@ export default {
   			blink: 'blink 1s step-end infinite'
   		},
   		boxShadow: {
-  			'glow-gold': '0 0 30px hsl(43 90% 55% / 0.12), 0 0 60px hsl(43 90% 55% / 0.06)',
-  			'glow-accent': '0 0 20px hsl(175 70% 50% / 0.1)',
-  			elevated: '0 12px 40px hsl(0 0% 0% / 0.5)',
-  			card: '0 2px 8px hsl(0 0% 0% / 0.3), 0 8px 24px hsl(0 0% 0% / 0.2)',
-  			'inner-glow': 'inset 0 1px 0 hsl(45 10% 92% / 0.03)',
-  			soft: '0 4px 12px hsl(0 0% 0% / 0.25)'
+  			'warm-sm': '0 1px 3px hsl(30 6% 0% / 0.12)',
+  			'warm-md': '0 4px 12px hsl(30 6% 0% / 0.18)',
+  			elevated: '0 12px 40px hsl(0 0% 0% / 0.4)',
+  			card: '0 2px 8px hsl(0 0% 0% / 0.25), 0 8px 24px hsl(0 0% 0% / 0.15)',
+  			'inner-highlight': 'inset 0 1px 0 hsl(38 8% 92% / 0.02)',
+  			soft: '0 4px 12px hsl(0 0% 0% / 0.2)'
   		},
   		backgroundImage: {
   			'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-  			'gradient-shine': 'linear-gradient(120deg, transparent 0%, hsl(45 10% 92% / 0.03) 50%, transparent 100%)'
+  			'gradient-shine': 'linear-gradient(120deg, transparent 0%, hsl(38 8% 92% / 0.02) 50%, transparent 100%)'
   		}
   	}
   },

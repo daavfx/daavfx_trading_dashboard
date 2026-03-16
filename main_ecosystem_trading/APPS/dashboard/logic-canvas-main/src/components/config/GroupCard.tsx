@@ -24,6 +24,13 @@ interface GroupCardProps {
   ) => void;
   config: MTConfig | null;
   configLoadId?: number;
+  preferredDirection?: "buy" | "sell" | null;
+  onJumpToControl?: (payload: {
+    engine: string;
+    group?: string;
+    logic: string;
+    direction: "buy" | "sell";
+  }) => void;
 }
 
 const allLogics = ["POWER", "REPOWER", "SCALPER", "STOPPER", "STO", "SCA", "RPO"];
@@ -39,6 +46,8 @@ export function GroupCard({
   onUpdateLogic,
   config,
   configLoadId,
+  preferredDirection,
+  onJumpToControl,
 }: GroupCardProps) {
   const logics = selectedLogics.length > 0
     ? allLogics.filter((l) => selectedLogics.includes(l))
@@ -109,9 +118,9 @@ export function GroupCard({
           >
             <ChevronRight className="w-4 h-4 text-muted-foreground" />
           </motion.div>
-          <span className="text-xs font-medium text-foreground flex items-center gap-2">
+          <span className="heading-group flex items-center gap-2">
             <span className="text-muted-foreground">{prefix}/</span>
-            <span className="font-semibold">{group}</span>
+            <span>{group}</span>
             {isGroup1 && (
               <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[9px] font-medium">
                 TRIGGER
@@ -211,6 +220,8 @@ export function GroupCard({
                     selectedFields={selectedFields}
                     mode={mode}
                     configLoadId={configLoadId}
+                    preferredDirection={preferredDirection}
+                    onJumpToControl={onJumpToControl}
                     onUpdate={(field, value, direction, targetLogicId) => {
                       console.log(`[GroupCard] onUpdate:`, {
                         field,

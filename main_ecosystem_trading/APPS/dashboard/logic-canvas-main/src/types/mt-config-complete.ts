@@ -206,6 +206,13 @@ export interface GlobalConfig {
   
   // Feature toggles
   enableLogs: boolean;
+  logLifecycle: boolean;
+  logTrail: boolean;
+  logGrid: boolean;
+  logStartLevel: boolean;
+  logRisk: boolean;
+  logSession: boolean;
+  logConfig: boolean;
   enableReverseMode: boolean;
   enableHedgeMode: boolean;
   useCompounding: boolean;
@@ -316,13 +323,14 @@ export const LOGIC_SUFFIX_MAP: Record<string, { suffix: string; engine: number; 
 };
 
 // MASSIVE v19 setfile validator baseline:
-// - test_13.set verified: 110 fields per logic-direction across all 630 logic-directions
-export const FIELDS_PER_LOGIC = 110;
+// - Current contract: Group1 Power=205/206, Group1 other=207, Groups 2-15=203 (per logic-direction)
+// - Use max for rough sizing in UI helpers
+export const FIELDS_PER_LOGIC = 207;
 export const LOGICS_PER_ENGINE = 7;
 export const ENGINES = 3;
 export const GROUPS = 15;
 export const DIRECTIONS = 2;
 export const TOTAL_LOGIC_DIRECTIONS = GROUPS * ENGINES * LOGICS_PER_ENGINE * DIRECTIONS; // 630
-export const TOTAL_LOGIC_INPUTS = TOTAL_LOGIC_DIRECTIONS * FIELDS_PER_LOGIC; // 69,300
+export const TOTAL_LOGIC_INPUTS = TOTAL_LOGIC_DIRECTIONS * FIELDS_PER_LOGIC; // ~127,890
 export const TOTAL_GENERAL_INPUTS = 100; // Approximate; validate from exported .set
-export const TOTAL_INPUTS = TOTAL_LOGIC_INPUTS + TOTAL_GENERAL_INPUTS; // ~69,400
+export const TOTAL_INPUTS = TOTAL_LOGIC_INPUTS + TOTAL_GENERAL_INPUTS; // ~127,990

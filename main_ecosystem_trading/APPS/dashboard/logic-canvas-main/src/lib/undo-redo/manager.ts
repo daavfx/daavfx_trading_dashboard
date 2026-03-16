@@ -10,6 +10,7 @@ import {
   UndoRedoStack,
   OperationGroup
 } from './types';
+import { safeGetItem, safeRemoveItem, safeSetItem } from '@/utils/safe-storage';
 
 const STORAGE_KEY = 'daavfx_undo_redo';
 
@@ -17,6 +18,7 @@ export class UndoRedoManager {
   private state: UndoRedoState;
   private onChangeCallbacks: Array<(state: UndoRedoState) => void> = [];
   private debounceTimers: Record<string, NodeJS.Timeout> = {};
+  private storageDisabled = false;
 
   constructor(config?: UndoRedoConfig) {
     // Try to load from localStorage first
@@ -43,19 +45,19 @@ export class UndoRedoManager {
 
   // Persist to localStorage - only store user modifications
   private saveToStorage(): void {
+    if (this.storageDisabled) return;
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+      const ok = safeSetItem(STORAGE_KEY, JSON.stringify(this.state));
+      if (!ok) {
+        this.storageDisabled = true;
+      }
     } catch (e: any) {
       if (e?.name === 'QuotaExceededError') {
-        console.warn('[UndoRedo] Storage quota exceeded, clearing old data');
-        const stack = this.getCurrentStack();
-        stack.undo = stack.undo.slice(-20);
-        stack.redo = [];
+        console.warn('[UndoRedo] Storage quota exceeded, disabling persistence');
+        this.storageDisabled = true;
         try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
-        } catch {
-          localStorage.removeItem(STORAGE_KEY);
-        }
+          safeRemoveItem(STORAGE_KEY);
+        } catch {}
       }
     }
   }
@@ -63,7 +65,7 @@ export class UndoRedoManager {
   // Load from localStorage
   private loadFromStorage(): UndoRedoState | null {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
+      const saved = safeGetItem(STORAGE_KEY);
       if (saved) {
         return JSON.parse(saved);
       }

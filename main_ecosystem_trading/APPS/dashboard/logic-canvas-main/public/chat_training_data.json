@@ -9425,42 +9425,42 @@
     {
       "text": "set enable_news_filter to 100",
       "intent": "SET",
-      "field": "EnableNewsFilter",
+      "field": "NewsFilterEnabled",
       "value": "100",
       "scope": "general"
     },
     {
       "text": "global enable_news_filter 100",
       "intent": "SET",
-      "field": "EnableNewsFilter",
+      "field": "NewsFilterEnabled",
       "value": "100",
       "scope": "general"
     },
     {
       "text": "set enable_news_filter to 500",
       "intent": "SET",
-      "field": "EnableNewsFilter",
+      "field": "NewsFilterEnabled",
       "value": "500",
       "scope": "general"
     },
     {
       "text": "global enable_news_filter 500",
       "intent": "SET",
-      "field": "EnableNewsFilter",
+      "field": "NewsFilterEnabled",
       "value": "500",
       "scope": "general"
     },
     {
       "text": "set enable_news_filter to 1000",
       "intent": "SET",
-      "field": "EnableNewsFilter",
+      "field": "NewsFilterEnabled",
       "value": "1000",
       "scope": "general"
     },
     {
       "text": "global enable_news_filter 1000",
       "intent": "SET",
-      "field": "EnableNewsFilter",
+      "field": "NewsFilterEnabled",
       "value": "1000",
       "scope": "general"
     },
@@ -11931,42 +11931,42 @@
     {
       "text": "set max_slippage to 100",
       "intent": "SET",
-      "field": "MaxSlippage",
+      "field": "MaxSlippagePoints",
       "value": "100",
       "scope": "general"
     },
     {
       "text": "global max_slippage 100",
       "intent": "SET",
-      "field": "MaxSlippage",
+      "field": "MaxSlippagePoints",
       "value": "100",
       "scope": "general"
     },
     {
       "text": "set max_slippage to 500",
       "intent": "SET",
-      "field": "MaxSlippage",
+      "field": "MaxSlippagePoints",
       "value": "500",
       "scope": "general"
     },
     {
       "text": "global max_slippage 500",
       "intent": "SET",
-      "field": "MaxSlippage",
+      "field": "MaxSlippagePoints",
       "value": "500",
       "scope": "general"
     },
     {
       "text": "set max_slippage to 1000",
       "intent": "SET",
-      "field": "MaxSlippage",
+      "field": "MaxSlippagePoints",
       "value": "1000",
       "scope": "general"
     },
     {
       "text": "global max_slippage 1000",
       "intent": "SET",
-      "field": "MaxSlippage",
+      "field": "MaxSlippagePoints",
       "value": "1000",
       "scope": "general"
     },
@@ -12057,168 +12057,168 @@
     {
       "text": "set minutes_after_news to 100",
       "intent": "SET",
-      "field": "MinutesAfterNews",
+      "field": "NewsMinutesAfter",
       "value": "100",
       "scope": "general"
     },
     {
       "text": "global minutes_after_news 100",
       "intent": "SET",
-      "field": "MinutesAfterNews",
+      "field": "NewsMinutesAfter",
       "value": "100",
       "scope": "general"
     },
     {
       "text": "set minutes_after_news to 500",
       "intent": "SET",
-      "field": "MinutesAfterNews",
+      "field": "NewsMinutesAfter",
       "value": "500",
       "scope": "general"
     },
     {
       "text": "global minutes_after_news 500",
       "intent": "SET",
-      "field": "MinutesAfterNews",
+      "field": "NewsMinutesAfter",
       "value": "500",
       "scope": "general"
     },
     {
       "text": "set minutes_after_news to 1000",
       "intent": "SET",
-      "field": "MinutesAfterNews",
+      "field": "NewsMinutesAfter",
       "value": "1000",
       "scope": "general"
     },
     {
       "text": "global minutes_after_news 1000",
       "intent": "SET",
-      "field": "MinutesAfterNews",
+      "field": "NewsMinutesAfter",
       "value": "1000",
       "scope": "general"
     },
     {
       "text": "set minutes_before_news to 100",
       "intent": "SET",
-      "field": "MinutesBeforeNews",
+      "field": "NewsMinutesBefore",
       "value": "100",
       "scope": "general"
     },
     {
       "text": "global minutes_before_news 100",
       "intent": "SET",
-      "field": "MinutesBeforeNews",
+      "field": "NewsMinutesBefore",
       "value": "100",
       "scope": "general"
     },
     {
       "text": "set minutes_before_news to 500",
       "intent": "SET",
-      "field": "MinutesBeforeNews",
+      "field": "NewsMinutesBefore",
       "value": "500",
       "scope": "general"
     },
     {
       "text": "global minutes_before_news 500",
       "intent": "SET",
-      "field": "MinutesBeforeNews",
+      "field": "NewsMinutesBefore",
       "value": "500",
       "scope": "general"
     },
     {
       "text": "set minutes_before_news to 1000",
       "intent": "SET",
-      "field": "MinutesBeforeNews",
+      "field": "NewsMinutesBefore",
       "value": "1000",
       "scope": "general"
     },
     {
       "text": "global minutes_before_news 1000",
       "intent": "SET",
-      "field": "MinutesBeforeNews",
+      "field": "NewsMinutesBefore",
       "value": "1000",
       "scope": "general"
     },
     {
       "text": "set news_a_p_i_key to 100",
       "intent": "SET",
-      "field": "NewsAPIKey",
+      "field": "NewsApiKey",
       "value": "100",
       "scope": "general"
     },
     {
       "text": "global news_a_p_i_key 100",
       "intent": "SET",
-      "field": "NewsAPIKey",
+      "field": "NewsApiKey",
       "value": "100",
       "scope": "general"
     },
     {
       "text": "set news_a_p_i_key to 500",
       "intent": "SET",
-      "field": "NewsAPIKey",
+      "field": "NewsApiKey",
       "value": "500",
       "scope": "general"
     },
     {
       "text": "global news_a_p_i_key 500",
       "intent": "SET",
-      "field": "NewsAPIKey",
+      "field": "NewsApiKey",
       "value": "500",
       "scope": "general"
     },
     {
       "text": "set news_a_p_i_key to 1000",
       "intent": "SET",
-      "field": "NewsAPIKey",
+      "field": "NewsApiKey",
       "value": "1000",
       "scope": "general"
     },
     {
       "text": "global news_a_p_i_key 1000",
       "intent": "SET",
-      "field": "NewsAPIKey",
+      "field": "NewsApiKey",
       "value": "1000",
       "scope": "general"
     },
     {
       "text": "set news_a_p_i_u_r_l to 100",
       "intent": "SET",
-      "field": "NewsAPIURL",
+      "field": "NewsApiUrl",
       "value": "100",
       "scope": "general"
     },
     {
       "text": "global news_a_p_i_u_r_l 100",
       "intent": "SET",
-      "field": "NewsAPIURL",
+      "field": "NewsApiUrl",
       "value": "100",
       "scope": "general"
     },
     {
       "text": "set news_a_p_i_u_r_l to 500",
       "intent": "SET",
-      "field": "NewsAPIURL",
+      "field": "NewsApiUrl",
       "value": "500",
       "scope": "general"
     },
     {
       "text": "global news_a_p_i_u_r_l 500",
       "intent": "SET",
-      "field": "NewsAPIURL",
+      "field": "NewsApiUrl",
       "value": "500",
       "scope": "general"
     },
     {
       "text": "set news_a_p_i_u_r_l to 1000",
       "intent": "SET",
-      "field": "NewsAPIURL",
+      "field": "NewsApiUrl",
       "value": "1000",
       "scope": "general"
     },
     {
       "text": "global news_a_p_i_u_r_l 1000",
       "intent": "SET",
-      "field": "NewsAPIURL",
+      "field": "NewsApiUrl",
       "value": "1000",
       "scope": "general"
     },
@@ -12323,42 +12323,42 @@
     {
       "text": "set news_filter_countries to 100",
       "intent": "SET",
-      "field": "NewsFilterCountries",
+      "field": "NewsCountries",
       "value": "100",
       "scope": "general"
     },
     {
       "text": "global news_filter_countries 100",
       "intent": "SET",
-      "field": "NewsFilterCountries",
+      "field": "NewsCountries",
       "value": "100",
       "scope": "general"
     },
     {
       "text": "set news_filter_countries to 500",
       "intent": "SET",
-      "field": "NewsFilterCountries",
+      "field": "NewsCountries",
       "value": "500",
       "scope": "general"
     },
     {
       "text": "global news_filter_countries 500",
       "intent": "SET",
-      "field": "NewsFilterCountries",
+      "field": "NewsCountries",
       "value": "500",
       "scope": "general"
     },
     {
       "text": "set news_filter_countries to 1000",
       "intent": "SET",
-      "field": "NewsFilterCountries",
+      "field": "NewsCountries",
       "value": "1000",
       "scope": "general"
     },
     {
       "text": "global news_filter_countries 1000",
       "intent": "SET",
-      "field": "NewsFilterCountries",
+      "field": "NewsCountries",
       "value": "1000",
       "scope": "general"
     },
@@ -12505,42 +12505,42 @@
     {
       "text": "set news_overrides_session to 100",
       "intent": "SET",
-      "field": "NewsOverridesSession",
+      "field": "NewsFilterOverridesSession",
       "value": "100",
       "scope": "general"
     },
     {
       "text": "global news_overrides_session 100",
       "intent": "SET",
-      "field": "NewsOverridesSession",
+      "field": "NewsFilterOverridesSession",
       "value": "100",
       "scope": "general"
     },
     {
       "text": "set news_overrides_session to 500",
       "intent": "SET",
-      "field": "NewsOverridesSession",
+      "field": "NewsFilterOverridesSession",
       "value": "500",
       "scope": "general"
     },
     {
       "text": "global news_overrides_session 500",
       "intent": "SET",
-      "field": "NewsOverridesSession",
+      "field": "NewsFilterOverridesSession",
       "value": "500",
       "scope": "general"
     },
     {
       "text": "set news_overrides_session to 1000",
       "intent": "SET",
-      "field": "NewsOverridesSession",
+      "field": "NewsFilterOverridesSession",
       "value": "1000",
       "scope": "general"
     },
     {
       "text": "global news_overrides_session 1000",
       "intent": "SET",
-      "field": "NewsOverridesSession",
+      "field": "NewsFilterOverridesSession",
       "value": "1000",
       "scope": "general"
     },
@@ -12639,62 +12639,6 @@
       "text": "global risk_action disable",
       "intent": "SET",
       "field": "RiskAction",
-      "value": "disable",
-      "scope": "general"
-    },
-    {
-      "text": "set session1_action on",
-      "intent": "SET",
-      "field": "Session1Action",
-      "value": "on",
-      "scope": "general"
-    },
-    {
-      "text": "global session1_action on",
-      "intent": "SET",
-      "field": "Session1Action",
-      "value": "on",
-      "scope": "general"
-    },
-    {
-      "text": "set session1_action off",
-      "intent": "SET",
-      "field": "Session1Action",
-      "value": "off",
-      "scope": "general"
-    },
-    {
-      "text": "global session1_action off",
-      "intent": "SET",
-      "field": "Session1Action",
-      "value": "off",
-      "scope": "general"
-    },
-    {
-      "text": "set session1_action enable",
-      "intent": "SET",
-      "field": "Session1Action",
-      "value": "enable",
-      "scope": "general"
-    },
-    {
-      "text": "global session1_action enable",
-      "intent": "SET",
-      "field": "Session1Action",
-      "value": "enable",
-      "scope": "general"
-    },
-    {
-      "text": "set session1_action disable",
-      "intent": "SET",
-      "field": "Session1Action",
-      "value": "disable",
-      "scope": "general"
-    },
-    {
-      "text": "global session1_action disable",
-      "intent": "SET",
-      "field": "Session1Action",
       "value": "disable",
       "scope": "general"
     },
@@ -12979,62 +12923,6 @@
       "scope": "general"
     },
     {
-      "text": "set session2_action on",
-      "intent": "SET",
-      "field": "Session2Action",
-      "value": "on",
-      "scope": "general"
-    },
-    {
-      "text": "global session2_action on",
-      "intent": "SET",
-      "field": "Session2Action",
-      "value": "on",
-      "scope": "general"
-    },
-    {
-      "text": "set session2_action off",
-      "intent": "SET",
-      "field": "Session2Action",
-      "value": "off",
-      "scope": "general"
-    },
-    {
-      "text": "global session2_action off",
-      "intent": "SET",
-      "field": "Session2Action",
-      "value": "off",
-      "scope": "general"
-    },
-    {
-      "text": "set session2_action enable",
-      "intent": "SET",
-      "field": "Session2Action",
-      "value": "enable",
-      "scope": "general"
-    },
-    {
-      "text": "global session2_action enable",
-      "intent": "SET",
-      "field": "Session2Action",
-      "value": "enable",
-      "scope": "general"
-    },
-    {
-      "text": "set session2_action disable",
-      "intent": "SET",
-      "field": "Session2Action",
-      "value": "disable",
-      "scope": "general"
-    },
-    {
-      "text": "global session2_action disable",
-      "intent": "SET",
-      "field": "Session2Action",
-      "value": "disable",
-      "scope": "general"
-    },
-    {
       "text": "set session2_day on",
       "intent": "SET",
       "field": "Session2Day",
@@ -13312,62 +13200,6 @@
       "intent": "SET",
       "field": "Session2StartMinute",
       "value": "1000",
-      "scope": "general"
-    },
-    {
-      "text": "set session3_action on",
-      "intent": "SET",
-      "field": "Session3Action",
-      "value": "on",
-      "scope": "general"
-    },
-    {
-      "text": "global session3_action on",
-      "intent": "SET",
-      "field": "Session3Action",
-      "value": "on",
-      "scope": "general"
-    },
-    {
-      "text": "set session3_action off",
-      "intent": "SET",
-      "field": "Session3Action",
-      "value": "off",
-      "scope": "general"
-    },
-    {
-      "text": "global session3_action off",
-      "intent": "SET",
-      "field": "Session3Action",
-      "value": "off",
-      "scope": "general"
-    },
-    {
-      "text": "set session3_action enable",
-      "intent": "SET",
-      "field": "Session3Action",
-      "value": "enable",
-      "scope": "general"
-    },
-    {
-      "text": "global session3_action enable",
-      "intent": "SET",
-      "field": "Session3Action",
-      "value": "enable",
-      "scope": "general"
-    },
-    {
-      "text": "set session3_action disable",
-      "intent": "SET",
-      "field": "Session3Action",
-      "value": "disable",
-      "scope": "general"
-    },
-    {
-      "text": "global session3_action disable",
-      "intent": "SET",
-      "field": "Session3Action",
-      "value": "disable",
       "scope": "general"
     },
     {
@@ -13651,62 +13483,6 @@
       "scope": "general"
     },
     {
-      "text": "set session4_action on",
-      "intent": "SET",
-      "field": "Session4Action",
-      "value": "on",
-      "scope": "general"
-    },
-    {
-      "text": "global session4_action on",
-      "intent": "SET",
-      "field": "Session4Action",
-      "value": "on",
-      "scope": "general"
-    },
-    {
-      "text": "set session4_action off",
-      "intent": "SET",
-      "field": "Session4Action",
-      "value": "off",
-      "scope": "general"
-    },
-    {
-      "text": "global session4_action off",
-      "intent": "SET",
-      "field": "Session4Action",
-      "value": "off",
-      "scope": "general"
-    },
-    {
-      "text": "set session4_action enable",
-      "intent": "SET",
-      "field": "Session4Action",
-      "value": "enable",
-      "scope": "general"
-    },
-    {
-      "text": "global session4_action enable",
-      "intent": "SET",
-      "field": "Session4Action",
-      "value": "enable",
-      "scope": "general"
-    },
-    {
-      "text": "set session4_action disable",
-      "intent": "SET",
-      "field": "Session4Action",
-      "value": "disable",
-      "scope": "general"
-    },
-    {
-      "text": "global session4_action disable",
-      "intent": "SET",
-      "field": "Session4Action",
-      "value": "disable",
-      "scope": "general"
-    },
-    {
       "text": "set session4_day on",
       "intent": "SET",
       "field": "Session4Day",
@@ -13984,62 +13760,6 @@
       "intent": "SET",
       "field": "Session4StartMinute",
       "value": "1000",
-      "scope": "general"
-    },
-    {
-      "text": "set session5_action on",
-      "intent": "SET",
-      "field": "Session5Action",
-      "value": "on",
-      "scope": "general"
-    },
-    {
-      "text": "global session5_action on",
-      "intent": "SET",
-      "field": "Session5Action",
-      "value": "on",
-      "scope": "general"
-    },
-    {
-      "text": "set session5_action off",
-      "intent": "SET",
-      "field": "Session5Action",
-      "value": "off",
-      "scope": "general"
-    },
-    {
-      "text": "global session5_action off",
-      "intent": "SET",
-      "field": "Session5Action",
-      "value": "off",
-      "scope": "general"
-    },
-    {
-      "text": "set session5_action enable",
-      "intent": "SET",
-      "field": "Session5Action",
-      "value": "enable",
-      "scope": "general"
-    },
-    {
-      "text": "global session5_action enable",
-      "intent": "SET",
-      "field": "Session5Action",
-      "value": "enable",
-      "scope": "general"
-    },
-    {
-      "text": "set session5_action disable",
-      "intent": "SET",
-      "field": "Session5Action",
-      "value": "disable",
-      "scope": "general"
-    },
-    {
-      "text": "global session5_action disable",
-      "intent": "SET",
-      "field": "Session5Action",
-      "value": "disable",
       "scope": "general"
     },
     {
@@ -14323,62 +14043,6 @@
       "scope": "general"
     },
     {
-      "text": "set session6_action on",
-      "intent": "SET",
-      "field": "Session6Action",
-      "value": "on",
-      "scope": "general"
-    },
-    {
-      "text": "global session6_action on",
-      "intent": "SET",
-      "field": "Session6Action",
-      "value": "on",
-      "scope": "general"
-    },
-    {
-      "text": "set session6_action off",
-      "intent": "SET",
-      "field": "Session6Action",
-      "value": "off",
-      "scope": "general"
-    },
-    {
-      "text": "global session6_action off",
-      "intent": "SET",
-      "field": "Session6Action",
-      "value": "off",
-      "scope": "general"
-    },
-    {
-      "text": "set session6_action enable",
-      "intent": "SET",
-      "field": "Session6Action",
-      "value": "enable",
-      "scope": "general"
-    },
-    {
-      "text": "global session6_action enable",
-      "intent": "SET",
-      "field": "Session6Action",
-      "value": "enable",
-      "scope": "general"
-    },
-    {
-      "text": "set session6_action disable",
-      "intent": "SET",
-      "field": "Session6Action",
-      "value": "disable",
-      "scope": "general"
-    },
-    {
-      "text": "global session6_action disable",
-      "intent": "SET",
-      "field": "Session6Action",
-      "value": "disable",
-      "scope": "general"
-    },
-    {
       "text": "set session6_day on",
       "intent": "SET",
       "field": "Session6Day",
@@ -14656,62 +14320,6 @@
       "intent": "SET",
       "field": "Session6StartMinute",
       "value": "1000",
-      "scope": "general"
-    },
-    {
-      "text": "set session7_action on",
-      "intent": "SET",
-      "field": "Session7Action",
-      "value": "on",
-      "scope": "general"
-    },
-    {
-      "text": "global session7_action on",
-      "intent": "SET",
-      "field": "Session7Action",
-      "value": "on",
-      "scope": "general"
-    },
-    {
-      "text": "set session7_action off",
-      "intent": "SET",
-      "field": "Session7Action",
-      "value": "off",
-      "scope": "general"
-    },
-    {
-      "text": "global session7_action off",
-      "intent": "SET",
-      "field": "Session7Action",
-      "value": "off",
-      "scope": "general"
-    },
-    {
-      "text": "set session7_action enable",
-      "intent": "SET",
-      "field": "Session7Action",
-      "value": "enable",
-      "scope": "general"
-    },
-    {
-      "text": "global session7_action enable",
-      "intent": "SET",
-      "field": "Session7Action",
-      "value": "enable",
-      "scope": "general"
-    },
-    {
-      "text": "set session7_action disable",
-      "intent": "SET",
-      "field": "Session7Action",
-      "value": "disable",
-      "scope": "general"
-    },
-    {
-      "text": "global session7_action disable",
-      "intent": "SET",
-      "field": "Session7Action",
-      "value": "disable",
       "scope": "general"
     },
     {
@@ -14997,56 +14605,56 @@
     {
       "text": "set session_filter_enabled on",
       "intent": "SET",
-      "field": "SessionFilterEnabled",
+      "field": "TimeFiltersEnabled",
       "value": "on",
       "scope": "general"
     },
     {
       "text": "global session_filter_enabled on",
       "intent": "SET",
-      "field": "SessionFilterEnabled",
+      "field": "TimeFiltersEnabled",
       "value": "on",
       "scope": "general"
     },
     {
       "text": "set session_filter_enabled off",
       "intent": "SET",
-      "field": "SessionFilterEnabled",
+      "field": "TimeFiltersEnabled",
       "value": "off",
       "scope": "general"
     },
     {
       "text": "global session_filter_enabled off",
       "intent": "SET",
-      "field": "SessionFilterEnabled",
+      "field": "TimeFiltersEnabled",
       "value": "off",
       "scope": "general"
     },
     {
       "text": "set session_filter_enabled enable",
       "intent": "SET",
-      "field": "SessionFilterEnabled",
+      "field": "TimeFiltersEnabled",
       "value": "enable",
       "scope": "general"
     },
     {
       "text": "global session_filter_enabled enable",
       "intent": "SET",
-      "field": "SessionFilterEnabled",
+      "field": "TimeFiltersEnabled",
       "value": "enable",
       "scope": "general"
     },
     {
       "text": "set session_filter_enabled disable",
       "intent": "SET",
-      "field": "SessionFilterEnabled",
+      "field": "TimeFiltersEnabled",
       "value": "disable",
       "scope": "general"
     },
     {
       "text": "global session_filter_enabled disable",
       "intent": "SET",
-      "field": "SessionFilterEnabled",
+      "field": "TimeFiltersEnabled",
       "value": "disable",
       "scope": "general"
     },
@@ -15095,42 +14703,42 @@
     {
       "text": "set session_overrides_news to 100",
       "intent": "SET",
-      "field": "SessionOverridesNews",
+      "field": "SessionFilterOverridesNews",
       "value": "100",
       "scope": "general"
     },
     {
       "text": "global session_overrides_news 100",
       "intent": "SET",
-      "field": "SessionOverridesNews",
+      "field": "SessionFilterOverridesNews",
       "value": "100",
       "scope": "general"
     },
     {
       "text": "set session_overrides_news to 500",
       "intent": "SET",
-      "field": "SessionOverridesNews",
+      "field": "SessionFilterOverridesNews",
       "value": "500",
       "scope": "general"
     },
     {
       "text": "global session_overrides_news 500",
       "intent": "SET",
-      "field": "SessionOverridesNews",
+      "field": "SessionFilterOverridesNews",
       "value": "500",
       "scope": "general"
     },
     {
       "text": "set session_overrides_news to 1000",
       "intent": "SET",
-      "field": "SessionOverridesNews",
+      "field": "SessionFilterOverridesNews",
       "value": "1000",
       "scope": "general"
     },
     {
       "text": "global session_overrides_news 1000",
       "intent": "SET",
-      "field": "SessionOverridesNews",
+      "field": "SessionFilterOverridesNews",
       "value": "1000",
       "scope": "general"
     },
@@ -15193,168 +14801,168 @@
     {
       "text": "set use_drawdown_stop on",
       "intent": "SET",
-      "field": "UseDrawdownStop",
+      "field": "DrawdownStopEnabled",
       "value": "on",
       "scope": "general"
     },
     {
       "text": "global use_drawdown_stop on",
       "intent": "SET",
-      "field": "UseDrawdownStop",
+      "field": "DrawdownStopEnabled",
       "value": "on",
       "scope": "general"
     },
     {
       "text": "set use_drawdown_stop off",
       "intent": "SET",
-      "field": "UseDrawdownStop",
+      "field": "DrawdownStopEnabled",
       "value": "off",
       "scope": "general"
     },
     {
       "text": "global use_drawdown_stop off",
       "intent": "SET",
-      "field": "UseDrawdownStop",
+      "field": "DrawdownStopEnabled",
       "value": "off",
       "scope": "general"
     },
     {
       "text": "set use_drawdown_stop enable",
       "intent": "SET",
-      "field": "UseDrawdownStop",
+      "field": "DrawdownStopEnabled",
       "value": "enable",
       "scope": "general"
     },
     {
       "text": "global use_drawdown_stop enable",
       "intent": "SET",
-      "field": "UseDrawdownStop",
+      "field": "DrawdownStopEnabled",
       "value": "enable",
       "scope": "general"
     },
     {
       "text": "set use_drawdown_stop disable",
       "intent": "SET",
-      "field": "UseDrawdownStop",
+      "field": "DrawdownStopEnabled",
       "value": "disable",
       "scope": "general"
     },
     {
       "text": "global use_drawdown_stop disable",
       "intent": "SET",
-      "field": "UseDrawdownStop",
+      "field": "DrawdownStopEnabled",
       "value": "disable",
       "scope": "general"
     },
     {
       "text": "set use_equity_stop on",
       "intent": "SET",
-      "field": "UseEquityStop",
+      "field": "EquityStopEnabled",
       "value": "on",
       "scope": "general"
     },
     {
       "text": "global use_equity_stop on",
       "intent": "SET",
-      "field": "UseEquityStop",
+      "field": "EquityStopEnabled",
       "value": "on",
       "scope": "general"
     },
     {
       "text": "set use_equity_stop off",
       "intent": "SET",
-      "field": "UseEquityStop",
+      "field": "EquityStopEnabled",
       "value": "off",
       "scope": "general"
     },
     {
       "text": "global use_equity_stop off",
       "intent": "SET",
-      "field": "UseEquityStop",
+      "field": "EquityStopEnabled",
       "value": "off",
       "scope": "general"
     },
     {
       "text": "set use_equity_stop enable",
       "intent": "SET",
-      "field": "UseEquityStop",
+      "field": "EquityStopEnabled",
       "value": "enable",
       "scope": "general"
     },
     {
       "text": "global use_equity_stop enable",
       "intent": "SET",
-      "field": "UseEquityStop",
+      "field": "EquityStopEnabled",
       "value": "enable",
       "scope": "general"
     },
     {
       "text": "set use_equity_stop disable",
       "intent": "SET",
-      "field": "UseEquityStop",
+      "field": "EquityStopEnabled",
       "value": "disable",
       "scope": "general"
     },
     {
       "text": "global use_equity_stop disable",
       "intent": "SET",
-      "field": "UseEquityStop",
+      "field": "EquityStopEnabled",
       "value": "disable",
       "scope": "general"
     },
     {
       "text": "set use_spread_filter on",
       "intent": "SET",
-      "field": "UseSpreadFilter",
+      "field": "SpreadFilterEnabled",
       "value": "on",
       "scope": "general"
     },
     {
       "text": "global use_spread_filter on",
       "intent": "SET",
-      "field": "UseSpreadFilter",
+      "field": "SpreadFilterEnabled",
       "value": "on",
       "scope": "general"
     },
     {
       "text": "set use_spread_filter off",
       "intent": "SET",
-      "field": "UseSpreadFilter",
+      "field": "SpreadFilterEnabled",
       "value": "off",
       "scope": "general"
     },
     {
       "text": "global use_spread_filter off",
       "intent": "SET",
-      "field": "UseSpreadFilter",
+      "field": "SpreadFilterEnabled",
       "value": "off",
       "scope": "general"
     },
     {
       "text": "set use_spread_filter enable",
       "intent": "SET",
-      "field": "UseSpreadFilter",
+      "field": "SpreadFilterEnabled",
       "value": "enable",
       "scope": "general"
     },
     {
       "text": "global use_spread_filter enable",
       "intent": "SET",
-      "field": "UseSpreadFilter",
+      "field": "SpreadFilterEnabled",
       "value": "enable",
       "scope": "general"
     },
     {
       "text": "set use_spread_filter disable",
       "intent": "SET",
-      "field": "UseSpreadFilter",
+      "field": "SpreadFilterEnabled",
       "value": "disable",
       "scope": "general"
     },
     {
       "text": "global use_spread_filter disable",
       "intent": "SET",
-      "field": "UseSpreadFilter",
+      "field": "SpreadFilterEnabled",
       "value": "disable",
       "scope": "general"
     },
