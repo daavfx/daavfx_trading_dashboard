@@ -16,6 +16,26 @@ import {
   Sparkles,
   MessageSquare,
   TrendingUp,
+  Brain,
+  Gauge,
+  Target,
+  Hexagon,
+  Workflow,
+  Cpu,
+  Binary,
+  Crosshair,
+  Waves,
+  Flame,
+  Radio,
+  Orbit,
+  GitBranch,
+  RotateCcw,
+  Group,
+  Save,
+  BarChart3,
+  Users,
+  RefreshCw,
+  Shield
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -36,6 +56,37 @@ const groups = Array.from({ length: 20 }, (_, i) => `Group ${i + 1}`);
 const logics = ["POWER", "REPOWER", "SCALPER", "STOPPER", "STO", "SCA", "RPO"] as const;
 
 export type ViewMode = "logics" | "control" | "general" | "chat" | "vault" | "version-control" | "analytics" | "undo-redo" | "memory" | "grouping" | "collaboration" | "save_config";
+
+const engineIcons: Record<string, { icon: any; color: string }> = {
+  "Engine A": { icon: Hexagon, color: "text-[hsl(38_20%45%)]" },
+  "Engine B": { icon: Hexagon, color: "text-[hsl(215_15%40%)]" },
+  "Engine C": { icon: Hexagon, color: "text-[hsl(265_12%40%)]" },
+};
+
+const logicIcons: Record<string, { icon: any; color: string }> = {
+  POWER: { icon: Gauge, color: "text-[hsl(38_25%50%)]" },
+  REPOWER: { icon: Gauge, color: "text-[hsl(38_25%45%)]" },
+  SCALPER: { icon: Zap, color: "text-[hsl(25_20%50%)]" },
+  STOPPER: { icon: Shield, color: "text-[hsl(0_25%45%)]" },
+  STO: { icon: Target, color: "text-[hsl(0_20%40%)]" },
+  SCA: { icon: Waves, color: "text-[hsl(160_15%40%)]" },
+  RPO: { icon: RefreshCw, color: "text-[hsl(215_12%40%)]" },
+};
+
+const viewModeIcons: Record<ViewMode, { icon: any; color: string; label: string }> = {
+  logics: { icon: Layers, color: "text-[hsl(38_20%45%)]", label: "Logic Canvas" },
+  control: { icon: Settings2, color: "text-[hsl(215_15%40%)]", label: "Control Panel" },
+  general: { icon: Settings2, color: "text-[hsl(0_0%60%)]", label: "General Config" },
+  chat: { icon: MessageSquare, color: "text-[hsl(260_12%55%)]", label: "AI Chat" },
+  vault: { icon: FolderOpen, color: "text-[hsl(38_20%40%)]", label: "Vault" },
+  "version-control": { icon: GitBranch, color: "text-[hsl(25_18%45%)]", label: "Version Control" },
+  analytics: { icon: BarChart3, color: "text-[hsl(160_14%40%)]", label: "Analytics" },
+  "undo-redo": { icon: RotateCcw, color: "text-[hsl(215_12%40%)]", label: "Undo/Redo" },
+  memory: { icon: Brain, color: "text-[hsl(260_14%45%)]", label: "Memory" },
+  grouping: { icon: Group, color: "text-[hsl(38_18%40%)]", label: "Grouping" },
+  collaboration: { icon: Users, color: "text-[hsl(180_10%40%)]", label: "Collaboration" },
+  save_config: { icon: Save, color: "text-[hsl(38_20%45%)]", label: "Save Config" },
+};
 
 interface SidebarProps {
   selectedEngines: string[];

@@ -14,6 +14,25 @@ import {
   ChevronDown,
   Eye,
   EyeOff,
+  Gauge,
+  Target,
+  Brain,
+  Waves,
+  Flame,
+  Hexagon,
+  Crosshair,
+  Binary,
+  Cpu,
+  Workflow,
+  Radio,
+  GaugeCircle,
+  TargetCircle,
+  ScanEye,
+  Orbit,
+  TrendingUp,
+  TrendingDown,
+  Activity,
+  ZapFast
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ConfigField } from "./ConfigField";
@@ -221,20 +240,20 @@ const CATEGORY_MERGE_MAP_STANDARD: Record<string, string> = {
   Lots: "Execution Logic",
 };
 
-const categoryStyles: Record<string, { icon: any }> = {
-  "Triggers + Grid": { icon: Settings2 },
-  "Base Routing": { icon: Settings2 },
-  Core: { icon: Layers },
-  Lots: { icon: Box },
-  "Execution Logic": { icon: Zap },
-  Trail: { icon: ChevronRight },
-  "Trail Advanced": { icon: Settings2 },
-  Logic: { icon: Zap },
-  TPSL: { icon: Shield },
-  "Reverse/Hedge": { icon: ArrowLeftRight },
-  "Close Partial": { icon: RefreshCw },
-  Safety: { icon: Shield },
-  Restart: { icon: RefreshCw },
+const categoryStyles: Record<string, { icon: any; color: string }> = {
+  "Triggers + Grid": { icon: Gauge, color: "text-[hsl(38_20%45%)]" },
+  "Base Routing": { icon: Workflow, color: "text-[hsl(38_20%45%)]" },
+  Core: { icon: Layers, color: "text-[hsl(0_0%65%)]" },
+  Lots: { icon: Box, color: "text-[hsl(215_15%45%)]" },
+  "Execution Logic": { icon: ZapFast, color: "text-[hsl(38_30%55%)]" },
+  Trail: { icon: TrendingDown, color: "text-[hsl(265_12%45%)]" },
+  "Trail Advanced": { icon: GaugeCircle, color: "text-[hsl(265_12%45%)]" },
+  Logic: { icon: Brain, color: "text-[hsl(260_14%45%)]" },
+  TPSL: { icon: Target, color: "text-[hsl(0_20%40%)]" },
+  "Reverse/Hedge": { icon: ArrowLeftRight, color: "text-[hsl(215_12%40%)]" },
+  "Close Partial": { icon: RefreshCw, color: "text-[hsl(25_18%40%)]" },
+  Safety: { icon: Shield, color: "text-[hsl(0_25%40%)]" },
+  Restart: { icon: RotateCw, color: "text-[hsl(25_18%40%)]" },
 };
 
 const normalizeTradingModeValue = (raw: unknown): "Counter Trend" | "Hedge" | "Reverse" => {
@@ -257,9 +276,11 @@ const normalizeTradingModeValue = (raw: unknown): "Counter Trend" | "Hedge" | "R
 };
 
 const getCategoryIcon = (category: string) => {
-  if (category === "Reverse/Hedge")
-    return <ArrowLeftRight className="w-3 h-3" />;
-  if (category === "Safety") return <Shield className="w-3 h-3" />;
+  const style = categoryStyles[category];
+  if (style) {
+    const IconComponent = style.icon;
+    return <IconComponent className={`w-3.5 h-3.5 ${style.color}`} />;
+  }
   return null;
 };
 
@@ -1150,8 +1171,10 @@ export function LogicModule({
                   });
                   const style = categoryStyles[category] || {
                     icon: ChevronRight,
+                    color: "text-[hsl(0_0%55%)]",
                   };
                   const Icon = style.icon;
+                  const iconColor = style.color || "text-[hsl(0_0%55%)]";
 
                   const colSpanClass = "";
 
@@ -1328,10 +1351,10 @@ export function LogicModule({
                       {/* Category Header - Transparent with subtle gradient accent */}
                       <div className={headerClass}>
                         <div className={cn(
-                          "p-1 rounded",
-                          "bg-primary/[0.06] border border-primary/[0.08]",
+                          "p-1.5 rounded-md",
+                          "bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.06]",
                         )}>
-                          <Icon className="w-3 h-3 text-primary/60" />
+                          <Icon className={cn("w-4 h-4", iconColor)} />
                         </div>
                         <h2 className="heading-card">{category}</h2>
 
