@@ -10,6 +10,7 @@ import {
   Zap,
   Settings2,
   RefreshCw,
+  RotateCw,
   Box,
   ChevronDown,
   Eye,
