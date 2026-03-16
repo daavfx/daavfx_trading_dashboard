@@ -31,8 +31,7 @@ import {
   Orbit,
   TrendingUp,
   TrendingDown,
-  Activity,
-  ZapFast
+  Activity
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ConfigField } from "./ConfigField";
@@ -245,7 +244,7 @@ const categoryStyles: Record<string, { icon: any; color: string }> = {
   "Base Routing": { icon: Workflow, color: "text-[hsl(38_20%45%)]" },
   Core: { icon: Layers, color: "text-[hsl(0_0%65%)]" },
   Lots: { icon: Box, color: "text-[hsl(215_15%45%)]" },
-  "Execution Logic": { icon: ZapFast, color: "text-[hsl(38_30%55%)]" },
+  "Execution Logic": { icon: Zap, color: "text-[hsl(38_30%55%)]" },
   Trail: { icon: TrendingDown, color: "text-[hsl(265_12%45%)]" },
   "Trail Advanced": { icon: GaugeCircle, color: "text-[hsl(265_12%45%)]" },
   Logic: { icon: Brain, color: "text-[hsl(260_14%45%)]" },

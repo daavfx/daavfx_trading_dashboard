@@ -76,7 +76,6 @@ interface GeneralCategoriesProps {
 export const generalCategoriesList = [
   { id: "general", label: "Core", icon: Settings2, color: "text-[hsl(0_0%65%)]", hasBuySell: false },
   { id: "risk_management", label: "Risk Management", icon: Shield, color: "text-[hsl(0_25%40%)]", hasBuySell: true },
-  { id: "trail", label: "Trail", icon: TrendingDown, color: "text-[hsl(265_15%45%)]", hasBuySell: true },
 ] as const;
 
 export function GeneralCategories({ 
